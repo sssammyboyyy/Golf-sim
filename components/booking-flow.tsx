@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -8,11 +8,20 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Users, Clock, CalendarIcon, Trophy } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Users, Clock, CalendarIcon, Trophy, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 type UserType = "adult" | "student" | "junior" | "senior"
+
+type TimeSlot = {
+  time: string
+  available: boolean
+  isPeak: boolean
+  pricePerHour: number
+  spotsRemaining: number
+}
 
 export function BookingFlow() {
   const router = useRouter()
@@ -22,6 +31,52 @@ export function BookingFlow() {
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [timeSlot, setTimeSlot] = useState<string>("")
   const [duration, setDuration] = useState<number>(1)
+  const [studentVerified, setStudentVerified] = useState(false)
+  const [ageVerified, setAgeVerified] = useState(false)
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotsError, setSlotsError] = useState<string | null>(null)
+
+  // Reset verification states when user type changes
+  useEffect(() => {
+    setStudentVerified(false)
+    setAgeVerified(false)
+  }, [userType])
+
+  // Fetch availability when date or userType changes
+  useEffect(() => {
+    if (!date || !userType) {
+      setTimeSlots([])
+      return
+    }
+
+    const fetchAvailability = async () => {
+      setLoadingSlots(true)
+      setSlotsError(null)
+
+      try {
+        const dateStr = date.toISOString().split('T')[0]
+        const response = await fetch(
+          `/api/availability?date=${dateStr}&userType=${userType}`
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to load availability')
+        }
+
+        const data = await response.json()
+        setTimeSlots(data.slots || [])
+      } catch (error) {
+        console.error('Error fetching availability:', error)
+        setSlotsError('Unable to load available times. Please try again.')
+        setTimeSlots([])
+      } finally {
+        setLoadingSlots(false)
+      }
+    }
+
+    fetchAvailability()
+  }, [date, userType])
 
   const handleContinue = () => {
     if (step === 1 && playerCount > 0) {
@@ -38,22 +93,17 @@ export function BookingFlow() {
 
   const canContinue = () => {
     if (step === 1) return playerCount > 0
-    if (step === 2) return userType !== ""
+    if (step === 2) {
+      if (!userType) return false
+      // Require student verification checkbox if student selected
+      if (userType === 'student' && !studentVerified) return false
+      // Require age verification if junior or senior selected
+      if ((userType === 'junior' || userType === 'senior') && !ageVerified) return false
+      return true
+    }
     if (step === 3) return date && timeSlot && duration
     return false
   }
-
-  // Sample time slots (would be fetched from API based on date)
-  const timeSlots = [
-    { time: "06:00", available: true, isPeak: false, price: 350 },
-    { time: "08:00", available: true, isPeak: false, price: 350 },
-    { time: "10:00", available: true, isPeak: false, price: 350 },
-    { time: "12:00", available: true, isPeak: true, price: 450 },
-    { time: "14:00", available: true, isPeak: true, price: 450 },
-    { time: "16:00", available: true, isPeak: true, price: 450 },
-    { time: "18:00", available: true, isPeak: true, price: 400 },
-    { time: "20:00", available: false, isPeak: true, price: 400 },
-  ]
 
   return (
     <div className="min-h-screen py-8">
@@ -155,53 +205,132 @@ export function BookingFlow() {
                       </div>
                       <span className="font-semibold text-foreground">R350-R600/hr</span>
                     </Label>
+
                     <Label
                       htmlFor="student"
-                      className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="flex flex-col p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="student" id="student" />
-                        <div>
-                          <p className="font-semibold text-foreground">Student</p>
-                          <p className="text-sm text-muted-foreground">Valid student ID required</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem value="student" id="student" />
+                          <div>
+                            <p className="font-semibold text-foreground">Student</p>
+                            <p className="text-sm text-muted-foreground">Valid student ID required</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">20% Off</Badge>
+                          <p className="font-semibold text-foreground">R280-R480/hr</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">20% Off</Badge>
-                        <p className="font-semibold text-foreground">R280-R480/hr</p>
-                      </div>
+
+                      {userType === 'student' && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="flex items-start gap-2">
+                            <Checkbox 
+                              id="student-verify" 
+                              checked={studentVerified}
+                              onCheckedChange={(checked) => setStudentVerified(checked as boolean)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <label 
+                              htmlFor="student-verify" 
+                              className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setStudentVerified(!studentVerified)
+                              }}
+                            >
+                              I confirm that I am a current student and will bring valid student ID for verification at check-in. 
+                              Failure to provide ID may result in standard rate charges.
+                            </label>
+                          </div>
+                        </div>
+                      )}
                     </Label>
+
                     <Label
                       htmlFor="junior"
-                      className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="flex flex-col p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="junior" id="junior" />
-                        <div>
-                          <p className="font-semibold text-foreground">Junior</p>
-                          <p className="text-sm text-muted-foreground">Under 18 years</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem value="junior" id="junior" />
+                          <div>
+                            <p className="font-semibold text-foreground">Junior</p>
+                            <p className="text-sm text-muted-foreground">Under 18 years</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">30% Off</Badge>
+                          <p className="font-semibold text-foreground">R245-R420/hr</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">30% Off</Badge>
-                        <p className="font-semibold text-foreground">R245-R420/hr</p>
-                      </div>
+
+                      {userType === 'junior' && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="flex items-start gap-2">
+                            <Checkbox 
+                              id="age-verify-junior" 
+                              checked={ageVerified}
+                              onCheckedChange={(checked) => setAgeVerified(checked as boolean)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <label 
+                              htmlFor="age-verify-junior" 
+                              className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setAgeVerified(!ageVerified)
+                              }}
+                            >
+                              I confirm that the player(s) are under 18 years of age.
+                            </label>
+                          </div>
+                        </div>
+                      )}
                     </Label>
+
                     <Label
                       htmlFor="senior"
-                      className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="flex flex-col p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="senior" id="senior" />
-                        <div>
-                          <p className="font-semibold text-foreground">Senior</p>
-                          <p className="text-sm text-muted-foreground">60+ years</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem value="senior" id="senior" />
+                          <div>
+                            <p className="font-semibold text-foreground">Senior</p>
+                            <p className="text-sm text-muted-foreground">60+ years</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">25% Off</Badge>
+                          <p className="font-semibold text-foreground">R262-R450/hr</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className="bg-secondary text-secondary-foreground border-0 mb-1">25% Off</Badge>
-                        <p className="font-semibold text-foreground">R262-R450/hr</p>
-                      </div>
+
+                      {userType === 'senior' && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="flex items-start gap-2">
+                            <Checkbox 
+                              id="age-verify-senior" 
+                              checked={ageVerified}
+                              onCheckedChange={(checked) => setAgeVerified(checked as boolean)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <label 
+                              htmlFor="age-verify-senior" 
+                              className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setAgeVerified(!ageVerified)
+                              }}
+                            >
+                              I confirm that the player(s) are 60 years or older.
+                            </label>
+                          </div>
+                        </div>
+                      )}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -251,27 +380,54 @@ export function BookingFlow() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {timeSlots.map((slot) => (
-                          <Button
-                            key={slot.time}
-                            variant={timeSlot === slot.time ? "default" : "outline"}
-                            className={`flex flex-col h-auto py-3 ${
-                              timeSlot === slot.time ? "bg-primary text-primary-foreground" : ""
-                            }`}
-                            disabled={!slot.available}
-                            onClick={() => setTimeSlot(slot.time)}
+                      {loadingSlots ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                          <span className="ml-2 text-muted-foreground">Loading available times...</span>
+                        </div>
+                      ) : slotsError ? (
+                        <div className="text-center py-8">
+                          <p className="text-destructive mb-4">{slotsError}</p>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              if (date && userType) {
+                                setLoadingSlots(true)
+                                // Trigger re-fetch by updating state
+                                setDate(new Date(date))
+                              }
+                            }}
                           >
-                            <span className="font-semibold">{slot.time}</span>
-                            <span className="text-xs mt-1">R{slot.price}/hr</span>
-                            {slot.isPeak && (
-                              <Badge className="mt-1 bg-secondary/20 text-secondary border-0 text-[10px] px-1 py-0">
-                                Peak
-                              </Badge>
-                            )}
+                            Retry
                           </Button>
-                        ))}
-                      </div>
+                        </div>
+                      ) : timeSlots.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No available slots for this date. Please select another date.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {timeSlots.map((slot) => (
+                            <Button
+                              key={slot.time}
+                              variant={timeSlot === slot.time ? "default" : "outline"}
+                              className={`flex flex-col h-auto py-3 ${
+                                timeSlot === slot.time ? "bg-primary text-primary-foreground" : ""
+                              }`}
+                              disabled={!slot.available}
+                              onClick={() => setTimeSlot(slot.time)}
+                            >
+                              <span className="font-semibold">{slot.time}</span>
+                              <span className="text-xs mt-1">R{slot.pricePerHour}/hr</span>
+                              {slot.isPeak && (
+                                <Badge className="mt-1 bg-secondary/20 text-secondary border-0 text-[10px] px-1 py-0">
+                                  Peak
+                                </Badge>
+                              )}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
