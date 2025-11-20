@@ -1,9 +1,11 @@
 name = "mulligan-golf-booking"
-account_id = "7682db99759e8274d4cb60b25393f1af"
-compatibility_date = "2024-04-05"
-pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2024-11-20"
 
-[env.production]
-name = "mulligan-golf-booking"
+[build]
+command = "pnpm run build:cloudflare"
+
+[pages]
+output_dir = ".vercel/output/static"
+
 [env.preview]
 name = "mulligan-golf-booking-preview"
