@@ -1,11 +1,10 @@
 {
-  "name": "themulligan-org2",
+  "name": "mulligan-golf-booking",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
-    "build:cloudflare": "next build && npx @cloudflare/next-on-pages",
-    "deploy": "npm run build:cloudflare && wrangler pages deploy --branch=main",
+    "deploy": "npm run build && npx @cloudflare/next-on-pages && wrangler pages deploy --branch=main",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"

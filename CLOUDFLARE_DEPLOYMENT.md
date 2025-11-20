@@ -11,7 +11,22 @@ This Next.js 15 golf booking application is configured to deploy to Cloudflare P
 
 ## Environment Variables
 
-Set up these environment variables in your Cloudflare Pages dashboard:
+To ensure your application functions correctly, you must configure the following environment variables. These should be set dynamically in the Cloudflare Dashboard and NOT hardcoded in your application files.
+
+### 1. Configure in `wrangler.toml` (for structure)
+We have added a `[vars]` section to your `wrangler.toml` file. This tells Cloudflare which variables your application expects.
+**Note:** Keep the values empty in `wrangler.toml` to avoid committing secrets to version control.
+
+### 2. Configure in Cloudflare Dashboard (for values)
+Go to **Settings** → **Environment Variables** in your Cloudflare Pages project and add the following:
+
+| Variable Name | Description | Example Value |
+|--------------|-------------|---------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL | `https://xyz.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase Anonymous Key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `N8N_WEBHOOK_URL` | URL for your n8n workflow | `https://n8n.yourdomain.com/webhook/...` |
+| `YOCO_SECRET_KEY` | Secret key for Yoco payments | `sk_live_...` |
+| `NEXT_PUBLIC_APP_URL` | The URL of your deployed app | `https://themulligan.co.za` |
 
 ### Required Variables:
 \`\`\`bash
