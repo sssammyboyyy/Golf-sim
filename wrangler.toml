@@ -1,16 +1,9 @@
 name = "deploymulligan"
-# Use a recent compatibility date (keep this up-to-date if you edit later)
 compatibility_date = "2025-11-20"
 
 [build]
-# Use OpenNext's CLI to build (transforms Next build for Cloudflare Workers)
-command = "npx opennextjs-cloudflare build"
+command = "pnpm dlx @opennextjs/cloudflare build"
 
-# Optional: if you rely on local dev preview with wrangler, OpenNext may generate a wrangler config at build time.
-# Do NOT use `site.bucket` here because this config targets Workers (not Pages / static site).
-
-# -- DO NOT STORE PRODUCTION SECRETS IN THIS FILE --
-# Keep placeholders or empty strings only in repo; add real secrets via Cloudflare dashboard or GitHub Secrets.
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = ""
 NEXT_PUBLIC_SUPABASE_ANON_KEY = ""
