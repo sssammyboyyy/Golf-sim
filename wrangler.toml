@@ -1,9 +1,9 @@
 name = "mulligan-golf-booking"
-type = "javascript"
 account_id = "7682db99759e8274d4cb60b25393f1af"
-compatibility_date = "2024-01-01"
-workers_dev = true
+compatibility_date = "2024-04-05"
 pages_build_output_dir = ".vercel/output/static"
 
 [env.production]
 name = "mulligan-golf-booking"
+[env.preview]
+name = "mulligan-golf-booking-preview"

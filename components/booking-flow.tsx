@@ -9,19 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowLeft, Users, Clock, CalendarIcon, Trophy, AlertTriangle, Sparkles } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 
 type SessionType = "famous-course" | "quickplay"
 type FamousCourseOption = "4-ball" | "3-ball" | null
-
-interface UnavailableSlot {
-  simulator_id: number
-  start: string
-  end: string
-}
 
 export function BookingFlow() {
   const router = useRouter()
@@ -33,8 +26,7 @@ export function BookingFlow() {
   const [timeSlot, setTimeSlot] = useState<string>("")
   const [duration, setDuration] = useState<number>(1)
   const [validationError, setValidationError] = useState<string>("")
-  const [unavailableSlots, setUnavailableSlots] = useState<UnavailableSlot[]>([])
-  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
 
   const getMinimumHours = () => {
     if (sessionType === "famous-course") {
@@ -139,72 +131,15 @@ export function BookingFlow() {
   }, [famousCourseOption, sessionType])
 
   useEffect(() => {
-    if (date) {
-      fetchUnavailableSlots()
-    } else {
-      setUnavailableSlots([])
-    }
-  }, [date])
-
-  const fetchUnavailableSlots = async () => {
-    if (!date) return
-
-    setLoadingAvailability(true)
-    try {
-      const dateStr = date.toISOString().split('T')[0]
-      const response = await fetch(`/api/bookings/availability?date=${dateStr}`)
-      
-      if (!response.ok) {
-        console.error('[v0] Failed to fetch availability:', response.status)
-        return
-      }
-
-      const data = await response.json()
-      console.log('[v0] Received unavailable slots:', data.unavailableSlots)
-      setUnavailableSlots(data.unavailableSlots || [])
-    } catch (error) {
-      console.error('[v0] Error fetching availability:', error)
-    } finally {
-      setLoadingAvailability(false)
-    }
-  }
-
-  const isTimeSlotAvailable = (time: string): boolean => {
-    if (unavailableSlots.length === 0) return true
-
-    const [hour, minute] = time.split(':').map(Number)
-    const slotStart = new Date(date!)
-    slotStart.setHours(hour, minute || 0, 0, 0)
-    const slotEnd = new Date(slotStart)
-    slotEnd.setHours(slotStart.getHours() + duration)
-
-    // Check if this time slot overlaps with any booked slot
-    return !unavailableSlots.some(booking => {
-      const bookingStart = new Date(booking.start)
-      const bookingEnd = new Date(booking.end)
-      
-      // Check for overlap
-      return (
-        (slotStart >= bookingStart && slotStart < bookingEnd) ||
-        (slotEnd > bookingStart && slotEnd <= bookingEnd) ||
-        (slotStart <= bookingStart && slotEnd >= bookingEnd)
-      )
-    })
-  }
-
-  useEffect(() => {
     if (date && timeSlot) {
       checkAvailability()
     }
   }, [date, timeSlot, duration])
 
   const checkAvailability = async () => {
+    // This would call an API to check for overlapping bookings
+    // For now, we'll simulate it
     console.log("[v0] Checking availability for:", { date, timeSlot, duration })
-    
-    if (!isTimeSlotAvailable(timeSlot)) {
-      setValidationError("This time slot is no longer available. Please select another time.")
-      setTimeSlot("")
-    }
   }
 
   const handleContinue = () => {
@@ -252,18 +187,19 @@ export function BookingFlow() {
     return false
   }
 
+  // Sample time slots (would be fetched from API)
   const timeSlots = [
-    { time: "09:00" },
-    { time: "10:00" },
-    { time: "11:00" },
-    { time: "12:00" },
-    { time: "13:00" },
-    { time: "14:00" },
-    { time: "15:00" },
-    { time: "16:00" },
-    { time: "17:00" },
-    { time: "18:00" },
-    { time: "19:00" },
+    { time: "09:00", available: true },
+    { time: "10:00", available: true },
+    { time: "11:00", available: true },
+    { time: "12:00", available: true },
+    { time: "13:00", available: true },
+    { time: "14:00", available: false }, // Example: booked
+    { time: "15:00", available: true },
+    { time: "16:00", available: true },
+    { time: "17:00", available: true },
+    { time: "18:00", available: true },
+    { time: "19:00", available: true },
   ]
 
   return (
@@ -509,9 +445,6 @@ export function BookingFlow() {
                       <CardTitle className="flex items-center gap-2">
                         <Clock className="w-5 h-5 text-primary" />
                         Select time slot
-                        {loadingAvailability && (
-                          <span className="text-xs text-muted-foreground ml-2">(Checking availability...)</span>
-                        )}
                       </CardTitle>
                       <CardDescription>
                         Available time slots for {date.toLocaleDateString()}
@@ -523,57 +456,32 @@ export function BookingFlow() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <TooltipProvider>
-                        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                          {timeSlots.map((slot) => {
-                            const [hour] = slot.time.split(":").map(Number)
-                            const wouldEndAfterClosing = hour + getMinimumHours() > 20
-                            const available = isTimeSlotAvailable(slot.time)
-                            const isDisabled = !available || wouldEndAfterClosing
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {timeSlots.map((slot) => {
+                          const [hour] = slot.time.split(":").map(Number)
+                          const wouldEndAfterClosing = hour + getMinimumHours() > 20
+                          const isDisabled = !slot.available || wouldEndAfterClosing
 
-                            const button = (
-                              <Button
-                                key={slot.time}
-                                variant={timeSlot === slot.time ? "default" : "outline"}
-                                className={`flex flex-col h-auto py-3 ${
-                                  timeSlot === slot.time
-                                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                                    : ""
-                                } ${
-                                  !available && !wouldEndAfterClosing
-                                    ? "opacity-50 bg-muted text-muted-foreground cursor-not-allowed"
-                                    : ""
-                                }`}
-                                disabled={isDisabled}
-                                onClick={() => !isDisabled && setTimeSlot(slot.time)}
-                              >
-                                <span className="font-semibold">{slot.time}</span>
-                                {wouldEndAfterClosing && (
-                                  <span className="text-[10px] text-destructive mt-1">Too late</span>
-                                )}
-                                {!available && !wouldEndAfterClosing && (
-                                  <span className="text-[10px] mt-1">Booked</span>
-                                )}
-                              </Button>
-                            )
-
-                            if (!available && !wouldEndAfterClosing) {
-                              return (
-                                <Tooltip key={slot.time}>
-                                  <TooltipTrigger asChild>
-                                    {button}
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-sm">Already booked</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )
-                            }
-
-                            return button
-                          })}
-                        </div>
-                      </TooltipProvider>
+                          return (
+                            <Button
+                              key={slot.time}
+                              variant={timeSlot === slot.time ? "default" : "outline"}
+                              className={`flex flex-col h-auto py-3 ${
+                                timeSlot === slot.time
+                                  ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                                  : ""
+                              }`}
+                              disabled={isDisabled}
+                              onClick={() => setTimeSlot(slot.time)}
+                            >
+                              <span className="font-semibold">{slot.time}</span>
+                              {wouldEndAfterClosing && (
+                                <span className="text-[10px] text-destructive mt-1">Too late</span>
+                              )}
+                            </Button>
+                          )
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
 
