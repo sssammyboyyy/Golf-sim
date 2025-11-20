@@ -6,5 +6,3 @@ command = "pnpm run build && npx @cloudflare/next-on-pages --skip-vercel-specifi
 
 [assets]
 directory = ".vercel/output/static"
-
-// Removed invalid routes configuration that was causing deployment errors. status_code is not a valid property for routes.
