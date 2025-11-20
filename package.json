@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "deploy": "npm run build && npx @opennextjs/cloudflare && wrangler pages deploy",
+    "deploy": "pnpm dlx @opennextjs/cloudflare build && wrangler pages deploy --branch=main",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"
