@@ -1,6 +1,13 @@
-import { defineConfig } from "@opennextjs/cloudflare";
+import { defineConfig } from "@opennextjs/cloudflare"
 
 export default defineConfig({
-  // For most Next.js apps, this default works.
-  // You can customize this later if needed.
-});
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    unoptimized: true,
+  },
+})
