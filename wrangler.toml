@@ -1,8 +1,7 @@
-name = "deploymulligan"
-compatibility_date = "2024-11-20"
+name = "mulligan-golf-booking"
+compatibility_date = "2025-01-20"
+pages_build_output_dir = ".vercel/output/static"
 
-[build]
-command = "npm run build && npx @cloudflare/next-on-pages"
-
-[site]
-bucket = ".vercel/output/static"
+[assets]
+directory = ".vercel/output/static"
+binding = "ASSETS"
