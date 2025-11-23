@@ -1,0 +1,48 @@
+name: Build & deploy OpenNext → Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - Themulligan   # production branch; change if different
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}  # optional (used if MIGRATE=true)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable corepack (for pnpm)
+        run: corepack enable
+
+      - name: Install dependencies (pnpm)
+        run: |
+          corepack prepare pnpm@latest --activate
+          pnpm install --frozen-lockfile
+
+      # Optional: run DB migration (disabled by default)
+      - name: Run DB migrations (optional)
+        if: env.MIGRATE == 'true'
+        run: |
+          echo "Running migrations..."
+          psql "$DATABASE_URL" -f scripts/006_enable_rls_and_policies.sql
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run OpenNext build
+        run: pnpm dlx @opennextjs/cloudflare build
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm dlx @opennextjs/cloudflare deploy
