@@ -9,58 +9,60 @@ import { BayStatusDisplay } from "@/components/bay-status-display"
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <header className="border-b border-border/40 bg-background sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-4">
             {/* Logo Section */}
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <Image
                 src="/images/upscalelogomulligan.jpeg"
                 alt="The Mulligan Logo"
-                width={70}
-                height={70}
-                className="object-contain"
+                width={60}
+                height={60}
+                className="object-contain w-12 h-12 sm:w-[60px] sm:h-[60px]"
               />
-              <div className="flex flex-col">
-                <span className="font-serif text-xl font-bold text-foreground leading-tight">The Mulligan</span>
-              </div>
-            </div>
+              <span className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-foreground">The Mulligan</span>
+            </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
               <Link
                 href="#pricing"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 relative group"
               >
                 Pricing
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-secondary transition-all duration-300 group-hover:w-full" />
               </Link>
               <Link
                 href="#features"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 relative group"
               >
                 Benefits
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-secondary transition-all duration-300 group-hover:w-full" />
               </Link>
               <Link
                 href="#location"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 relative group"
               >
                 Location
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-secondary transition-all duration-300 group-hover:w-full" />
               </Link>
               <Button
                 asChild
-                size="default"
                 className="bg-secondary text-white hover:bg-secondary/90 font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
               >
                 <Link href="/booking">Book</Link>
               </Button>
             </nav>
 
-            {/* Mobile Book Button */}
-            <div className="md:hidden">
-              <Button asChild size="sm" className="bg-secondary text-white hover:bg-secondary/90 font-medium shadow-md">
-                <Link href="/booking">Book</Link>
-              </Button>
-            </div>
+            {/* Mobile/Tablet Book Button */}
+            <Button
+              asChild
+              size="sm"
+              className="lg:hidden bg-secondary text-white hover:bg-secondary/90 font-medium shadow-md"
+            >
+              <Link href="/booking">Book</Link>
+            </Button>
           </div>
         </div>
       </header>
