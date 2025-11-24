@@ -415,7 +415,7 @@ export default function HomePage() {
           </div>
           <div className="text-center mt-8">
             <Image
-              src="/mixed-group-celebrating-longest-drive-on-simulator.jpg"
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/footerimage-7hzqyOq1LxxFegvl7lltVLQIKdT79D.jpeg"
               alt="indoor golf simulator Vanderbijlpark"
               width={800}
               height={400}
