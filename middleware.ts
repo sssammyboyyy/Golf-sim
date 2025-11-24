@@ -12,6 +12,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
-  unstable_allowDynamic: ["**/node_modules/@supabase/**", "**/node_modules/@supabase/realtime-js/**"],
-}
+  // Added '|api' to the negative lookahead to exclude all API routes from middleware
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+  unstable_allowDynamic: [
+    "**/node_modules/@supabase/**",
+    "**/node_modules/@supabase/realtime-js/**",
+  ],
+};
