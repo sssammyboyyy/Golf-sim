@@ -1,12 +1,18 @@
 name = "deploymulligan"
 main = ".open-next/worker.js"
 compatibility_date = "2025-11-24"
+compatibility_flags = ["nodejs_compat"]
 
-[compatibility_flags]
-nodejs_compat = true
-
+# This serves your static files
 [assets]
 directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Maps the worker to your domain
+[[routes]]
+pattern = "themulligan.org/*"
+custom_domain = true
 
 [[routes]]
-pattern = "https://www.themulligan.org/*"
+pattern = "www.themulligan.org/*"
+custom_domain = true
