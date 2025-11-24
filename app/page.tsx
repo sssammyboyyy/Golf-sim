@@ -153,7 +153,7 @@ export default function HomePage() {
                     <div>
                       <p className="font-medium text-foreground text-sm sm:text-base">World-Famous Courses</p>
                       <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                        Augusta, Pebble Beach, St Andrews & more
+                        Augusta, Pebble Beach, Pine Valley &amp; more
                       </p>
                     </div>
                   </div>
