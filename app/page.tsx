@@ -385,7 +385,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="competitions" className="py-12 md:py-20 bg-muted/30">
+      <section id="competitions" className="py-12 md:py-20 bg-muted/30 shadow-md shadow-xl shadow-xl shadow-xl shadow-none shadow-xs shadow-sm shadow-md shadow-xl shadow-xl shadow-xl shadow-xl shadow-md shadow shadow shadow-xl">
         <div className="container mx-auto px-4">
           <div className="text-center mb-10">
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-foreground">
