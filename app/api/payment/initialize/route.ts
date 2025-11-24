@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       session_type,
       famous_course_option,
       base_price,
-      total_price,
+      total_price, // This is the amount calculated by frontend (might be 0 if coupon applied)
       guest_name,
       guest_email,
       guest_phone,
@@ -27,9 +27,14 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // --- LOGIC: VALIDATE COUPON SERVER-SIDE ---
-    let finalPrice = total_price;
+    // --- REVENUE LOGIC START ---
+    
+    let dbTotalPrice = total_price; // Default: Save what the frontend calculated
+    let dbPaymentStatus = "pending";
+    let dbStatus = "pending";
+    let skipYoco = false;
 
+    // 1. Verify Coupon
     if (coupon_code) {
       const { data: couponData } = await supabase
         .from("coupons")
@@ -38,17 +43,37 @@ export async function POST(request: NextRequest) {
         .eq("is_active", true)
         .single();
 
-      // Check if coupon exists and gives 100% discount
-      if (couponData && couponData.discount_percent === 100) {
-        console.log(`[v0] Valid Admin Coupon applied: ${coupon_code}. Setting price to 0.`);
-        finalPrice = 0;
+      if (couponData) {
+        // CASE A: ADMIN WALK-IN (The "Revenue Preservation" Fix)
+        // If it's the admin code, we want to record the FULL REVENUE, but skip online payment.
+        if (couponData.code === 'MULLIGAN_ADMIN_100') {
+            console.log(`[v0] Admin Walk-in detected. Recording revenue: R${base_price}, but skipping online payment.`);
+            
+            dbTotalPrice = base_price; // Save the FULL value (R250) for reports
+            dbPaymentStatus = "paid_instore"; // Mark as paid offline
+            dbStatus = "confirmed";
+            skipYoco = true;
+        } 
+        // CASE B: GENERIC 100% OFF COUPON (e.g. Prize Winner)
+        // Revenue is actually 0.
+        else if (couponData.discount_percent === 100) {
+            console.log(`[v0] 100% Discount detected. Recording revenue: R0.`);
+            
+            dbTotalPrice = 0;
+            dbPaymentStatus = "completed"; // Paid by coupon
+            dbStatus = "confirmed";
+            skipYoco = true;
+        }
       }
     }
-    // ---------------------------------------------
 
-    // Determine Status based on our verified Final Price
-    const initialStatus = finalPrice === 0 ? "confirmed" : "pending";
-    const initialPaymentStatus = finalPrice === 0 ? "completed" : "pending";
+    // Double check: If frontend sent 0 (via generic coupon logic) but we didn't catch it above
+    if (total_price === 0 && !skipYoco) {
+        dbPaymentStatus = "completed";
+        dbStatus = "confirmed";
+        skipYoco = true;
+    }
+    // --- REVENUE LOGIC END ---
 
     // Create booking in database
     const { data: booking, error: bookingError } = await supabase
@@ -59,13 +84,13 @@ export async function POST(request: NextRequest) {
         end_time: calculateEndTime(start_time, duration_hours),
         duration_hours,
         player_count,
-        user_type: "guest", // Defaulting to guest as confirmed earlier
+        user_type: "guest",
         session_type,
         famous_course_option,
         base_price,
-        total_price: finalPrice, // Use the verified price
-        status: initialStatus,
-        payment_status: initialPaymentStatus,
+        total_price: dbTotalPrice, // Saving the CORRECT revenue amount
+        status: dbStatus,
+        payment_status: dbPaymentStatus,
         guest_name,
         guest_email,
         guest_phone,
@@ -83,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Booking created successfully:", booking.id)
 
-    // --- WEBHOOK LOGIC ---
+    // --- WEBHOOK LOGIC (Updated for Reporting) ---
     const webhookUrl = process.env.N8N_WEBHOOK_URL
     if (webhookUrl) {
       const webhookPayload = {
@@ -99,15 +124,15 @@ export async function POST(request: NextRequest) {
         session_type,
         famous_course_option,
         base_price,
-        total_price: finalPrice,
-        payment_status: initialPaymentStatus,
+        total_price: dbTotalPrice, // Sending full revenue to n8n
+        payment_status: dbPaymentStatus, // Sending "paid_instore" to n8n
         accept_whatsapp,
         enter_competition,
         coupon_code,
         created_at: new Date().toISOString(),
+        is_walk_in: coupon_code === 'MULLIGAN_ADMIN_100' // Helper flag for n8n
       }
 
-      // Fire and forget webhook
       try {
          fetch(webhookUrl, {
           method: "POST",
@@ -121,12 +146,12 @@ export async function POST(request: NextRequest) {
 
     // --- CHECKOUT LOGIC ---
 
-    // If verified total is 0 (100% coupon discount), return free booking confirmation immediately
-    if (finalPrice === 0) {
+    // If verified as a bypass (Admin or Free Coupon), return success immediately
+    if (skipYoco) {
       return NextResponse.json({
         free_booking: true,
         booking_id: booking.id,
-        message: "Booking confirmed with coupon",
+        message: dbPaymentStatus === 'paid_instore' ? "Walk-in Confirmed" : "Booking confirmed with coupon",
       })
     }
 
@@ -136,7 +161,7 @@ export async function POST(request: NextRequest) {
         if (famous_course_option === "4-ball") return 400
         if (famous_course_option === "3-ball") return 300
       }
-      return finalPrice
+      return dbTotalPrice
     }
 
     const depositAmount = getDepositAmount()
@@ -150,7 +175,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        amount: Math.round(depositAmount * 100), // Yoco expects cents
+        amount: Math.round(depositAmount * 100),
         currency: "ZAR",
         cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.co.za"}/booking?cancelled=true`,
         successUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.co.za"}/api/payment/verify?reference=${booking.id}`,
@@ -164,7 +189,7 @@ export async function POST(request: NextRequest) {
           playerCount: player_count?.toString() || "0",
           sessionType: session_type,
           depositAmount: depositAmount.toString(),
-          totalAmount: finalPrice.toString(),
+          totalAmount: dbTotalPrice.toString(),
         },
       }),
     })
@@ -176,7 +201,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to initialize payment" }, { status: 500 })
     }
 
-    // Update booking with Yoco ID (using correct column name 'yoco_payment_id')
     await supabase
       .from("bookings")
       .update({ yoco_payment_id: yocoData.id })
