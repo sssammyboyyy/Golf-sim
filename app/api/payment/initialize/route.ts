@@ -177,9 +177,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         amount: Math.round(depositAmount * 100),
         currency: "ZAR",
-        cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.co.za"}/booking?cancelled=true`,
-        successUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.co.za"}/api/payment/verify?reference=${booking.id}`,
-        failureUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.co.za"}/booking?error=payment_failed`,
+        cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.org"}/booking?cancelled=true`,
+        successUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.org"}/api/payment/verify?reference=${booking.id}`,
+        failureUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://themulligan.org"}/booking?error=payment_failed`,
         metadata: {
           bookingId: booking.id,
           guestName: guest_name,
