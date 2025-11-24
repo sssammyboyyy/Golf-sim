@@ -403,7 +403,7 @@ export default function HomePage() {
                     <Trophy className="w-7 h-7 text-secondary" />
                   </div>
                   <h3 className="font-semibold text-xl mb-2 text-foreground">Longest Drive Challenge</h3>
-                  <p className="text-muted-foreground leading-relaxed">Monthly winner gets R2000 voucher</p>
+                  <p className="text-muted-foreground leading-relaxed"><br></p>
                 </div>
               </CardContent>
             </Card>
@@ -414,11 +414,8 @@ export default function HomePage() {
                     <Star className="w-7 h-7 text-secondary" />
                   </div>
                   <h3 className="font-semibold text-xl mb-2 text-foreground">Hole-in-One Challenge</h3>
-                  <p className="text-muted-foreground leading-relaxed">Instant prizes on designated holes</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border">
+                  <p className="text-muted-fore         </CardContent>
+<br>ard className="border-border">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
                   <div className="w-14 h-14 rounded-lg bg-secondary/20 flex items-center justify-center mb-4">
@@ -430,9 +427,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
           </div>
-          <div className="text-center mt-8">
-            <Image
-              src="/images/footerimage.jpeg"
+          <div className="text-cen<br>           src="/images/footerimage.jpeg"
               alt="indoor golf simulator Vanderbijlpark"
               width={800}
               height={400}
