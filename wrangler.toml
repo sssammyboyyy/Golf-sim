@@ -1,15 +1,12 @@
 name = "deploymulligan"
 main = ".open-next/worker.js"
 compatibility_date = "2025-11-24"
-node_compat = true
+
+[compatibility_flags]
+nodejs_compat = true
 
 [assets]
 directory = ".open-next/assets"
 
-[triggers]
-routes = ["https://themulligan.co.za/*"]
-
-[vars]
-NEXT_PUBLIC_APP_URL = "https://themulligan.co.za"
-NEXT_PUBLIC_SUPABASE_URL = ""
-NEXT_PUBLIC_SUPABASE_ANON_KEY = ""
+[[routes]]
+pattern = "https://www.themulligan.org/*"
