@@ -3,50 +3,64 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, Trophy, Target, Sparkles, CheckCircle2, Phone, ArrowRight, Star } from 'lucide-react'
+import { Clock, MapPin, Trophy, Target, Sparkles, CheckCircle2, Phone, ArrowRight, Star } from "lucide-react"
 import { BayStatusDisplay } from "@/components/bay-status-display"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/upscalelogomulligan-iaWmnqIwol0I5tQyzRgjhO6NFHSZDp.jpeg" alt="The Mulligan Logo" width={70} height={70} className="object-contain leading-8 text-3xl" />
-            <div className="flex flex-col">
-              <span className="font-serif text-xl font-bold text-foreground leading-tight">The Mulligan</span>
-              
+      <header className="border-b border-border/40 bg-background/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo Section */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/upscalelogomulligan.jpeg"
+                alt="The Mulligan Logo"
+                width={70}
+                height={70}
+                className="object-contain"
+              />
+              <div className="flex flex-col">
+                <span className="font-serif text-xl font-bold text-foreground leading-tight">The Mulligan</span>
+              </div>
             </div>
-          </div>
-          <div className="hidden md:flex items-center gap-6">
-            <nav className="flex items-center gap-6">
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-8">
               <Link
                 href="#pricing"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
               >
                 Pricing
               </Link>
               <Link
                 href="#features"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
               >
-                Pro Tee
+                Benefits
               </Link>
               <Link
                 href="#location"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-secondary after:transition-all after:duration-300 hover:after:w-full"
               >
                 Location
               </Link>
-              <Button asChild size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                <Link href="/booking">Book an Hour</Link>
+              <Button
+                asChild
+                size="default"
+                className="bg-secondary text-white hover:bg-secondary/90 font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+              >
+                <Link href="/booking">Book</Link>
               </Button>
             </nav>
-          </div>
-          <div className="md:hidden">
-            <Button asChild size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-              <Link href="/booking">Book</Link>
-            </Button>
+
+            {/* Mobile Book Button */}
+            <div className="md:hidden">
+              <Button asChild size="sm" className="bg-secondary text-white hover:bg-secondary/90 font-medium shadow-md">
+                <Link href="/booking">Book</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -61,8 +75,8 @@ export default function HomePage() {
               The Simulator Never Judges
             </h1>
             <p className="text-lg md:text-2xl mb-8 text-primary-foreground/90 leading-relaxed max-w-2xl mx-auto">
-              Premium Pro Tee experience. Play Augusta National (and many more), compete in challenges, and refine your game in
-              Vanderbijlpark's finest simulator facility.
+              Premium Pro Tee experience. Play Augusta National (and many more), compete in challenges, and refine your
+              game in Vanderbijlpark's finest simulator facility.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
@@ -132,9 +146,7 @@ export default function HomePage() {
                       <CheckCircle2 className="w-6 h-6 text-secondary mt-1 flex-shrink-0" />
                       <div>
                         <p className="font-semibold text-foreground">GS Pro Software Included</p>
-                        <p className="text-sm text-muted-foreground">
-                          Industry-leading simulation with 400+ courses
-                        </p>
+                        <p className="text-sm text-muted-foreground">Industry-leading simulation with 400+ courses</p>
                       </div>
                     </div>
                   </div>
@@ -199,7 +211,8 @@ export default function HomePage() {
               World-Class GS Pro Simulation
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Experience GS Pro's industry-leading golf simulation platform with 400+ championship courses and photorealistic graphics
+              Experience GS Pro's industry-leading golf simulation platform with 400+ championship courses and
+              photorealistic graphics
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -211,7 +224,8 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-semibold text-xl mb-2 text-foreground">400+ Championship Courses</h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Play the world's most famous courses including Augusta National, St Andrews, Pebble Beach, and more with GS Pro
+                    Play the world's most famous courses including Augusta National, St Andrews, Pebble Beach, and more
+                    with GS Pro
                   </p>
                 </div>
               </CardContent>
@@ -224,7 +238,8 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-semibold text-xl mb-2 text-foreground">Photorealistic Graphics</h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Immersive 4K graphics with dynamic lighting, weather effects, and authentic course details powered by GS Pro
+                    Immersive 4K graphics with dynamic lighting, weather effects, and authentic course details powered
+                    by GS Pro
                   </p>
                 </div>
               </CardContent>
@@ -237,7 +252,8 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-semibold text-xl mb-2 text-foreground">Advanced Shot Analytics</h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Track every metric including carry distance, spin rates, ball speed, and launch angle with professional-grade accuracy
+                    Track every metric including carry distance, spin rates, ball speed, and launch angle with
+                    professional-grade accuracy
                   </p>
                 </div>
               </CardContent>
@@ -280,7 +296,8 @@ export default function HomePage() {
                   </div>
                   <div className="mt-4 p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
                     <p className="text-xs text-muted-foreground">
-                      <strong>4-Ball:</strong> R400 deposit online, R800 balance in-store<br />
+                      <strong>4-Ball:</strong> R400 deposit online, R800 balance in-store
+                      <br />
                       <strong>3-Ball:</strong> R300 deposit online, R420 balance in-store
                     </p>
                   </div>
@@ -413,7 +430,7 @@ export default function HomePage() {
           </div>
           <div className="text-center mt-8">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/footerimage-7hzqyOq1LxxFegvl7lltVLQIKdT79D.jpeg"
+              src="/images/footerimage.jpeg"
               alt="indoor golf simulator Vanderbijlpark"
               width={800}
               height={400}
@@ -505,7 +522,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
             <div className="flex items-center gap-3">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/upscalelogomulligan-oAY6RCvf4vFH4VEozUVRp3WRHxND1k.jpeg"
+                src="/images/upscalelogomulligan.jpeg"
                 alt="The Mulligan Logo"
                 width={70}
                 height={70}
