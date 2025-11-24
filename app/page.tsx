@@ -12,12 +12,10 @@ export default function HomePage() {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/mulligan-logo.jpg" alt="The Mulligan Logo" width={70} height={70} className="object-contain" />
+            <Image src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/upscalelogomulligan-iaWmnqIwol0I5tQyzRgjhO6NFHSZDp.jpeg" alt="The Mulligan Logo" width={70} height={70} className="object-contain leading-8 text-3xl" />
             <div className="flex flex-col">
               <span className="font-serif text-xl font-bold text-foreground leading-tight">The Mulligan</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                The Simulator Never Judges
-              </span>
+              
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
@@ -507,7 +505,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
             <div className="flex items-center gap-3">
               <Image
-                src="/mulligan-logo.jpg"
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/upscalelogomulligan-oAY6RCvf4vFH4VEozUVRp3WRHxND1k.jpeg"
                 alt="The Mulligan Logo"
                 width={70}
                 height={70}
