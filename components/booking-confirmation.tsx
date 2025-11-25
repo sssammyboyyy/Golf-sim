@@ -149,109 +149,127 @@ export function BookingConfirmation() {
     return "Quick Play Session"
   }
 
+  const getMinimumHours = () => {
+    if (sessionType === "famous-course") {
+      if (famousOption === "4-ball") return 4
+      if (famousOption === "3-ball") return 3
+    }
+    return 1
+  }
+
   return (
-    <div className="min-h-screen py-8 bg-background">
+    <div className="min-h-screen py-12 md:py-16 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-4">
         <Link
           href="/booking"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-8 group"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Booking
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Booking</span>
         </Link>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Booking Summary</CardTitle>
-                <CardDescription>Review your session details</CardDescription>
+          <div className="lg:col-span-2 space-y-8">
+            <Card className="border-2 shadow-xl">
+              <CardHeader className="border-b bg-gradient-to-r from-secondary/5 to-primary/5">
+                <CardTitle className="font-serif text-2xl md:text-3xl">Booking Summary</CardTitle>
+                <CardDescription className="text-base mt-2">Review your session details</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+              <CardContent className="space-y-6 pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="icon-container-secondary flex-shrink-0">
                     {sessionType === "famous-course" ? (
-                      <Sparkles className="w-5 h-5 text-secondary" />
+                      <Sparkles className="w-6 h-6 text-secondary" />
                     ) : (
-                      <Trophy className="w-5 h-5 text-primary" />
+                      <Trophy className="w-6 h-6 text-primary" />
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Session Type</p>
-                    <p className="font-semibold text-foreground">{getSessionDescription()}</p>
+                    <p className="text-sm font-semibold text-muted-foreground mb-1">Session Type</p>
+                    <p className="font-bold text-lg text-foreground">{getSessionDescription()}</p>
                     {sessionType === "famous-course" && (
                       <>
-                        <Badge className="mt-2 bg-secondary/20 text-secondary border-0">
+                        <Badge className="mt-3 bg-secondary/20 text-secondary border-0 font-semibold">
                           Augusta National & 5000+ Pro Tee Famous Courses
                         </Badge>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Golf club rental available: R100 (payable in-store)
-                        </p>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
+
+                <Separator />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                    <div className="icon-badge-primary">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Players</p>
+                      <p className="font-bold text-lg text-foreground">{players}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Players</p>
-                    <p className="font-semibold text-foreground">
-                      {players} player{Number.parseInt(players) > 1 ? "s" : ""}
-                    </p>
+
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-secondary/10 to-secondary/5 border border-secondary/20">
+                    <div className="icon-badge-secondary">
+                      <Calendar className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Date</p>
+                      <p className="font-bold text-base text-foreground">{new Date(date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                    <div className="icon-badge-primary">
+                      <Clock className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Time & Duration</p>
+                      <p className="font-bold text-base text-foreground">
+                        {time} • {duration}h
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Date</p>
-                    <p className="font-semibold text-foreground">{new Date(date).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Time & Duration</p>
-                    <p className="font-semibold text-foreground">
-                      {time} - {duration} hour{Number.parseFloat(duration) > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
+
                 {sessionType === "famous-course" && (
-                  <div className="mt-4 p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-secondary" />
-                      Minimum booking requirement satisfied
+                  <div className="p-4 bg-secondary/10 border-2 border-secondary/30 rounded-xl">
+                    <p className="text-sm font-semibold text-secondary flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Minimum booking requirement satisfied ({getMinimumHours()} hours)
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Details</CardTitle>
-                <CardDescription>We'll send your confirmation via WhatsApp and email</CardDescription>
+            <Card className="border-2 shadow-xl">
+              <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+                <CardTitle className="font-serif text-2xl md:text-3xl">Your Details</CardTitle>
+                <CardDescription className="text-base mt-2">
+                  We'll send your confirmation via WhatsApp and email
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6 pt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
+                  <Label htmlFor="name" className="text-base font-semibold">
+                    Full Name *
+                  </Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
                     required
+                    className="h-12 text-base border-2 focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
+                  <Label htmlFor="email" className="text-base font-semibold">
+                    Email Address *
+                  </Label>
                   <Input
                     id="email"
                     type="email"
@@ -259,10 +277,13 @@ export function BookingConfirmation() {
                     value={guestEmail}
                     onChange={(e) => setGuestEmail(e.target.value)}
                     required
+                    className="h-12 text-base border-2 focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number (WhatsApp) *</Label>
+                  <Label htmlFor="phone" className="text-base font-semibold">
+                    Phone Number (WhatsApp) *
+                  </Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -270,33 +291,41 @@ export function BookingConfirmation() {
                     value={guestPhone}
                     onChange={(e) => setGuestPhone(e.target.value)}
                     required
+                    className="h-12 text-base border-2 focus:border-primary"
                   />
                 </div>
-                <Separator className="my-4" />
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
+
+                <Separator className="my-6" />
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-border hover:border-primary/50 transition-all bg-background">
                     <Checkbox
                       id="whatsapp"
                       checked={acceptWhatsApp}
                       onCheckedChange={(checked) => setAcceptWhatsApp(checked as boolean)}
-                      className="mt-1"
+                      className="mt-1 w-5 h-5"
                     />
-                    <Label htmlFor="whatsapp" className="text-sm cursor-pointer leading-relaxed">
-                      <span className="font-semibold text-foreground">I accept WhatsApp booking confirmations *</span>
+                    <Label htmlFor="whatsapp" className="text-sm cursor-pointer leading-relaxed flex-1">
+                      <span className="font-bold text-base text-foreground block mb-1">
+                        I accept WhatsApp booking confirmations *
+                      </span>
                       <span className="block text-muted-foreground">
                         Required for booking confirmation and session reminders (POPIA compliant)
                       </span>
                     </Label>
                   </div>
-                  <div className="flex items-start gap-2">
+
+                  <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-border hover:border-secondary/50 transition-all bg-background">
                     <Checkbox
                       id="competition"
                       checked={enterCompetition}
                       onCheckedChange={(checked) => setEnterCompetition(checked as boolean)}
-                      className="mt-1"
+                      className="mt-1 w-5 h-5"
                     />
-                    <Label htmlFor="competition" className="text-sm cursor-pointer leading-relaxed">
-                      <span className="font-semibold text-foreground">Enter me in monthly competitions</span>
+                    <Label htmlFor="competition" className="text-sm cursor-pointer leading-relaxed flex-1">
+                      <span className="font-bold text-base text-foreground block mb-1">
+                        Enter me in monthly competitions
+                      </span>
                       <span className="block text-muted-foreground">
                         Compete for prizes, free sessions, and instant rewards
                       </span>
@@ -307,56 +336,58 @@ export function BookingConfirmation() {
             </Card>
           </div>
 
-          {/* Price Summary Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-8">
-              <CardHeader>
-                <CardTitle>Price Summary</CardTitle>
+            <Card className="sticky top-8 border-2 shadow-2xl">
+              <CardHeader className="border-b bg-gradient-to-br from-secondary/10 to-primary/10">
+                <CardTitle className="font-serif text-2xl">Price Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="space-y-6 pt-6">
+                <div className="space-y-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{getSessionDescription()}</span>
-                    <span className="font-medium text-foreground">R{basePrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground font-medium">{getSessionDescription()}</span>
+                    <span className="font-bold text-foreground">R{basePrice.toFixed(2)}</span>
                   </div>
+
                   {sessionType === "famous-course" && (
-                    <div className="p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
-                      <p className="text-xs font-semibold text-secondary mb-1">Deposit Payment</p>
-                      <p className="text-xs text-muted-foreground">
-                        You're paying R{depositAmount.toFixed(2)} deposit now. Pay remaining R
-                        {remainderAmount.toFixed(2)} in-store.
+                    <div className="p-4 bg-secondary/10 border-2 border-secondary/30 rounded-xl">
+                      <p className="text-xs font-bold text-secondary mb-2 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Deposit Payment
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        You're paying <span className="font-bold text-secondary">R{depositAmount.toFixed(2)}</span>{" "}
+                        deposit now. Pay remaining{" "}
+                        <span className="font-bold text-secondary">R{remainderAmount.toFixed(2)}</span> in-store.
                       </p>
                     </div>
                   )}
+
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground font-medium">
                       {players} Player{Number.parseInt(players) > 1 ? "s" : ""} × {duration}h
                     </span>
-                    <span className="font-medium text-foreground">Included</span>
+                    <span className="font-bold text-foreground">Included</span>
                   </div>
-                  {sessionType === "famous-course" && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">GS Pro Technology</span>
-                      <span className="font-medium text-foreground">Included</span>
-                    </div>
-                  )}
+
                   {golfClubs && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Golf Club Rental</span>
-                      <span className="font-medium text-foreground">R100</span>
+                    <div className="flex justify-between text-sm p-3 bg-muted/50 rounded-lg">
+                      <span className="text-muted-foreground font-medium">Golf Club Rental</span>
+                      <span className="font-bold text-foreground">R100</span>
                     </div>
                   )}
+
                   {coaching && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Coaching Session (1 hour)</span>
-                      <span className="font-medium text-foreground">R450</span>
+                    <div className="flex justify-between text-sm p-3 bg-muted/50 rounded-lg">
+                      <span className="text-muted-foreground font-medium">Coaching Session</span>
+                      <span className="font-bold text-foreground">R450</span>
                     </div>
                   )}
                 </div>
 
                 <Separator />
-                <div className="space-y-2">
-                  <Label htmlFor="coupon" className="text-sm">
+
+                <div className="space-y-3">
+                  <Label htmlFor="coupon" className="text-sm font-semibold">
                     Coupon Code (Optional)
                   </Label>
                   <div className="flex gap-2">
@@ -366,18 +397,19 @@ export function BookingConfirmation() {
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
                       disabled={couponApplied}
+                      className="h-10 border-2"
                     />
                     <Button
                       onClick={applyCoupon}
                       variant="outline"
                       disabled={couponApplied || !couponCode.trim()}
-                      size="sm"
+                      className="font-semibold bg-transparent"
                     >
                       Apply
                     </Button>
                   </div>
                   {couponApplied && (
-                    <p className="text-sm text-secondary flex items-center gap-1">
+                    <p className="text-sm text-secondary flex items-center gap-2 font-semibold">
                       <CheckCircle2 className="w-4 h-4" />
                       Coupon applied successfully
                     </p>
@@ -387,7 +419,7 @@ export function BookingConfirmation() {
                 {couponApplied && couponDiscount > 0 && (
                   <>
                     <Separator />
-                    <div className="flex justify-between text-sm text-secondary">
+                    <div className="flex justify-between text-sm text-secondary font-bold">
                       <span>Coupon Discount</span>
                       <span>-R{couponDiscount.toFixed(2)}</span>
                     </div>
@@ -395,29 +427,40 @@ export function BookingConfirmation() {
                 )}
 
                 <Separator />
-                <div className="flex justify-between text-lg font-bold">
-                  <span className="text-foreground">
-                    {sessionType === "famous-course" ? "Deposit Due Today" : "Total"}
-                  </span>
-                  <span className="text-foreground">
-                    {sessionType === "famous-course" ? `R${depositAmount.toFixed(2)}` : `R${totalPrice.toFixed(2)}`}
-                  </span>
+
+                <div className="p-5 bg-gradient-to-br from-secondary/15 to-primary/15 rounded-xl border-2 border-secondary/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-muted-foreground">
+                      {sessionType === "famous-course" ? "Deposit Due Today" : "Total"}
+                    </span>
+                    <span className="font-serif text-3xl font-bold text-foreground">
+                      R{sessionType === "famous-course" ? depositAmount.toFixed(2) : totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  {sessionType === "famous-course" && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Balance of R{remainderAmount.toFixed(2)} payable in-store
+                    </p>
+                  )}
                 </div>
-                {sessionType === "famous-course" && (
-                  <p className="text-xs text-muted-foreground text-center -mt-2">
-                    Balance of R{remainderAmount.toFixed(2)} payable in-store
-                  </p>
-                )}
+
                 <Button
                   onClick={handlePayment}
                   disabled={isProcessing || !acceptWhatsApp}
-                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                  size="lg"
+                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] h-14 text-lg font-bold"
                 >
-                  {isProcessing ? "Processing..." : "Confirm Booking"}
+                  {isProcessing ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Processing...
+                    </span>
+                  ) : (
+                    "Confirm Booking"
+                  )}
                 </Button>
+
                 {!couponApplied && (
-                  <p className="text-xs text-muted-foreground text-center">
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
                     Secure payment powered by Yoco. We accept all major cards, Apple Pay, and Google Pay.
                   </p>
                 )}

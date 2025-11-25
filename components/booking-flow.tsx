@@ -237,57 +237,70 @@ export function BookingFlow() {
   const timeSlots = generateTimeSlots()
 
   return (
-    <div className="min-h-screen py-8 bg-background">
-      <div className="container mx-auto px-4 mb-8">
+    <div className="min-h-screen py-12 md:py-16 bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 mb-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-6 group"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Home</span>
         </Link>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-            <Trophy className="w-6 h-6 text-secondary" />
+
+        <div className="flex items-center gap-4 mb-3">
+          <div className="icon-container-primary">
+            <Trophy className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Book Your Session</h1>
+          <div>
+            <h1 className="font-serif text-4xl md:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              Book Your Session
+            </h1>
+            <p className="text-muted-foreground text-sm md:text-base mt-1">Complete your booking in 2 simple steps</p>
+          </div>
         </div>
-        <p className="text-muted-foreground">Complete your booking in 2 simple steps</p>
       </div>
 
-      {/* Progress Indicator */}
-      <div className="container mx-auto px-4 mb-8">
-        <div className="flex items-center gap-2 max-w-2xl mx-auto">
+      <div className="container mx-auto px-4 mb-10">
+        <div className="flex items-center gap-2 max-w-3xl mx-auto">
           {[1, 2].map((s) => (
             <div key={s} className="flex items-center flex-1">
               <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${
+                className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold transition-all duration-500 ${
                   s === step
-                    ? "bg-secondary text-secondary-foreground"
+                    ? "bg-secondary text-secondary-foreground shadow-lg shadow-secondary/30 scale-110"
                     : s < step
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground shadow-md"
                       : "bg-muted text-muted-foreground"
                 }`}
               >
-                {s}
+                {s < step ? "✓" : s}
               </div>
-              {s < 2 && <div className={`flex-1 h-1 mx-2 ${s < step ? "bg-primary" : "bg-muted"}`} />}
+              {s < 2 && (
+                <div
+                  className={`flex-1 h-1.5 mx-3 rounded-full transition-all duration-500 ${
+                    s < step ? "bg-primary shadow-sm" : "bg-muted"
+                  }`}
+                />
+              )}
             </div>
           ))}
         </div>
-        <div className="flex justify-between max-w-2xl mx-auto mt-2">
-          <span className="text-xs text-muted-foreground">Session Type</span>
-          <span className="text-xs text-muted-foreground">Date & Time</span>
+        <div className="flex justify-between max-w-3xl mx-auto mt-3">
+          <span className="text-xs md:text-sm font-medium text-muted-foreground">Session Type</span>
+          <span className="text-xs md:text-sm font-medium text-muted-foreground">Date & Time</span>
         </div>
       </div>
 
       {/* Error Display */}
       {validationError && (
-        <div className="container mx-auto px-4 mb-6">
-          <div className="max-w-2xl mx-auto">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{validationError}</AlertDescription>
+        <div className="container mx-auto px-4 mb-8">
+          <div className="max-w-3xl mx-auto">
+            <Alert
+              variant="destructive"
+              className="border-2 shadow-lg animate-in fade-in slide-in-from-top-2 duration-500"
+            >
+              <AlertTriangle className="h-5 w-5" />
+              <AlertDescription className="ml-2 font-medium">{validationError}</AlertDescription>
             </Alert>
           </div>
         </div>
@@ -295,39 +308,43 @@ export function BookingFlow() {
 
       {/* Step Content */}
       <div className="container mx-auto px-4">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           {step === 1 && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Select Your Experience</CardTitle>
-                  <CardDescription>Choose between Famous Course 18-hole or Quick Play sessions</CardDescription>
+            <div className="space-y-8">
+              <Card className="border-2 shadow-xl transition-all duration-300 hover:shadow-2xl">
+                <CardHeader className="pb-6">
+                  <CardTitle className="font-serif text-2xl md:text-3xl">Select Your Experience</CardTitle>
+                  <CardDescription className="text-base mt-2">
+                    Choose between Famous Course 18-hole or Quick Play sessions
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-2 border-secondary/40 bg-gradient-to-br from-secondary/5 to-secondary/10 hover:shadow-xl transition-all duration-300 hover:border-secondary">
+                    <Card className="border-2 border-secondary/40 bg-gradient-to-br from-secondary/10 via-secondary/5 to-background hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-secondary group cursor-pointer">
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between mb-3">
-                          <CardTitle className="text-xl font-bold">4-Ball Special</CardTitle>
-                          <Badge className="bg-secondary text-white">Popular</Badge>
+                          <CardTitle className="text-xl md:text-2xl font-bold">4-Ball Special</CardTitle>
+                          <Badge className="bg-secondary text-white shadow-lg group-hover:scale-110 transition-transform">
+                            Popular
+                          </Badge>
                         </div>
-                        <CardDescription>18-hole famous courses with 4 players</CardDescription>
+                        <CardDescription className="text-sm">18-hole famous courses with 4 players</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm">
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
                           <div className="icon-badge-secondary">
-                            <Sparkles className="w-4 h-4 text-secondary" />
+                            <Sparkles className="w-5 h-5 text-secondary" />
                           </div>
-                          <p className="font-medium text-foreground">R150/person/hour</p>
+                          <p className="font-bold text-lg text-foreground">R150/person/hour</p>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
                           4 players • 3-hour minimum • R1800 total for 3 hours (R450/person)
                         </p>
                         <Button
                           variant={
                             sessionType === "famous-course" && famousCourseOption === "4-ball" ? "default" : "outline"
                           }
-                          className="w-full"
+                          className="w-full font-semibold"
                           onClick={() => {
                             setSessionType("famous-course")
                             setFamousCourseOption("4-ball")
@@ -340,26 +357,26 @@ export function BookingFlow() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-2 border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300">
+                    <Card className="border-2 border-border bg-gradient-to-br from-background to-muted/20 hover:border-primary/50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group cursor-pointer">
                       <CardHeader className="pb-4">
-                        <CardTitle className="text-xl font-bold">3-Ball</CardTitle>
-                        <CardDescription>18-hole famous courses with 3 players</CardDescription>
+                        <CardTitle className="text-xl md:text-2xl font-bold">3-Ball</CardTitle>
+                        <CardDescription className="text-sm">18-hole famous courses with 3 players</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm">
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
                           <div className="icon-badge-secondary">
-                            <Sparkles className="w-4 h-4 text-secondary" />
+                            <Sparkles className="w-5 h-5 text-secondary" />
                           </div>
-                          <p className="font-medium text-foreground">R150/person/hour</p>
+                          <p className="font-bold text-lg text-foreground">R150/person/hour</p>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
                           3 players • 3-hour minimum • R1350 total for 3 hours (R450/person)
                         </p>
                         <Button
                           variant={
                             sessionType === "famous-course" && famousCourseOption === "3-ball" ? "default" : "outline"
                           }
-                          className="w-full"
+                          className="w-full font-semibold"
                           onClick={() => {
                             setSessionType("famous-course")
                             setFamousCourseOption("3-ball")
@@ -372,26 +389,26 @@ export function BookingFlow() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-2 border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300">
+                    <Card className="border-2 border-border bg-gradient-to-br from-background to-primary/5 hover:border-primary/50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group cursor-pointer">
                       <CardHeader className="pb-4">
-                        <CardTitle className="text-xl font-bold">Quick Play</CardTitle>
-                        <CardDescription>Practice sessions from 1-4 players</CardDescription>
+                        <CardTitle className="text-xl md:text-2xl font-bold">Quick Play</CardTitle>
+                        <CardDescription className="text-sm">Practice sessions from 1-4 players</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm">
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
                           <div className="icon-badge-primary">
-                            <Trophy className="w-4 h-4 text-primary" />
+                            <Trophy className="w-5 h-5 text-primary" />
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs font-semibold">
                             R150-R250/person/hour
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
                           Flexible duration • 1-4 players • Per-person-per-hour pricing
                         </p>
                         <Button
                           variant={sessionType === "quickplay" ? "default" : "outline"}
-                          className="w-full"
+                          className="w-full font-semibold"
                           onClick={() => {
                             setSessionType("quickplay")
                             setFamousCourseOption(null)
@@ -407,20 +424,22 @@ export function BookingFlow() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-2 shadow-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
+                  <CardTitle className="flex items-center gap-3 text-2xl">
+                    <div className="icon-container-primary">
+                      <Users className="w-6 h-6 text-primary" />
+                    </div>
                     How many players?
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-base mt-2">
                     {sessionType === "famous-course" && famousCourseOption
                       ? `${famousCourseOption === "4-ball" ? "4 players" : "3 players"} required for this option`
                       : "Select 1-4 players for your session"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 gap-4">
                     {[1, 2, 3, 4].map((count) => {
                       const disabled =
                         (sessionType === "famous-course" && famousCourseOption === "4-ball" && count !== 4) ||
@@ -430,9 +449,11 @@ export function BookingFlow() {
                         <Button
                           key={count}
                           variant={playerCount === count ? "default" : "outline"}
-                          className={
-                            playerCount === count ? "bg-secondary text-secondary-foreground hover:bg-secondary/90" : ""
-                          }
+                          className={`h-16 text-2xl font-bold transition-all duration-300 ${
+                            playerCount === count
+                              ? "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg scale-105"
+                              : "hover:scale-105"
+                          }`}
                           onClick={() => !disabled && setPlayerCount(count)}
                           disabled={disabled}
                         >
@@ -442,12 +463,14 @@ export function BookingFlow() {
                     })}
                   </div>
 
-                  {/* Price preview */}
-                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Estimated Price:</p>
-                    <p className="font-serif text-2xl font-bold text-foreground">
+                  <div className="mt-6 p-5 bg-gradient-to-br from-secondary/10 to-primary/10 rounded-xl border-2 border-secondary/20 shadow-inner">
+                    <p className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      Estimated Price:
+                    </p>
+                    <p className="font-serif text-3xl md:text-4xl font-bold text-foreground">
                       R{calculatePrice().toLocaleString()}
-                      <span className="text-base font-normal text-muted-foreground ml-2">
+                      <span className="text-lg font-normal text-muted-foreground ml-3">
                         for {duration} hour{duration > 1 ? "s" : ""}
                       </span>
                     </p>
@@ -459,14 +482,18 @@ export function BookingFlow() {
 
           {/* Step 2: Date & Time */}
           {step === 2 && (
-            <div className="space-y-6">
-              <Card>
+            <div className="space-y-8">
+              <Card className="border-2 shadow-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-primary" />
+                  <CardTitle className="flex items-center gap-3 text-2xl">
+                    <div className="icon-container-primary">
+                      <CalendarIcon className="w-6 h-6 text-primary" />
+                    </div>
                     Select date
                   </CardTitle>
-                  <CardDescription>Choose your preferred date (up to 30 days ahead)</CardDescription>
+                  <CardDescription className="text-base mt-2">
+                    Choose your preferred date (up to 30 days ahead)
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Calendar
@@ -478,154 +505,145 @@ export function BookingFlow() {
                       today.setHours(0, 0, 0, 0)
                       const maxDate = new Date()
                       maxDate.setDate(maxDate.getDate() + 30)
-                      return date < today || date > maxDate || date.getDay() === 0
+                      return date < today || date > maxDate
                     }}
-                    className="rounded-md border"
+                    className="rounded-xl border-2 shadow-inner mx-auto"
                   />
-                  <p className="text-sm text-muted-foreground mt-2">Mon-Fri: 9AM-8PM • Sat: 8AM-8PM • Sun: 10AM-4PM</p>
+                  <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Operating Hours:
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Mon-Fri: 9AM-8PM • Sat: 8AM-8PM • Sun: 10AM-4PM
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
               {date && (
                 <>
-                  <Card>
+                  <Card className="border-2 shadow-xl">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
+                      <CardTitle className="flex items-center gap-3 text-2xl">
+                        <div className="icon-container-primary">
+                          <Clock className="w-6 h-6 text-primary" />
+                        </div>
                         Select time slot
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-base mt-2">
                         Available time slots for {date.toLocaleDateString()}
-                        {getMinimumHours() > 1 && (
-                          <span className="block mt-1 text-secondary font-medium">
-                            Minimum {getMinimumHours()} hours required • Must end by 8 PM
-                          </span>
-                        )}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                        {timeSlots.map((slot) => {
-                          const [hour] = slot.split(":").map(Number)
-                          const wouldEndAfterClosing = hour + getMinimumHours() > 20
-                          const isDisabled = !timeSlots.includes(slot) || wouldEndAfterClosing
-
-                          return (
-                            <Button
-                              key={slot}
-                              variant={timeSlot === slot ? "default" : "outline"}
-                              className={`flex flex-col h-auto py-3 ${
-                                timeSlot === slot ? "bg-secondary text-secondary-foreground hover:bg-secondary/90" : ""
-                              }`}
-                              disabled={isDisabled}
-                              onClick={() => setTimeSlot(slot)}
-                            >
-                              <span className="font-semibold">{slot}</span>
-                              {wouldEndAfterClosing && (
-                                <span className="text-[10px] text-destructive mt-1">Too late</span>
-                              )}
-                            </Button>
-                          )
-                        })}
+                        {timeSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={timeSlot === slot ? "default" : "outline"}
+                            className={`h-12 font-semibold transition-all duration-300 ${
+                              timeSlot === slot
+                                ? "bg-secondary text-secondary-foreground shadow-lg scale-105"
+                                : "hover:scale-105"
+                            }`}
+                            onClick={() => setTimeSlot(slot)}
+                          >
+                            {slot}
+                          </Button>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Optional Add-Ons */}
-                  <Card>
+                  <Card className="border-2 shadow-xl">
                     <CardHeader>
-                      <CardTitle>Optional Add-Ons</CardTitle>
-                      <CardDescription>Enhance your golf experience</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <Checkbox
-                          id="golf-clubs"
-                          checked={golfClubRental}
-                          onCheckedChange={(checked) => setGolfClubRental(checked as boolean)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor="golf-clubs" className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-foreground">Golf Club Rental</p>
-                              <p className="text-sm text-muted-foreground">Full set of premium clubs</p>
-                            </div>
-                            <span className="text-lg font-bold text-secondary">R100</span>
-                          </div>
-                        </Label>
-                      </div>
-
-                      <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <Checkbox
-                          id="coaching"
-                          checked={coachingSession}
-                          onCheckedChange={(checked) => setCoachingSession(checked as boolean)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor="coaching" className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-foreground">Professional Coaching</p>
-                              <p className="text-sm text-muted-foreground">1-hour session with pro instructor</p>
-                            </div>
-                            <span className="text-lg font-bold text-secondary">R450</span>
-                          </div>
-                        </Label>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Session duration</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="flex items-center gap-3 text-2xl">
+                        <div className="icon-container-secondary">
+                          <Clock className="w-6 h-6 text-secondary" />
+                        </div>
+                        Duration
+                      </CardTitle>
+                      <CardDescription className="text-base mt-2">
                         {getMinimumHours() > 1
-                          ? `Minimum ${getMinimumHours()} hours required for this booking`
-                          : "How long would you like to play?"}
+                          ? `Minimum ${getMinimumHours()} hours required for this session`
+                          : "Select your session duration"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Select
                         value={duration.toString()}
-                        onValueChange={(value) => {
-                          setDuration(Number(value))
-                          setValidationError("")
-                        }}
+                        onValueChange={(value) => setDuration(Number.parseFloat(value))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-14 text-lg font-semibold border-2">
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
-                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((hours) => {
-                            const disabled = hours < getMinimumHours()
-                            return (
-                              <SelectItem key={hours} value={hours.toString()} disabled={disabled}>
-                                {hours} hour{hours !== 1 ? "s" : ""}
-                                {disabled && " (below minimum)"}
-                              </SelectItem>
-                            )
-                          })}
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((hours) => (
+                            <SelectItem
+                              key={hours}
+                              value={hours.toString()}
+                              disabled={hours < getMinimumHours()}
+                              className="text-base"
+                            >
+                              {hours} hour{hours > 1 ? "s" : ""}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                    </CardContent>
+                  </Card>
 
-                      {/* Price calculation */}
-                      <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Session price:</span>
-                          <span className="font-serif text-xl font-bold text-foreground">
-                            R{calculatePrice().toLocaleString()}
-                          </span>
+                  <Card className="border-2 shadow-xl bg-gradient-to-br from-background to-muted/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-3 text-2xl">
+                        <div className="icon-container-secondary">
+                          <Sparkles className="w-6 h-6 text-secondary" />
                         </div>
-                        {(golfClubRental || coachingSession) && (
-                          <div className="text-xs text-muted-foreground space-y-1 mb-2">
-                            {golfClubRental && <p>+ Golf Club Rental: R100</p>}
-                            {coachingSession && <p>+ Coaching Session: R450</p>}
+                        Optional Add-Ons
+                      </CardTitle>
+                      <CardDescription className="text-base mt-2">
+                        Enhance your experience with these extras
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-start gap-4 p-4 rounded-xl border-2 border-border hover:border-secondary/50 transition-all duration-300 cursor-pointer bg-background">
+                        <Checkbox
+                          id="golf-clubs"
+                          checked={golfClubRental}
+                          onCheckedChange={(checked) => setGolfClubRental(checked as boolean)}
+                          className="mt-1 w-5 h-5"
+                        />
+                        <Label htmlFor="golf-clubs" className="flex-1 cursor-pointer">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-lg text-foreground">Golf Club Rental</span>
+                            <Badge variant="outline" className="font-bold">
+                              R100
+                            </Badge>
                           </div>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {playerCount} player{playerCount > 1 ? "s" : ""} × {duration} hour{duration > 1 ? "s" : ""}
-                        </p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            Complete set of premium golf clubs included with your session
+                          </p>
+                        </Label>
+                      </div>
+
+                      <div className="flex items-start gap-4 p-4 rounded-xl border-2 border-border hover:border-secondary/50 transition-all duration-300 cursor-pointer bg-background">
+                        <Checkbox
+                          id="coaching"
+                          checked={coachingSession}
+                          onCheckedChange={(checked) => setCoachingSession(checked as boolean)}
+                          className="mt-1 w-5 h-5"
+                        />
+                        <Label htmlFor="coaching" className="flex-1 cursor-pointer">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-lg text-foreground">Coaching Session</span>
+                            <Badge variant="outline" className="font-bold">
+                              R450
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            1-hour professional coaching to improve your swing and technique
+                          </p>
+                        </Label>
                       </div>
                     </CardContent>
                   </Card>
@@ -634,26 +652,21 @@ export function BookingFlow() {
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-3 mt-6">
-            {step > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setStep(step - 1)
-                  setValidationError("")
-                }}
-                className="flex-1"
-              >
+          {/* Continue Button */}
+          <div className="mt-10 flex justify-between items-center">
+            {step === 2 && (
+              <Button variant="outline" onClick={() => setStep(1)} className="font-semibold" size="lg">
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             )}
             <Button
               onClick={handleContinue}
               disabled={!canContinue()}
-              className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90"
+              className={`font-semibold ${step === 1 ? "ml-auto" : ""} bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105`}
+              size="lg"
             >
-              {step === 2 ? "Continue to Checkout" : "Continue"}
+              {step === 1 ? "Continue to Date & Time" : "Continue to Confirmation"}
             </Button>
           </div>
         </div>
