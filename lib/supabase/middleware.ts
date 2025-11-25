@@ -1,5 +1,23 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
+
+let createSupabaseClient: typeof import("@supabase/supabase-js").createClient | null = null
+let initPromise: Promise<void> | null = null
+
+async function initSupabase() {
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
+    try {
+      const supabase = await import("@supabase/supabase-js")
+      createSupabaseClient = supabase.createClient
+    } catch (error) {
+      console.warn("[v0] Failed to load @supabase/supabase-js in middleware")
+      createSupabaseClient = null
+    }
+  })()
+
+  return initPromise
+}
 
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -7,21 +25,24 @@ export async function updateSession(request: NextRequest) {
 
   // If Supabase is not configured, skip middleware processing
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("[v0] Supabase environment variables not found in middleware, skipping auth checks")
-    return NextResponse.next({
-      request,
-    })
+    return NextResponse.next({ request })
   }
 
-  const supabaseResponse = NextResponse.next({
-    request,
-  })
+  const supabaseResponse = NextResponse.next({ request })
+
+  // Try to initialize Supabase
+  await initSupabase()
+
+  if (!createSupabaseClient) {
+    // Supabase package not available, skip auth checks
+    return supabaseResponse
+  }
 
   // Get auth token from cookies
   const authToken = request.cookies.get("sb-access-token")?.value
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -51,3 +72,6 @@ export async function updateSession(request: NextRequest) {
 
   return supabaseResponse
 }
+
+// Initialize eagerly but don't block
+initSupabase()
