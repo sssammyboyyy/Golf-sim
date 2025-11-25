@@ -161,19 +161,138 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Premium calendar styles */
-.premium-calendar {
-  --cell-size: 40px;
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
-.premium-calendar .rdp-day {
-  width: var(--cell-size);
-  height: var(--cell-size);
+/* Enhanced Calendly-style calendar */
+.rdp {
+  --rdp-cell-size: 44px;
+  --rdp-accent-color: rgb(var(--primary));
+  --rdp-background-color: rgb(var(--primary) / 0.1);
+  margin: 0;
+}
+
+.rdp-months {
+  display: flex;
+  flex-direction: column;
+}
+
+.rdp-month {
+  width: 100%;
+}
+
+.rdp-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.5rem 1rem;
+}
+
+.rdp-caption_label {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.rdp-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rdp-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+}
+
+.rdp-head_row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.rdp-head_cell {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(var(--muted-foreground));
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.rdp-tbody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rdp-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.rdp-cell {
+  text-align: center;
+  padding: 2px;
+}
+
+.rdp-day {
+  width: 100%;
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdp-day:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
+}
+
+.rdp-day_selected {
+  background-color: rgb(var(--primary)) !important;
+  color: rgb(var(--primary-foreground)) !important;
+  box-shadow: 0 4px 12px rgb(var(--primary) / 0.3);
+}
+
+.rdp-day_today:not(.rdp-day_selected) {
+  background-color: rgb(var(--secondary) / 0.15);
+  color: rgb(var(--secondary));
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px rgb(var(--secondary) / 0.3);
+}
+
+.rdp-day_outside {
+  color: rgb(var(--muted-foreground) / 0.4);
+}
+
+.rdp-day_disabled {
+  color: rgb(var(--muted-foreground) / 0.25);
+  cursor: not-allowed;
+}
+
+.rdp-day_disabled:hover {
+  background-color: transparent;
 }
 
 @media (min-width: 640px) {
-  .premium-calendar {
-    --cell-size: 48px;
+  .rdp {
+    --rdp-cell-size: 48px;
+  }
+
+  .rdp-day {
+    font-size: 0.9375rem;
   }
 }
 
