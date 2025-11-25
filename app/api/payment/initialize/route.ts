@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     // 7. Dynamic Production URL (Cloudflare Context)
     // Uses the Cloudflare Environment Variable you set in Step 4
-    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.themulligan.org"
 
     const yocoResponse = await fetch("https://payments.yoco.com/api/checkouts", {
       method: "POST",
