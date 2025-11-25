@@ -152,9 +152,12 @@ export function BookingConfirmation() {
           router.push(`/booking/success?reference=${data.booking_id}`)
           return
         }
-        if (data.authorization_url) {
-          window.location.href = data.authorization_url
-          return
+        
+        // ✅ FIXED: Look for 'redirectUrl' OR 'authorization_url' to be safe
+        const paymentUrl = data.redirectUrl || data.authorization_url;
+        if (paymentUrl) {
+          window.location.href = paymentUrl;
+          return;
         }
       }
 
