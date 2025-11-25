@@ -104,13 +104,20 @@ export function BookingConfirmation() {
     }
   }
 
+// ... imports remain the same
+
+  // Add this inside the component to track specific errors
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
   const handlePayment = async () => {
+    // 1. Validation
     if (!guestName || !guestEmail || !guestPhone || !acceptWhatsApp) {
-      alert("Please fill in all required fields")
+      setErrorMessage("Please fill in all required fields marked with *")
       return
     }
 
     setIsProcessing(true)
+    setErrorMessage(null) // Clear previous errors
 
     try {
       const response = await fetch("/api/payment/initialize", {
@@ -138,19 +145,31 @@ export function BookingConfirmation() {
 
       const data = await response.json()
 
-      if (data.free_booking && data.booking_id) {
-        router.push(`/booking/success?reference=${data.booking_id}`)
+      // 2. Handle Success (Free or Paid)
+      if (response.ok) {
+        if (data.free_booking && data.booking_id) {
+          router.push(`/booking/success?reference=${data.booking_id}`)
+          return
+        }
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url
+          return
+        }
+      }
+
+      // 3. Handle Specific "Double Booking" Error (409 Conflict)
+      if (response.status === 409 || data.error?.includes("Slot already taken")) {
+        setErrorMessage("⚠️ Just missed it! Someone else booked this slot seconds ago. Please go back and choose another time.")
+        setIsProcessing(false)
         return
       }
 
-      if (data.authorization_url) {
-        window.location.href = data.authorization_url
-        return
-      }
-
+      // 4. Handle Generic Errors
       throw new Error(data.error || "Failed to initialize booking")
+
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to process booking")
+      console.error("Booking Error:", error)
+      setErrorMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.")
       setIsProcessing(false)
     }
   }
