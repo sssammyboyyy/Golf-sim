@@ -1,34 +1,40 @@
 "use client"
-
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Users, Clock, CalendarIcon, Trophy, AlertTriangle, Check } from "lucide-react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Checkbox } from "@/components/ui/checkbox"
+import { format } from "date-fns"
+import { Users, Clock, Trophy, Zap, CalendarIcon, ChevronRight, ChevronLeft, Check, Star, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar } from "@/components/ui/calendar"
 
-type SessionType = "famous-course" | "quickplay"
+type SessionType = "quickplay" | "famous-course"
 type FamousCourseOption = "4-ball" | "3-ball" | null
 
-export function BookingFlow() {
+interface BookingData {
+  sessionType: SessionType
+  famousCourseOption: FamousCourseOption
+  playerCount: number
+  duration: number
+  date: Date | undefined
+  timeSlot: string
+  golfClubRental: boolean
+  coachingSession: boolean
+}
+
+export default function BookingFlow() {
   const router = useRouter()
   const [step, setStep] = useState(1)
-  const [playerCount, setPlayerCount] = useState<number>(1)
   const [sessionType, setSessionType] = useState<SessionType>("quickplay")
   const [famousCourseOption, setFamousCourseOption] = useState<FamousCourseOption>(null)
+  const [playerCount, setPlayerCount] = useState(1)
+  const [duration, setDuration] = useState(1)
   const [date, setDate] = useState<Date | undefined>(undefined)
-  const [timeSlot, setTimeSlot] = useState<string>("")
-  const [duration, setDuration] = useState<number>(1)
-  const [golfClubRental, setGolfClubRental] = useState<boolean>(false)
-  const [coachingSession, setCoachingSession] = useState<boolean>(false)
-  const [validationError, setValidationError] = useState<string>("")
+  const [timeSlot, setTimeSlot] = useState("")
+  const [golfClubRental, setGolfClubRental] = useState(false)
+  const [coachingSession, setCoachingSession] = useState(false)
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
+  const [bookedSlots, setBookedSlots] = useState<{ start: string; end: string }[]>([])
 
   const calculatePrice = () => {
     let basePrice = 0
@@ -38,500 +44,485 @@ export function BookingFlow() {
         basePrice = 150 * 4 * duration // R150/person/hour x 4 people
       }
       if (famousCourseOption === "3-ball") {
-        basePrice = 150 * 3 * duration // R150/person/hour x 3 people
+        basePrice = 160 * 3 * duration // R160/person/hour x 3 people (FIXED)
       }
     } else {
-      // Quick Play - Per person per hour pricing
+      // Quick Play pricing
       if (playerCount === 1) {
-        basePrice = 250 * duration // R250/person/hour
+        basePrice = 250 * duration
       } else if (playerCount === 2) {
-        basePrice = 180 * 2 * duration // R180/person/hour x 2
+        basePrice = 180 * 2 * duration
       } else if (playerCount === 3) {
-        basePrice = 160 * 3 * duration // R160/person/hour x 3
+        basePrice = 160 * 3 * duration
       } else {
-        basePrice = 150 * 4 * duration // R150/person/hour x 4+
+        basePrice = 150 * 4 * duration
       }
     }
 
-    if (golfClubRental) {
-      basePrice += 100
-    }
-    if (coachingSession) {
-      basePrice += 450
-    }
+    if (golfClubRental) basePrice += 100
+    if (coachingSession) basePrice += 450
 
     return basePrice
   }
 
   const getMinimumHours = () => {
-    if (sessionType === "famous-course") {
-      return 3 // Both 4-ball and 3-ball require 3 hours minimum
-    }
+    if (sessionType === "famous-course") return 3
     return 1
   }
 
-  const validateBooking = () => {
-    setValidationError("")
-    const minHours = getMinimumHours()
-
-    if (duration < minHours) {
-      setValidationError(`Famous Course requires minimum ${minHours} hours booking.`)
-      return false
-    }
-
-    if (timeSlot && date) {
-      const [startHour] = timeSlot.split(":").map(Number)
-      const endHour = startHour + duration
-      if (endHour > 20) {
-        setValidationError(`Booking extends past closing time (8 PM). Please select an earlier time.`)
-        return false
-      }
-    }
-
-    if (sessionType === "famous-course") {
-      if (famousCourseOption === "4-ball" && playerCount !== 4) {
-        setValidationError("4-ball requires exactly 4 players.")
-        return false
-      }
-      if (famousCourseOption === "3-ball" && playerCount !== 3) {
-        setValidationError("3-ball requires exactly 3 players.")
-        return false
-      }
-    }
-
-    return true
-  }
-
-  const getLatestStartTimes = () => {
-    const minHours = getMinimumHours()
-    const closingHour = 20 // 8 PM
-    const latestStart = closingHour - minHours
-
-    const times = []
-    for (let hour = latestStart; hour >= latestStart - 2 && hour >= 9; hour--) {
-      times.push(`${hour.toString().padStart(2, "0")}:00`)
-    }
-    return times
-  }
-
   const generateTimeSlots = () => {
-    if (!date) return []
-
     const slots: string[] = []
-    const dayOfWeek = date.getDay()
+    const dayOfWeek = date?.getDay()
 
-    // Monday-Friday: 9AM-8PM, Saturday: 8AM-8PM, Sunday: 10AM-4PM
     let startHour = 9
     let endHour = 20
 
     if (dayOfWeek === 6) {
-      // Saturday
       startHour = 8
+      endHour = 20
     } else if (dayOfWeek === 0) {
-      // Sunday
       startHour = 10
       endHour = 16
     }
 
     for (let hour = startHour; hour < endHour; hour++) {
-      const timeString = `${hour.toString().padStart(2, "0")}:00`
-      slots.push(timeString)
+      slots.push(`${hour.toString().padStart(2, "0")}:00`)
+      slots.push(`${hour.toString().padStart(2, "0")}:30`)
     }
 
     return slots
   }
 
+  const isSlotBooked = (slot: string) => {
+    const slotTime = Number.parseInt(slot.split(":")[0]) * 60 + Number.parseInt(slot.split(":")[1])
+    const slotEndTime = slotTime + duration * 60
+
+    return bookedSlots.some((booking) => {
+      const bookingStart =
+        Number.parseInt(booking.start.split(":")[0]) * 60 + Number.parseInt(booking.start.split(":")[1])
+      const bookingEnd = Number.parseInt(booking.end.split(":")[0]) * 60 + Number.parseInt(booking.end.split(":")[1])
+      return slotTime < bookingEnd && slotEndTime > bookingStart
+    })
+  }
+
   useEffect(() => {
-    if (sessionType === "famous-course") {
-      if (famousCourseOption === "4-ball") {
-        setPlayerCount(4)
-        setDuration(Math.max(duration, 3))
-      } else if (famousCourseOption === "3-ball") {
-        setPlayerCount(3)
-        setDuration(Math.max(duration, 3)) // Changed from 2 to 3 to match 4-ball logic
+    if (date) {
+      setAvailableSlots(generateTimeSlots())
+      fetchBookedSlots()
+    }
+  }, [date, duration])
+
+  const fetchBookedSlots = async () => {
+    if (!date) return
+    setIsCheckingAvailability(true)
+    try {
+      const response = await fetch(`/api/bookings/availability?date=${date.toISOString()}&duration=${duration}`)
+      if (response.ok) {
+        const data = await response.json()
+        setBookedSlots(data.bookedSlots || [])
       }
+    } catch (error) {
+      console.error("Error fetching availability:", error)
+    } finally {
+      setIsCheckingAvailability(false)
     }
-  }, [famousCourseOption, sessionType])
-
-  useEffect(() => {
-    if (date && timeSlot) {
-      checkAvailability()
-    }
-  }, [date, timeSlot, duration])
-
-  const checkAvailability = async () => {
-    // This would call an API to check for overlapping bookings
-    // For now, we'll simulate it
-    console.log("[v0] Checking availability for:", { date, timeSlot, duration })
   }
 
   const handleContinue = () => {
-    if (step === 1 && playerCount > 0 && sessionType) {
-      // Validate famous course selection
-      if (sessionType === "famous-course" && !famousCourseOption) {
-        setValidationError("Please select 4-ball or 3-ball for Famous Course experience")
-        return
-      }
-      setValidationError("")
+    if (step === 1) {
       setStep(2)
-    } else if (step === 2) {
-      if (!date || !timeSlot || !duration) {
-        setValidationError("Please complete all booking details")
-        return
-      }
-
-      if (!validateBooking()) {
-        return
-      }
-
-      // Navigate to confirmation
+    } else if (step === 2 && date && timeSlot) {
       const params = new URLSearchParams({
+        sessionType,
+        famousCourseOption: famousCourseOption || "",
         players: playerCount.toString(),
-        type: sessionType,
-        famousOption: famousCourseOption || "",
-        date: date.toISOString(),
-        time: timeSlot,
         duration: duration.toString(),
-        price: calculatePrice().toString(),
-        golfClubs: golfClubRental.toString(),
-        coaching: coachingSession.toString(),
+        date: date.toISOString(),
+        timeSlot,
+        golfClubRental: golfClubRental.toString(),
+        coachingSession: coachingSession.toString(),
       })
-
       router.push(`/booking/confirm?${params.toString()}`)
     }
   }
 
   const canContinue = () => {
     if (step === 1) {
-      if (sessionType === "famous-course") {
-        return playerCount > 0 && famousCourseOption !== null
-      }
-      return playerCount > 0 && sessionType !== ""
+      return sessionType === "famous-course" ? famousCourseOption !== null : playerCount > 0
     }
-    if (step === 2) return date && timeSlot && duration > 0
-    return false
+    return date && timeSlot
   }
 
-  // Sample time slots (would be fetched from API)
-  const timeSlots = generateTimeSlots()
+  const getPerPersonPrice = () => {
+    if (sessionType === "famous-course") {
+      return famousCourseOption === "4-ball" ? 150 : 160
+    }
+    if (playerCount === 1) return 250
+    if (playerCount === 2) return 180
+    if (playerCount === 3) return 160
+    return 150
+  }
 
   return (
-    <div className="min-h-screen py-6 sm:py-8 md:py-12 bg-background">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Home</span>
-        </Link>
-
-        <div className="mb-8">
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground mb-2">Book Your Session</h1>
-          <p className="text-sm text-muted-foreground">Complete your booking in 2 simple steps</p>
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="max-w-lg mx-auto px-4 py-6 sm:py-8">
+        {/* Premium Header */}
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
+            <Sparkles className="w-4 h-4 text-secondary" />
+            <span className="text-sm font-medium text-primary">Premium Experience</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Book Your Session</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            {step === 1 ? "Choose your experience" : "Select date & time"}
+          </p>
         </div>
 
-        <div className="flex items-center justify-between mb-8 max-w-md mx-auto">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                step === 1 ? "bg-primary text-white" : "bg-primary text-white"
-              }`}
-            >
-              {step > 1 ? <Check className="w-4 h-4" /> : "1"}
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          {[1, 2].map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                  step >= s
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {step > s ? <Check className="w-5 h-5" /> : s}
+              </div>
+              {s < 2 && (
+                <div
+                  className={`w-12 sm:w-16 h-1 rounded-full transition-colors ${step > s ? "bg-primary" : "bg-muted"}`}
+                />
+              )}
             </div>
-            <span className="text-xs sm:text-sm font-medium">Details</span>
-          </div>
-          <div className="flex-1 h-0.5 mx-4 bg-muted"></div>
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                step === 2 ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-              }`}
-            >
-              2
-            </div>
-            <span className="text-xs sm:text-sm font-medium">Date & Time</span>
-          </div>
+          ))}
         </div>
 
-        {validationError && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="ml-2 text-sm">{validationError}</AlertDescription>
-          </Alert>
-        )}
-
+        {/* Step 1: Session Selection */}
         {step === 1 && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl">Choose Your Session</CardTitle>
-                <CardDescription className="text-sm">Select from our available options</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <button
-                  onClick={() => {
-                    setSessionType("famous-course")
-                    setFamousCourseOption("4-ball")
-                    setPlayerCount(4)
-                    setDuration(3)
-                  }}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    sessionType === "famous-course" && famousCourseOption === "4-ball"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Trophy className="w-5 h-5 text-primary flex-shrink-0" />
-                        <h3 className="font-bold text-base">4-Ball Special</h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">18-hole famous courses with 4 players</p>
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-lg font-bold text-primary">R150</span>
-                        <span className="text-xs text-muted-foreground">/person/hour</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">3-hour minimum • R1800 total</p>
-                    </div>
-                    <Badge className="bg-secondary flex-shrink-0">Popular</Badge>
-                  </div>
-                </button>
+          <div className="space-y-4">
+            {/* Famous Course Options */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-secondary" />
+                Famous Courses
+              </h2>
 
-                <button
-                  onClick={() => {
-                    setSessionType("famous-course")
-                    setFamousCourseOption("3-ball")
-                    setPlayerCount(3)
-                    setDuration(3)
-                  }}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    sessionType === "famous-course" && famousCourseOption === "3-ball"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Trophy className="w-5 h-5 text-primary flex-shrink-0" />
-                        <h3 className="font-bold text-base">3-Ball</h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">18-hole famous courses with 3 players</p>
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-lg font-bold text-primary">R150</span>
-                        <span className="text-xs text-muted-foreground">/person/hour</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">3-hour minimum • R1350 total</p>
-                    </div>
+              {/* 4-Ball Special */}
+              <button
+                onClick={() => {
+                  setSessionType("famous-course")
+                  setFamousCourseOption("4-ball")
+                  setPlayerCount(4)
+                  setDuration(3)
+                }}
+                className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-300 ${
+                  sessionType === "famous-course" && famousCourseOption === "4-ball"
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:shadow-md"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-secondary to-secondary/70 flex items-center justify-center flex-shrink-0">
+                    <Star className="w-6 h-6 text-white" />
                   </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setSessionType("quickplay")
-                    setFamousCourseOption(null)
-                  }}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    sessionType === "quickplay"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-5 h-5 text-primary flex-shrink-0" />
-                      <h3 className="font-bold text-base">Quick Play</h3>
+                      <h3 className="font-bold text-base sm:text-lg text-foreground">4-Ball Special</h3>
+                      <span className="px-2 py-0.5 bg-secondary/20 text-secondary text-xs font-semibold rounded-full">
+                        Best Value
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">Flexible hourly sessions, any player count</p>
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-lg font-bold text-primary">From R150</span>
-                      <span className="text-xs text-muted-foreground">/hour</span>
+                    <p className="text-sm text-muted-foreground mb-2">Play world-famous courses with 4 players</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl sm:text-2xl font-bold text-primary">R150</span>
+                      <span className="text-sm text-muted-foreground">/person/hour</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">No minimum • Flexible pricing</p>
+                    <p className="text-xs text-muted-foreground mt-1">3-hour minimum • R1,800 total</p>
                   </div>
-                </button>
-              </CardContent>
-            </Card>
+                </div>
+              </button>
 
+              {/* 3-Ball Special - FIXED PRICE */}
+              <button
+                onClick={() => {
+                  setSessionType("famous-course")
+                  setFamousCourseOption("3-ball")
+                  setPlayerCount(3)
+                  setDuration(3)
+                }}
+                className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-300 ${
+                  sessionType === "famous-course" && famousCourseOption === "3-ball"
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:shadow-md"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg text-foreground mb-1">3-Ball Special</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Perfect for trios on famous courses</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl sm:text-2xl font-bold text-primary">R160</span>
+                      <span className="text-sm text-muted-foreground">/person/hour</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">3-hour minimum • R1,440 total</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Quick Play */}
+            <div className="space-y-3 pt-4">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Zap className="w-5 h-5 text-secondary" />
+                Quick Play
+              </h2>
+
+              <button
+                onClick={() => {
+                  setSessionType("quickplay")
+                  setFamousCourseOption(null)
+                  setDuration(1)
+                }}
+                className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-300 ${
+                  sessionType === "quickplay"
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:shadow-md"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg text-foreground mb-1">Quick Play Session</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Flexible practice on driving range or courses</p>
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="text-xl sm:text-2xl font-bold text-primary">From R150</span>
+                      <span className="text-sm text-muted-foreground">/person/hour</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Player Selection for Quick Play */}
             {sessionType === "quickplay" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
                     <Users className="w-5 h-5 text-primary" />
-                    How many players?
+                    Number of Players
                   </CardTitle>
-                  <CardDescription className="text-sm">
-                    Pricing: 1p=R250 • 2p=R180 each • 3p=R160 each • 4p=R150 each
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[1, 2, 3, 4].map((count) => {
-                      const pricePerPerson = count === 1 ? 250 : count === 2 ? 180 : count === 3 ? 160 : 150
-                      return (
-                        <button
-                          key={count}
-                          onClick={() => setPlayerCount(count)}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            playerCount === count
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                        >
-                          <div className="text-2xl font-bold mb-1">{count}</div>
-                          <div className="text-xs text-muted-foreground">R{pricePerPerson}/p/h</div>
-                        </button>
-                      )
-                    })}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[1, 2, 3, 4].map((count) => (
+                      <button
+                        key={count}
+                        onClick={() => setPlayerCount(count)}
+                        className={`py-3 px-2 rounded-lg border-2 transition-all duration-200 ${
+                          playerCount === count
+                            ? "border-primary bg-primary text-primary-foreground shadow-md"
+                            : "border-border bg-card hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="text-xl font-bold">{count}</div>
+                        <div className="text-xs mt-1 opacity-80">
+                          {count === 1 ? "R250" : count === 2 ? "R180" : count === 3 ? "R160" : "R150"}
+                        </div>
+                      </button>
+                    ))}
                   </div>
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    Price per person per hour • Groups of 4+ get the best rate
+                  </p>
                 </CardContent>
               </Card>
             )}
 
-            <Button onClick={handleContinue} disabled={!canContinue()} className="w-full h-12 text-base font-semibold">
-              Continue to Date & Time
-            </Button>
+            {/* Duration Selection */}
+            <Card className="bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Session Duration
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 1.5, 2, 2.5, 3, 3.5, 4].map((hours) => {
+                    const minHours = getMinimumHours()
+                    const disabled = hours < minHours
+                    return (
+                      <button
+                        key={hours}
+                        onClick={() => !disabled && setDuration(hours)}
+                        disabled={disabled}
+                        className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                          disabled
+                            ? "border-muted bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50"
+                            : duration === hours
+                              ? "border-primary bg-primary text-primary-foreground shadow-md"
+                              : "border-border bg-card hover:border-primary/50"
+                        }`}
+                      >
+                        {hours}h
+                      </button>
+                    )
+                  })}
+                </div>
+                {sessionType === "famous-course" && (
+                  <p className="text-xs text-secondary mt-2">* Famous courses require 3-hour minimum</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Price Summary */}
+            <div className="bg-gradient-to-r from-primary to-primary/90 rounded-xl p-4 sm:p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-80">Estimated Total</p>
+                  <p className="text-2xl sm:text-3xl font-bold">R{calculatePrice().toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm opacity-80">Per Person</p>
+                  <p className="text-lg font-semibold">R{getPerPersonPrice()}/hr</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
+        {/* Step 2: Date & Time Selection */}
         {step === 2 && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+          <div className="space-y-4">
+            {/* Calendar Card */}
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 text-primary" />
                   Select Date
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-2 sm:p-4">
                 <Calendar
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  disabled={(date) => date < new Date()}
-                  className="rounded-md border w-full"
+                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                  className="rounded-lg mx-auto"
                 />
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Select Time</CardTitle>
-                <CardDescription className="text-sm">Mon-Fri: 9AM-8PM • Sat: 8AM-8PM • Sun: 10AM-4PM</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Time Slot</Label>
-                  <Select value={timeSlot} onValueChange={setTimeSlot}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Choose a time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {generateTimeSlots().map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          {slot}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Time Slots */}
+            {date && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    Available Times for {format(date, "EEEE, MMM d")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isCheckingAvailability ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <span className="ml-2 text-muted-foreground">Checking availability...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                      {availableSlots.map((slot) => {
+                        const booked = isSlotBooked(slot)
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => !booked && setTimeSlot(slot)}
+                            disabled={booked}
+                            className={`py-2.5 px-2 rounded-lg text-sm font-medium transition-all ${
+                              booked
+                                ? "bg-muted text-muted-foreground cursor-not-allowed line-through opacity-50"
+                                : timeSlot === slot
+                                  ? "bg-primary text-primary-foreground shadow-md"
+                                  : "bg-card border border-border hover:border-primary/50"
+                            }`}
+                          >
+                            {slot}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Duration (hours)</Label>
-                  <Select value={duration.toString()} onValueChange={(v) => setDuration(Number.parseFloat(v))}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((d) => (
-                        <SelectItem key={d} value={d.toString()}>
-                          {d} {d === 1 ? "hour" : "hours"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
+            {/* Add-ons */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Add-ons (Optional)</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Optional Add-ons</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="clubs"
-                      checked={golfClubRental}
-                      onCheckedChange={(checked) => setGolfClubRental(checked as boolean)}
-                    />
-                    <Label htmlFor="clubs" className="text-sm cursor-pointer">
-                      Golf Club Rental
-                    </Label>
-                  </div>
-                  <span className="text-sm font-bold">R100</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="coaching"
-                      checked={coachingSession}
-                      onCheckedChange={(checked) => setCoachingSession(checked as boolean)}
-                    />
-                    <Label htmlFor="coaching" className="text-sm cursor-pointer">
-                      Coaching Session
-                    </Label>
-                  </div>
-                  <span className="text-sm font-bold">R450</span>
-                </div>
+                <button
+                  onClick={() => setGolfClubRental(!golfClubRental)}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                    golfClubRental ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <span className="font-medium">Golf Club Rental</span>
+                  <span className="text-primary font-bold">+R100</span>
+                </button>
+                <button
+                  onClick={() => setCoachingSession(!coachingSession)}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                    coachingSession ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <span className="font-medium">Coaching Session</span>
+                  <span className="text-primary font-bold">+R450</span>
+                </button>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-primary">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-base font-medium">Total Price</span>
-                  <span className="text-2xl font-bold text-primary">R{calculatePrice()}</span>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div className="flex justify-between">
-                    <span>
-                      Session ({playerCount} players × {duration}h)
-                    </span>
-                    <span>R{calculatePrice() - (golfClubRental ? 100 : 0) - (coachingSession ? 450 : 0)}</span>
-                  </div>
-                  {golfClubRental && (
-                    <div className="flex justify-between">
-                      <span>Golf clubs</span>
-                      <span>R100</span>
-                    </div>
-                  )}
-                  {coachingSession && (
-                    <div className="flex justify-between">
-                      <span>Coaching</span>
-                      <span>R450</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-3">
-              <Button onClick={() => setStep(1)} variant="outline" className="flex-1 h-12">
-                Back
-              </Button>
-              <Button onClick={handleContinue} disabled={!canContinue()} className="flex-1 h-12 font-semibold">
-                Confirm Booking
-              </Button>
+            {/* Summary */}
+            <div className="bg-gradient-to-r from-primary to-primary/90 rounded-xl p-4 text-white">
+              <p className="text-sm opacity-80 mb-1">Session Total</p>
+              <p className="text-3xl font-bold">R{calculatePrice().toLocaleString()}</p>
             </div>
           </div>
         )}
+
+        {/* Navigation Buttons */}
+        <div className="flex gap-3 mt-6">
+          {step > 1 && (
+            <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1 h-12">
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          )}
+          <Button
+            onClick={handleContinue}
+            disabled={!canContinue()}
+            className="flex-1 h-12 bg-secondary hover:bg-secondary/90 text-white"
+          >
+            {step === 2 ? "Continue to Payment" : "Next"}
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+
+        {/* Operating Hours Notice */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-muted-foreground">Mon-Fri: 9AM-8PM • Sat: 8AM-8PM • Sun: 10AM-4PM</p>
+        </div>
       </div>
     </div>
   )
 }
+
+export { BookingFlow }
