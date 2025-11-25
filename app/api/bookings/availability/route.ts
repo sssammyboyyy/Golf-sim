@@ -1,6 +1,6 @@
-export const runtime = "nodejs"
-
 import { type NextRequest, NextResponse } from "next/server"
+
+export const runtime = 'edge';
 
 // This is safe because we only expose start_time data, not user info
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
