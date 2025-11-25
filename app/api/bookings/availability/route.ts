@@ -1,12 +1,11 @@
 export const runtime = "nodejs"
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const dateParam = searchParams.get("date")
-    const duration = Number.parseFloat(searchParams.get("duration") || "1")
 
     if (!dateParam) {
       return NextResponse.json({ error: "Date parameter is required" }, { status: 400 })
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     const requestDate = new Date(dateParam)
     const formattedDate = requestDate.toISOString().split("T")[0]
 
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     // Fetch all bookings for the specified date that are not cancelled
     const { data: bookings, error } = await supabase
@@ -26,17 +25,26 @@ export async function GET(request: NextRequest) {
       .neq("status", "cancelled")
 
     if (error) {
-      console.error("[v0] Error fetching bookings:", error)
-      throw error
+      console.error("[v0] Supabase error:", error.message, error.code)
+      return NextResponse.json(
+        {
+          error: "Database error",
+          details: error.message,
+          bookedSlots: [],
+        },
+        { status: 500 },
+      )
     }
 
     // Convert bookings to time slot strings (HH:MM format)
     const bookedSlots =
-      bookings?.map((booking) => {
-        // Extract just HH:MM from the time
-        const startTime = booking.start_time.substring(0, 5)
-        return startTime
-      }) || []
+      bookings
+        ?.map((booking) => {
+          // Extract just HH:MM from the time
+          const startTime = booking.start_time?.substring(0, 5) || ""
+          return startTime
+        })
+        .filter(Boolean) || []
 
     return NextResponse.json({
       bookedSlots,
@@ -44,7 +52,15 @@ export async function GET(request: NextRequest) {
       totalBookings: bookings?.length || 0,
     })
   } catch (error) {
-    console.error("[v0] Availability API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    console.error("[v0] Availability API error:", errorMessage)
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: errorMessage,
+        bookedSlots: [],
+      },
+      { status: 500 },
+    )
   }
 }
