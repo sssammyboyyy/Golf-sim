@@ -7,9 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, Clock, Users, Sparkles, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Users } from "lucide-react"
 import Link from "next/link"
 
 export function BookingConfirmation() {
@@ -25,7 +24,6 @@ export function BookingConfirmation() {
   const [couponApplied, setCouponApplied] = useState(false)
   const [couponDiscount, setCouponDiscount] = useState(0)
 
-  // Get booking details from URL params
   const players = searchParams.get("players") || "1"
   const sessionType = searchParams.get("type") || "quickplay"
   const famousOption = searchParams.get("famousOption") || ""
@@ -38,15 +36,13 @@ export function BookingConfirmation() {
 
   const getDepositAmount = () => {
     if (sessionType === "famous-course") {
-      if (famousOption === "4-ball") return 600 // R150/person x 4 = R600/hour deposit
-      if (famousOption === "3-ball") return 450 // R150/person x 3 = R450/hour deposit
+      if (famousOption === "4-ball") return 600
+      if (famousOption === "3-ball") return 450
     }
-    return basePrice // For quick play, full amount is due
+    return basePrice
   }
 
   const depositAmount = getDepositAmount()
-  const remainderAmount = sessionType === "famous-course" ? basePrice - depositAmount : 0
-
   const totalPrice = couponApplied ? basePrice - couponDiscount : basePrice
 
   const applyCoupon = async () => {
@@ -136,357 +132,226 @@ export function BookingConfirmation() {
     }
   }
 
-  const getSessionDescription = () => {
-    if (sessionType === "famous-course") {
-      if (famousOption === "4-ball") {
-        return "18-Hole Famous Course • 4-Ball Special"
-      }
-      if (famousOption === "3-ball") {
-        return "18-Hole Famous Course • 3-Ball"
-      }
-      return "18-Hole Famous Course"
-    }
-    return "Quick Play Session"
-  }
-
-  const getMinimumHours = () => {
-    if (sessionType === "famous-course") {
-      if (famousOption === "4-ball") return 4
-      if (famousOption === "3-ball") return 3
-    }
-    return 1
-  }
-
   return (
-    <div className="min-h-screen py-4 sm:py-8 md:py-12 bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-3 sm:px-4 mb-4 sm:mb-6 md:mb-8">
+    <div className="min-h-screen py-6 sm:py-8 md:py-12 bg-background">
+      <div className="container mx-auto px-4 max-w-2xl">
         <Link
           href="/booking"
-          className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-4 group"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
         >
-          <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Back to Booking</span>
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Booking</span>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 shadow-md">
-            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground leading-tight">
-              Confirm Booking
-            </h1>
-            <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 leading-snug">Review details and pay</p>
-          </div>
+        <div className="mb-8">
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground mb-2">Confirm Booking</h1>
+          <p className="text-sm text-muted-foreground">Review details and complete payment</p>
         </div>
-      </div>
 
-      <div className="container mx-auto px-3 sm:px-4">
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            <Card className="border-2 shadow-xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-secondary/10 to-secondary/5 border-b-2 border-secondary/20 pb-3 sm:pb-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-secondary/20 border border-secondary/30">
-                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg md:text-xl font-bold leading-tight">
-                      Booking Summary
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">{getSessionDescription()}</CardDescription>
-                  </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Booking Summary</CardTitle>
+              <CardDescription className="text-sm">
+                {sessionType === "famous-course"
+                  ? `18-Hole Famous Course • ${famousOption === "4-ball" ? "4-Ball" : "3-Ball"}`
+                  : "Quick Play Session"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Players</span>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-4 sm:pt-6">
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-lg bg-muted/50 border border-muted-foreground/10">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/20 border border-primary/30">
-                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Players</p>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-foreground">
-                      {players} {Number.parseInt(players) === 1 ? "Player" : "Players"}
-                    </p>
-                  </div>
+                <span className="font-bold">{players}</span>
+              </div>
 
-                  <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-lg bg-muted/50 border border-muted-foreground/10">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/20 border border-secondary/30">
-                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Duration</p>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-foreground">
-                      {duration} {Number.parseFloat(duration) === 1 ? "Hour" : "Hours"}
-                    </p>
-                  </div>
-
-                  <div className="col-span-2 flex flex-col gap-2 p-3 sm:p-4 rounded-lg bg-muted/50 border border-muted-foreground/10">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/20 border border-primary/30">
-                        <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Date & Time</p>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-foreground break-words leading-snug">
-                      {new Date(date).toLocaleDateString("en-ZA", {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}{" "}
-                      at {time}
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Duration</span>
                 </div>
+                <span className="font-bold">{duration} hours</span>
+              </div>
 
-                {/* Add-ons */}
-                {(golfClubs || coaching) && (
-                  <>
-                    <Separator className="my-4 sm:my-6" />
-                    <div className="space-y-2 sm:space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base text-foreground">Add-ons</h3>
-                      <div className="space-y-2">
-                        {golfClubs && (
-                          <div className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-                            <span className="text-xs sm:text-sm font-medium text-foreground">Golf Club Rental</span>
-                            <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                              R100
-                            </Badge>
-                          </div>
-                        )}
-                        {coaching && (
-                          <div className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/20">
-                            <span className="text-xs sm:text-sm font-medium text-foreground">Coaching Session</span>
-                            <Badge variant="default" className="text-[10px] sm:text-xs">
-                              R450
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 shadow-xl">
-              <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-secondary/5 pb-3 sm:pb-4">
-                <CardTitle className="font-serif text-base sm:text-lg md:text-xl">Your Details</CardTitle>
-                <CardDescription className="text-xs sm:text-sm mt-1">Confirmation via WhatsApp & email</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label htmlFor="name" className="text-xs sm:text-sm font-semibold">
-                    Full Name *
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    required
-                    className="h-10 sm:h-12 text-sm sm:text-base border-2 focus:border-primary"
-                  />
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Date & Time</span>
                 </div>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label htmlFor="email" className="text-xs sm:text-sm font-semibold">
-                    Email Address *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    required
-                    className="h-10 sm:h-12 text-sm sm:text-base border-2 focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label htmlFor="phone" className="text-xs sm:text-sm font-semibold">
-                    Phone (WhatsApp) *
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+27 12 345 6789"
-                    value={guestPhone}
-                    onChange={(e) => setGuestPhone(e.target.value)}
-                    required
-                    className="h-10 sm:h-12 text-sm sm:text-base border-2 focus:border-primary"
-                  />
-                </div>
+                <span className="font-bold text-sm text-right">
+                  {new Date(date).toLocaleDateString("en-ZA", {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  at {time}
+                </span>
+              </div>
 
-                <Separator className="my-4 sm:my-6" />
-
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border-2 border-border hover:border-primary/50 transition-all bg-background">
-                    <Checkbox
-                      id="whatsapp"
-                      checked={acceptWhatsApp}
-                      onCheckedChange={(checked) => setAcceptWhatsApp(checked as boolean)}
-                      className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
-                    />
-                    <Label
-                      htmlFor="whatsapp"
-                      className="text-xs sm:text-sm cursor-pointer leading-relaxed flex-1 min-w-0"
-                    >
-                      <span className="font-bold text-sm sm:text-base text-foreground block mb-0.5 sm:mb-1">
-                        WhatsApp confirmations *
-                      </span>
-                      <span className="block text-muted-foreground leading-snug">
-                        Required for booking updates (POPIA compliant)
-                      </span>
-                    </Label>
-                  </div>
-
-                  <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border-2 border-border hover:border-secondary/50 transition-all bg-background">
-                    <Checkbox
-                      id="competition"
-                      checked={enterCompetition}
-                      onCheckedChange={(checked) => setEnterCompetition(checked as boolean)}
-                      className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
-                    />
-                    <Label
-                      htmlFor="competition"
-                      className="text-xs sm:text-sm cursor-pointer leading-relaxed flex-1 min-w-0"
-                    >
-                      <span className="font-bold text-sm sm:text-base text-foreground block mb-0.5 sm:mb-1">
-                        Monthly competitions
-                      </span>
-                      <span className="block text-muted-foreground leading-snug">Compete for prizes & rewards</span>
-                    </Label>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-1">
-            <Card className="border-2 shadow-2xl lg:sticky lg:top-8">
-              <CardHeader className="border-b bg-gradient-to-br from-secondary/10 to-primary/10 pb-3 sm:pb-4">
-                <CardTitle className="font-serif text-base sm:text-lg md:text-xl">Price Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground font-medium">{getSessionDescription()}</span>
-                    <span className="font-bold text-foreground">R{basePrice.toFixed(2)}</span>
-                  </div>
-
-                  {sessionType === "famous-course" && (
-                    <div className="p-3 sm:p-4 bg-secondary/10 border-2 border-secondary/30 rounded-xl">
-                      <p className="text-[10px] sm:text-xs font-bold text-secondary mb-1 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
-                        <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                        Deposit Payment
-                      </p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
-                        Paying <span className="font-bold text-secondary">R{depositAmount.toFixed(2)}</span> deposit
-                        now. Balance <span className="font-bold text-secondary">R{remainderAmount.toFixed(2)}</span>{" "}
-                        in-store.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground font-medium">
-                      {players} Player{Number.parseInt(players) > 1 ? "s" : ""} × {duration}h
-                    </span>
-                    <span className="font-bold text-foreground">Included</span>
-                  </div>
-
+              {(golfClubs || coaching) && (
+                <div className="pt-3 border-t space-y-2">
                   {golfClubs && (
-                    <div className="flex justify-between text-xs sm:text-sm p-2 sm:p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground font-medium">Golf Clubs</span>
-                      <span className="font-bold text-foreground">R100</span>
+                    <div className="flex justify-between text-sm">
+                      <span>Golf Club Rental</span>
+                      <Badge variant="secondary">R100</Badge>
                     </div>
                   )}
-
                   {coaching && (
-                    <div className="flex justify-between text-xs sm:text-sm p-2 sm:p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground font-medium">Coaching</span>
-                      <span className="font-bold text-foreground">R450</span>
+                    <div className="flex justify-between text-sm">
+                      <span>Coaching Session</span>
+                      <Badge variant="default">R450</Badge>
                     </div>
                   )}
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <Separator />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Your Details</CardTitle>
+              <CardDescription className="text-sm">We'll send confirmation via WhatsApp</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="name" className="text-sm mb-2 block">
+                  Full Name *
+                </Label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  className="h-11"
+                />
+              </div>
 
-                <div className="space-y-2 sm:space-y-3">
-                  <Label htmlFor="coupon" className="text-xs sm:text-sm font-semibold">
-                    Coupon Code
+              <div>
+                <Label htmlFor="email" className="text-sm mb-2 block">
+                  Email Address *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone" className="text-sm mb-2 block">
+                  Phone Number (WhatsApp) *
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+27 12 345 6789"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="pt-4 space-y-3">
+                <div className="flex items-start gap-3 p-3 rounded-lg border">
+                  <Checkbox
+                    id="whatsapp"
+                    checked={acceptWhatsApp}
+                    onCheckedChange={(checked) => setAcceptWhatsApp(checked as boolean)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="whatsapp" className="text-sm cursor-pointer leading-relaxed flex-1">
+                    <span className="font-bold block mb-1">Accept WhatsApp confirmations *</span>
+                    <span className="text-xs text-muted-foreground">Required for booking updates</span>
                   </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="coupon"
-                      placeholder="Enter code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      disabled={couponApplied}
-                      className="h-9 sm:h-10 text-xs sm:text-sm border-2"
-                    />
-                    <Button
-                      onClick={applyCoupon}
-                      variant="outline"
-                      disabled={couponApplied || !couponCode.trim()}
-                      size="lg"
-                      className="font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 bg-transparent"
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                  {couponApplied && (
-                    <p className="text-xs sm:text-sm text-secondary flex items-center gap-1.5 sm:gap-2 font-semibold">
-                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      Coupon applied
-                    </p>
-                  )}
                 </div>
 
-                {couponApplied && couponDiscount > 0 && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-between text-xs sm:text-sm text-secondary font-bold">
-                      <span>Discount</span>
-                      <span>-R{couponDiscount.toFixed(2)}</span>
-                    </div>
-                  </>
+                <div className="flex items-start gap-3 p-3 rounded-lg border">
+                  <Checkbox
+                    id="competition"
+                    checked={enterCompetition}
+                    onCheckedChange={(checked) => setEnterCompetition(checked as boolean)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="competition" className="text-sm cursor-pointer leading-relaxed flex-1">
+                    <span className="font-bold block mb-1">Enter monthly competitions</span>
+                    <span className="text-xs text-muted-foreground">Compete for prizes and free sessions</span>
+                  </Label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary">
+            <CardHeader>
+              <CardTitle className="text-lg">Total Price</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-base font-medium">Amount Due</span>
+                <span className="text-3xl font-bold text-primary">R{totalPrice}</span>
+              </div>
+
+              {sessionType === "famous-course" && (
+                <div className="p-3 bg-secondary/10 rounded-lg border border-secondary/30 mb-4">
+                  <p className="text-xs font-bold text-secondary mb-1">Deposit Payment</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pay R{depositAmount} now, remaining R{basePrice - depositAmount} in-store
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>
+                    Session ({players} players × {duration}h)
+                  </span>
+                  <span>R{basePrice}</span>
+                </div>
+                {couponApplied && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Coupon discount</span>
+                    <span>-R{couponDiscount}</span>
+                  </div>
                 )}
+              </div>
 
-                <Separator />
-
-                <div className="p-4 sm:p-5 bg-gradient-to-br from-secondary/15 to-primary/15 rounded-xl border-2 border-secondary/30">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs sm:text-sm font-semibold text-muted-foreground">
-                      {sessionType === "famous-course" ? "Deposit Due" : "Total"}
-                    </span>
-                    <span className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-                      R{sessionType === "famous-course" ? depositAmount.toFixed(2) : totalPrice.toFixed(2)}
-                    </span>
-                  </div>
-                  {sessionType === "famous-course" && (
-                    <p className="text-[10px] sm:text-xs text-muted-foreground text-center mt-2">
-                      Balance R{remainderAmount.toFixed(2)} in-store
-                    </p>
-                  )}
+              <div className="mt-4 pt-4 border-t">
+                <Label htmlFor="coupon" className="text-xs mb-2 block">
+                  Coupon Code (Optional)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="coupon"
+                    placeholder="Enter code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    disabled={couponApplied}
+                    className="h-10 text-sm"
+                  />
+                  <Button
+                    onClick={applyCoupon}
+                    variant="outline"
+                    disabled={couponApplied || !couponCode.trim()}
+                    size="sm"
+                  >
+                    Apply
+                  </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                <Button
-                  onClick={handlePayment}
-                  disabled={isProcessing || !guestName || !guestEmail || !guestPhone || !acceptWhatsApp}
-                  size="lg"
-                  className="w-full font-bold h-12 sm:h-14 text-sm sm:text-base shadow-lg hover:shadow-xl transition-all"
-                >
-                  {isProcessing ? "Processing..." : "Complete Booking"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <Button
+            onClick={handlePayment}
+            disabled={isProcessing || !guestName || !guestEmail || !guestPhone || !acceptWhatsApp}
+            className="w-full h-12 text-base font-semibold"
+          >
+            {isProcessing ? "Processing..." : `Pay R${sessionType === "famous-course" ? depositAmount : totalPrice}`}
+          </Button>
         </div>
       </div>
     </div>
