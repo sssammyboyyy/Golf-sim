@@ -123,12 +123,15 @@ export default function BookingFlow() {
     setIsCheckingAvailability(true)
     try {
       const response = await fetch(`/api/bookings/availability?date=${date.toISOString()}&duration=${duration}`)
-      if (response.ok) {
-        const data = await response.json()
-        setBookedSlots(data.bookedSlots || [])
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
       }
+      const data = await response.json()
+      setBookedSlots(data.bookedSlots || [])
     } catch (error) {
-      console.error("Error fetching availability:", error)
+      console.error("[v0] Error fetching availability:", error)
+      // Set empty array on error to prevent blocking the UI
+      setBookedSlots([])
     } finally {
       setIsCheckingAvailability(false)
     }
