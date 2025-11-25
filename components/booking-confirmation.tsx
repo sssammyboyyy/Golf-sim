@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, Clock, Users, Sparkles, Trophy, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Users, Sparkles, Trophy, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 export function BookingConfirmation() {
@@ -36,8 +36,8 @@ export function BookingConfirmation() {
 
   const getDepositAmount = () => {
     if (sessionType === "famous-course") {
-      if (famousOption === "4-ball") return 400
-      if (famousOption === "3-ball") return 300
+      if (famousOption === "4-ball") return 600 // Updated deposit for R150/person pricing
+      if (famousOption === "3-ball") return 450 // Updated deposit for R150/person pricing
     }
     return basePrice // For quick play, full amount is due
   }
@@ -125,7 +125,6 @@ export function BookingConfirmation() {
 
       // CASE 3: Something went wrong
       throw new Error(data.error || "Failed to initialize booking")
-
     } catch (error) {
       console.error("Payment error:", error)
       alert(error instanceof Error ? error.message : "Failed to process booking")
@@ -178,9 +177,14 @@ export function BookingConfirmation() {
                     <p className="text-sm text-muted-foreground">Session Type</p>
                     <p className="font-semibold text-foreground">{getSessionDescription()}</p>
                     {sessionType === "famous-course" && (
-                      <Badge className="mt-2 bg-secondary/20 text-secondary border-0">
-                        Augusta National & Pro Tee Famous Courses
-                      </Badge>
+                      <>
+                        <Badge className="mt-2 bg-secondary/20 text-secondary border-0">
+                          Augusta National, St. Andrews & 5000+ Pro Tee Famous Courses
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Golf club rental available: R100 (payable in-store)
+                        </p>
+                      </>
                     )}
                   </div>
                 </div>
@@ -315,7 +319,8 @@ export function BookingConfirmation() {
                     <div className="p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
                       <p className="text-xs font-semibold text-secondary mb-1">Deposit Payment</p>
                       <p className="text-xs text-muted-foreground">
-                        You're paying R{depositAmount.toFixed(2)} deposit now. Pay remaining R{remainderAmount.toFixed(2)} in-store.
+                        You're paying R{depositAmount.toFixed(2)} deposit now. Pay remaining R
+                        {remainderAmount.toFixed(2)} in-store.
                       </p>
                     </div>
                   )}
@@ -379,9 +384,7 @@ export function BookingConfirmation() {
                     {sessionType === "famous-course" ? "Deposit Due Today" : "Total"}
                   </span>
                   <span className="text-foreground">
-                    {sessionType === "famous-course" 
-                      ? `R${depositAmount.toFixed(2)}`
-                      : `R${totalPrice.toFixed(2)}`}
+                    {sessionType === "famous-course" ? `R${depositAmount.toFixed(2)}` : `R${totalPrice.toFixed(2)}`}
                   </span>
                 </div>
                 {sessionType === "famous-course" && (
@@ -395,9 +398,7 @@ export function BookingConfirmation() {
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
                   size="lg"
                 >
-                  {isProcessing
-                    ? "Processing..."
-                    : "Confirm Booking"}
+                  {isProcessing ? "Processing..." : "Confirm Booking"}
                 </Button>
                 {!couponApplied && (
                   <p className="text-xs text-muted-foreground text-center">

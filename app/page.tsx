@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, MapPin, Trophy, Target, Sparkles, CheckCircle2, Phone, Star, Check } from "lucide-react"
+import BayStatusDisplay from "@/components/BayStatusDisplay"
 
 export default function HomePage() {
   return (
@@ -137,7 +138,7 @@ export default function HomePage() {
                 className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-primary h-16 px-10 rounded-full font-bold shadow-xl hover:scale-105 transition-all duration-300"
               >
                 <Link href="#special-offer">
-                  4-Ball Special: R100/person
+                  4-Ball Special: R150/person
                   <span className="ml-2 text-xl">⚡</span>
                 </Link>
               </Button>
@@ -160,7 +161,7 @@ export default function HomePage() {
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span className="font-semibold">Open Mon-Sat, 9AM-8PM</span>
+                <span className="font-semibold">Open Mon-Fri 9AM-8PM, Sat 8AM-8PM, Sun 10AM-4PM</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,6 +197,22 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="py-8 sm:py-12 bg-gradient-to-b from-background to-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2">
+                Live Bay Availability
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Real-time status • Walk-ins welcome • Book online to guarantee your bay
+              </p>
+            </div>
+            <BayStatusDisplay />
+          </div>
+        </div>
+      </section>
+
       <section id="special-offer" className="py-12 sm:py-16 md:py-20 bg-secondary/5">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
@@ -214,7 +231,7 @@ export default function HomePage() {
             <Card className="border-2 border-secondary/20 shadow-xl bg-card hover:shadow-2xl transition-all duration-300">
               <CardHeader className="text-center pb-4 sm:pb-6 pt-6 sm:pt-8 px-4 sm:px-6">
                 <CardTitle className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3">
-                  R100 per person/hour
+                  R150 per person/hour
                 </CardTitle>
                 <CardDescription className="text-base sm:text-lg text-muted-foreground">
                   Play iconic courses like Augusta National, Pebble Beach, and Pine Valley
@@ -264,7 +281,7 @@ export default function HomePage() {
                     <Link href="/booking">Book 4-Ball Special</Link>
                   </Button>
                   <p className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4">
-                    Total: R1,200 for 3 hours (R400 deposit, R800 in-store)
+                    Total: R600 for 3 hours (R200 deposit, R400 in-store)
                   </p>
                 </div>
               </CardContent>
@@ -381,7 +398,7 @@ export default function HomePage() {
               Quick Play Sessions
             </h2>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
-              Perfect for practice rounds and casual play
+              Perfect for practice rounds and casual play • Add club rental for R100
             </p>
           </div>
 
@@ -511,7 +528,7 @@ export default function HomePage() {
                 Visit Us in Vanderbijlpark
               </h2>
               <p className="text-muted-foreground text-lg">
-                Walk-ins welcome • Book online for guaranteed bay • Mon-Sat 9AM-8PM
+                Walk-ins welcome • Book online for guaranteed bay • Mon-Fri 9AM-8PM, Sat 8AM-8PM, Sun 10AM-4PM
               </p>
             </div>
 
@@ -535,8 +552,9 @@ export default function HomePage() {
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">Operating Hours</p>
-                        <p className="text-sm text-muted-foreground">Monday - Saturday: 9AM - 8PM</p>
-                        <p className="text-sm text-muted-foreground">Sunday: Closed</p>
+                        <p className="text-sm text-muted-foreground">Monday - Friday: 9AM - 8PM</p>
+                        <p className="text-sm text-muted-foreground">Saturday: 8AM - 8PM</p>
+                        <p className="text-sm text-muted-foreground">Sunday: 10AM - 4PM</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -607,7 +625,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="text-center md:text-right">
-              <p className="text-sm font-semibold text-foreground mb-1">Mon-Sat: 9AM - 8PM</p>
+              <p className="text-sm font-semibold text-foreground mb-1">Mon-Fri: 9AM - 8PM</p>
               <p className="text-sm text-muted-foreground">38A Chopin St, Vanderbijlpark S. W. 5</p>
               <p className="text-sm text-muted-foreground">Vanderbijlpark, 1911</p>
             </div>

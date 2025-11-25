@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     const supabase = await createClient()
-    
+
     // 1. Sanitize Coupon Code (Remove whitespace)
     const cleanCouponCode = coupon_code ? coupon_code.trim() : null
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
       if (couponData) {
         couponApplied = cleanCouponCode
-        
+
         // ADMIN BYPASS LOGIC
         if (couponData.code === "MULLIGAN_ADMIN_100") {
           console.log("Admin Coupon Detected: Bypassing Payment")
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           dbPaymentStatus = "paid_instore" // Mark as paid via admin/cash/card-machine
           dbStatus = "confirmed"
           skipYoco = true
-        } 
+        }
         // 100% DISCOUNT LOGIC
         else if (couponData.discount_percent === 100) {
           dbTotalPrice = 0
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Insert Booking
     const endTime = calculateEndTime(start_time, duration_hours)
-    
+
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
     // 5. Calculate Deposit/Charge Amount
     const getDepositAmount = () => {
       if (session_type === "famous-course") {
-        if (famous_course_option === "4-ball") return 400
-        if (famous_course_option === "3-ball") return 300
+        if (famous_course_option === "4-ball") return 600 // Updated from 400 to 600 (R150/person x 4)
+        if (famous_course_option === "3-ball") return 450 // Updated from 300 to 450 (R150/person x 3)
       }
       return dbTotalPrice
     }
@@ -167,7 +167,6 @@ export async function POST(request: NextRequest) {
       redirectUrl: yocoData.redirectUrl,
       booking_id: booking.id,
     })
-
   } catch (error) {
     console.error("Server Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

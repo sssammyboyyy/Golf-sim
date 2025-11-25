@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Calendar, Clock, Users, Mail, Home, MapPin, Phone } from 'lucide-react'
+import { CheckCircle2, Calendar, Clock, Users, Mail, Home, MapPin, Phone } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
 
@@ -70,8 +70,8 @@ export function BookingSuccess() {
 
   const getDepositAmount = () => {
     if (booking.session_type === "famous-course") {
-      if (booking.famous_course_option === "4-ball") return 400
-      if (booking.famous_course_option === "3-ball") return 300
+      if (booking.famous_course_option === "4-ball") return 600 // Updated from 400 to 600
+      if (booking.famous_course_option === "3-ball") return 450 // Updated from 300 to 450
     }
     return booking.total_price
   }
@@ -186,7 +186,7 @@ export function BookingSuccess() {
                 38A Chopin St, Vanderbijlpark S. W. 5, Vanderbijlpark, 1911, South Africa
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button variant="outline" size="sm" asChild className="flex-1">
+                <Button variant="outline" size="sm" asChild className="flex-1 bg-transparent">
                   <a
                     href="https://www.google.com/maps/search/?api=1&query=38A+Chopin+St+Vanderbijlpark+S.+W.+5+Vanderbijlpark+1911+South+Africa"
                     target="_blank"
@@ -196,7 +196,7 @@ export function BookingSuccess() {
                     Get Directions
                   </a>
                 </Button>
-                <Button variant="outline" size="sm" asChild className="flex-1">
+                <Button variant="outline" size="sm" asChild className="flex-1 bg-transparent">
                   <a href="tel:+27123456789">
                     <Phone className="w-4 h-4 mr-2" />
                     Call Us
@@ -269,7 +269,8 @@ export function BookingSuccess() {
                 <div>
                   <p className="font-semibold text-foreground mb-1">Need to Reschedule?</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Contact us at least 2 hours before your session to reschedule or cancel. We're here to help make it easy!
+                    Contact us at least 2 hours before your session to reschedule or cancel. We're here to help make it
+                    easy!
                   </p>
                 </div>
               </div>

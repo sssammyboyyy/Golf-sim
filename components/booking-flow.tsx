@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Users, Clock, CalendarIcon, Trophy, AlertTriangle, Sparkles } from 'lucide-react'
+import { ArrowLeft, Users, Clock, CalendarIcon, Trophy, AlertTriangle, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 
 type SessionType = "famous-course" | "quickplay"
 type FamousCourseOption = "4-ball" | "3-ball" | null
@@ -31,7 +31,7 @@ export function BookingFlow() {
   const getMinimumHours = () => {
     if (sessionType === "famous-course") {
       if (famousCourseOption === "4-ball") return 3
-      if (famousCourseOption === "3-ball") return 2
+      if (famousCourseOption === "3-ball") return 3 // Changed from 2 to 3 hours to match 4-ball logic
     }
     return 1
   }
@@ -39,10 +39,10 @@ export function BookingFlow() {
   const calculatePrice = () => {
     if (sessionType === "famous-course") {
       if (famousCourseOption === "4-ball") {
-        return 100 * 4 * duration // R100 per person per hour, 4 people
+        return 150 * 4 * duration // Updated from R100 to R150 per person per hour, 4 people
       }
       if (famousCourseOption === "3-ball") {
-        return 120 * 3 * duration // R120 per person per hour, 3 people
+        return 150 * 3 * duration // Updated to R150 per person per hour to match 4-ball pricing, 3 people
       }
     } else {
       // Quick Play pricing
@@ -125,7 +125,7 @@ export function BookingFlow() {
         setDuration(Math.max(duration, 3))
       } else if (famousCourseOption === "3-ball") {
         setPlayerCount(3)
-        setDuration(Math.max(duration, 2))
+        setDuration(Math.max(duration, 3)) // Changed from 2 to 3 to match 4-ball logic
       }
     }
   }, [famousCourseOption, sessionType])
@@ -308,9 +308,9 @@ export function BookingFlow() {
                                     className="w-4 h-4 text-secondary"
                                   />
                                   <div>
-                                    <p className="font-medium text-foreground">4-Ball Special: R100/person/hour</p>
+                                    <p className="font-medium text-foreground">4-Ball Special: R150/person/hour</p>
                                     <p className="text-xs text-muted-foreground">
-                                      4 players • 3-hour minimum • R400 deposit, remainder in-store
+                                      4 players • 3-hour minimum • R1800 total (R450/person)
                                     </p>
                                   </div>
                                 </Label>
@@ -323,9 +323,9 @@ export function BookingFlow() {
                                     className="w-4 h-4 text-secondary"
                                   />
                                   <div>
-                                    <p className="font-medium text-foreground">3-Ball: R120/person/hour</p>
+                                    <p className="font-medium text-foreground">3-Ball: R150/person/hour</p>
                                     <p className="text-xs text-muted-foreground">
-                                      3 players • 2-hour minimum • R300 deposit, remainder in-store
+                                      3 players • 3-hour minimum • R1350 total (R450/person)
                                     </p>
                                   </div>
                                 </Label>
@@ -434,7 +434,7 @@ export function BookingFlow() {
                     }}
                     className="rounded-md border"
                   />
-                  <p className="text-sm text-muted-foreground mt-2">Open Monday - Saturday, 9AM - 8PM</p>
+                  <p className="text-sm text-muted-foreground mt-2">Mon-Fri: 9AM-8PM • Sat: 8AM-8PM • Sun: 10AM-4PM</p>
                 </CardContent>
               </Card>
 
@@ -506,11 +506,11 @@ export function BookingFlow() {
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
-                          {[1, 1.5, 2, 2.5, 3, 3.5, 4].map((hours) => {
+                          {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((hours) => {
                             const disabled = hours < getMinimumHours()
                             return (
                               <SelectItem key={hours} value={hours.toString()} disabled={disabled}>
-                                {hours} hour{hours > 1 ? "s" : ""}
+                                {hours} hour{hours !== 1 ? "s" : ""}
                                 {disabled && " (below minimum)"}
                               </SelectItem>
                             )
