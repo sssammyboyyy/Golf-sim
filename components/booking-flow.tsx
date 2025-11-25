@@ -237,8 +237,8 @@ export function BookingFlow() {
   const timeSlots = generateTimeSlots()
 
   return (
-    <div className="min-h-screen py-12 md:py-16 bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 mb-10">
+    <div className="min-h-screen py-8 md:py-12 lg:py-16 bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 sm:px-6 mb-8 md:mb-10">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-6 group"
@@ -247,29 +247,31 @@ export function BookingFlow() {
           <span className="font-medium">Back to Home</span>
         </Link>
 
-        <div className="flex items-center gap-4 mb-3">
-          <div className="icon-container-primary">
-            <Trophy className="w-7 h-7 text-primary" />
+        <div className="flex items-start sm:items-center gap-3 md:gap-4">
+          <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/10 border border-secondary/20 shadow-md">
+            <Trophy className="w-6 h-6 md:w-7 md:h-7 text-secondary" />
           </div>
-          <div>
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
               Book Your Session
             </h1>
-            <p className="text-muted-foreground text-sm md:text-base mt-1">Complete your booking in 2 simple steps</p>
+            <p className="text-muted-foreground text-sm md:text-base mt-1 leading-relaxed">
+              Complete your booking in 2 simple steps
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 mb-10">
+      <div className="container mx-auto px-4 sm:px-6 mb-8 md:mb-10">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
           {[1, 2].map((s) => (
             <div key={s} className="flex items-center flex-1">
               <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold transition-all duration-500 ${
+                className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sm font-bold transition-all duration-500 shadow-md ${
                   s === step
-                    ? "bg-secondary text-secondary-foreground shadow-lg shadow-secondary/30 scale-110"
+                    ? "bg-secondary text-white shadow-lg shadow-secondary/30 scale-110"
                     : s < step
-                      ? "bg-primary text-primary-foreground shadow-md"
+                      ? "bg-primary text-white shadow-md"
                       : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -277,7 +279,7 @@ export function BookingFlow() {
               </div>
               {s < 2 && (
                 <div
-                  className={`flex-1 h-1.5 mx-3 rounded-full transition-all duration-500 ${
+                  className={`flex-1 h-1.5 mx-2 sm:mx-3 rounded-full transition-all duration-500 ${
                     s < step ? "bg-primary shadow-sm" : "bg-muted"
                   }`}
                 />
@@ -285,66 +287,73 @@ export function BookingFlow() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between max-w-3xl mx-auto mt-3">
-          <span className="text-xs md:text-sm font-medium text-muted-foreground">Session Type</span>
-          <span className="text-xs md:text-sm font-medium text-muted-foreground">Date & Time</span>
+        <div className="flex justify-between max-w-3xl mx-auto mt-3 px-1">
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground">Session Type</span>
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground">Date & Time</span>
         </div>
       </div>
 
       {/* Error Display */}
       {validationError && (
-        <div className="container mx-auto px-4 mb-8">
+        <div className="container mx-auto px-4 sm:px-6 mb-6 md:mb-8">
           <div className="max-w-3xl mx-auto">
             <Alert
               variant="destructive"
               className="border-2 shadow-lg animate-in fade-in slide-in-from-top-2 duration-500"
             >
-              <AlertTriangle className="h-5 w-5" />
-              <AlertDescription className="ml-2 font-medium">{validationError}</AlertDescription>
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <AlertDescription className="ml-2 font-medium text-sm leading-relaxed">
+                {validationError}
+              </AlertDescription>
             </Alert>
           </div>
         </div>
       )}
 
       {/* Step Content */}
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
           {step === 1 && (
-            <div className="space-y-8">
-              <Card className="border-2 shadow-xl transition-all duration-300 hover:shadow-2xl">
+            <div className="space-y-6 md:space-y-8">
+              <Card className="border-2 shadow-xl transition-all duration-300 hover:shadow-2xl overflow-hidden">
                 <CardHeader className="pb-6">
-                  <CardTitle className="font-serif text-2xl md:text-3xl">Select Your Experience</CardTitle>
-                  <CardDescription className="text-base mt-2">
+                  <CardTitle className="font-serif text-2xl sm:text-3xl">Select Your Experience</CardTitle>
+                  <CardDescription className="text-sm md:text-base mt-2 leading-relaxed">
                     Choose between Famous Course 18-hole or Quick Play sessions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-2 border-secondary/40 bg-gradient-to-br from-secondary/10 via-secondary/5 to-background hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-secondary group cursor-pointer">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    <Card className="border-2 border-secondary/40 bg-gradient-to-br from-secondary/10 via-secondary/5 to-background hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-secondary group cursor-pointer relative overflow-hidden">
                       <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <CardTitle className="text-xl md:text-2xl font-bold">4-Ball Special</CardTitle>
-                          <Badge className="bg-secondary text-white shadow-lg group-hover:scale-110 transition-transform">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <CardTitle className="text-lg sm:text-xl font-bold leading-tight flex-1">
+                            4-Ball Special
+                          </CardTitle>
+                          <Badge className="bg-secondary text-white shadow-lg group-hover:scale-110 transition-transform flex-shrink-0 text-xs">
                             Popular
                           </Badge>
                         </div>
-                        <CardDescription className="text-sm">18-hole famous courses with 4 players</CardDescription>
+                        <CardDescription className="text-xs sm:text-sm leading-relaxed">
+                          18-hole famous courses with 4 players
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-3">
                         <div className="flex items-center gap-3 text-sm">
-                          <div className="icon-badge-secondary">
+                          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-secondary/20 border border-secondary/30">
                             <Sparkles className="w-5 h-5 text-secondary" />
                           </div>
-                          <p className="font-bold text-lg text-foreground">R150/person/hour</p>
+                          <p className="font-bold text-base sm:text-lg text-foreground">R150/person/hour</p>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
-                          4 players • 3-hour minimum • R1800 total for 3 hours (R450/person)
-                        </p>
+                        <div className="text-xs leading-relaxed text-muted-foreground bg-muted/50 p-3 rounded-lg border border-muted-foreground/10">
+                          <p className="font-medium">4 players • 3-hour minimum</p>
+                          <p className="mt-1">R1800 total for 3 hours (R450/person)</p>
+                        </div>
                         <Button
                           variant={
                             sessionType === "famous-course" && famousCourseOption === "4-ball" ? "default" : "outline"
                           }
-                          className="w-full font-semibold"
+                          className="w-full font-semibold h-10 sm:h-11 text-sm sm:text-base"
                           onClick={() => {
                             setSessionType("famous-course")
                             setFamousCourseOption("4-ball")
@@ -357,26 +366,34 @@ export function BookingFlow() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-2 border-border bg-gradient-to-br from-background to-muted/20 hover:border-primary/50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group cursor-pointer">
+                    <Card className="border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-background hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-primary group cursor-pointer relative overflow-hidden">
                       <CardHeader className="pb-4">
-                        <CardTitle className="text-xl md:text-2xl font-bold">3-Ball</CardTitle>
-                        <CardDescription className="text-sm">18-hole famous courses with 3 players</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center gap-3 text-sm">
-                          <div className="icon-badge-secondary">
-                            <Sparkles className="w-5 h-5 text-secondary" />
-                          </div>
-                          <p className="font-bold text-lg text-foreground">R150/person/hour</p>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <CardTitle className="text-lg sm:text-xl font-bold leading-tight flex-1">3-Ball</CardTitle>
+                          <Badge className="bg-primary text-white shadow-lg group-hover:scale-110 transition-transform flex-shrink-0 text-xs">
+                            Great Deal
+                          </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
-                          3 players • 3-hour minimum • R1350 total for 3 hours (R450/person)
-                        </p>
+                        <CardDescription className="text-xs sm:text-sm leading-relaxed">
+                          18-hole famous courses with 3 players
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-3 text-sm">
+                          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/20 border border-primary/30">
+                            <Trophy className="w-5 h-5 text-primary" />
+                          </div>
+                          <p className="font-bold text-base sm:text-lg text-foreground">R150/person/hour</p>
+                        </div>
+                        <div className="text-xs leading-relaxed text-muted-foreground bg-muted/50 p-3 rounded-lg border border-muted-foreground/10">
+                          <p className="font-medium">3 players • 3-hour minimum</p>
+                          <p className="mt-1">R1350 total for 3 hours (R450/person)</p>
+                        </div>
                         <Button
                           variant={
                             sessionType === "famous-course" && famousCourseOption === "3-ball" ? "default" : "outline"
                           }
-                          className="w-full font-semibold"
+                          className="w-full font-semibold h-10 sm:h-11 text-sm sm:text-base"
                           onClick={() => {
                             setSessionType("famous-course")
                             setFamousCourseOption("3-ball")
@@ -389,31 +406,34 @@ export function BookingFlow() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-2 border-border bg-gradient-to-br from-background to-primary/5 hover:border-primary/50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group cursor-pointer">
+                    <Card className="border-2 border-foreground/20 bg-gradient-to-br from-foreground/5 to-background hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-foreground/40 group cursor-pointer relative overflow-hidden">
                       <CardHeader className="pb-4">
-                        <CardTitle className="text-xl md:text-2xl font-bold">Quick Play</CardTitle>
-                        <CardDescription className="text-sm">Practice sessions from 1-4 players</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center gap-3 text-sm">
-                          <div className="icon-badge-primary">
-                            <Trophy className="w-5 h-5 text-primary" />
-                          </div>
-                          <Badge variant="outline" className="text-xs font-semibold">
-                            R150-R250/person/hour
-                          </Badge>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <CardTitle className="text-lg sm:text-xl font-bold leading-tight flex-1">
+                            Quick Play
+                          </CardTitle>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
-                          Flexible duration • 1-4 players • Per-person-per-hour pricing
-                        </p>
+                        <CardDescription className="text-xs sm:text-sm leading-relaxed">
+                          Flexible hourly sessions, any player count
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-3 text-sm">
+                          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/10 border border-foreground/20">
+                            <Clock className="w-5 h-5 text-foreground" />
+                          </div>
+                          <p className="font-bold text-base sm:text-lg text-foreground">From R150/hr</p>
+                        </div>
+                        <div className="text-xs leading-relaxed text-muted-foreground bg-muted/50 p-3 rounded-lg border border-muted-foreground/10">
+                          <p className="font-medium">1-4 players • No minimum</p>
+                          <p className="mt-1">Pricing per person per hour</p>
+                        </div>
                         <Button
                           variant={sessionType === "quickplay" ? "default" : "outline"}
-                          className="w-full font-semibold"
+                          className="w-full font-semibold h-10 sm:h-11 text-sm sm:text-base"
                           onClick={() => {
                             setSessionType("quickplay")
                             setFamousCourseOption(null)
-                            setPlayerCount(1)
-                            setDuration(1)
                           }}
                         >
                           Select Quick Play

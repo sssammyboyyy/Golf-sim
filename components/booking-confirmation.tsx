@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, Clock, Users, Sparkles, Trophy, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Users, Sparkles, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 export function BookingConfirmation() {
@@ -158,89 +158,116 @@ export function BookingConfirmation() {
   }
 
   return (
-    <div className="min-h-screen py-12 md:py-16 bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen py-8 md:py-12 lg:py-16 bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 sm:px-6 mb-8 md:mb-10">
         <Link
           href="/booking"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-8 group"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all duration-300 mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="font-medium">Back to Booking</span>
         </Link>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-2 shadow-xl">
-              <CardHeader className="border-b bg-gradient-to-r from-secondary/5 to-primary/5">
-                <CardTitle className="font-serif text-2xl md:text-3xl">Booking Summary</CardTitle>
-                <CardDescription className="text-base mt-2">Review your session details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="icon-container-secondary flex-shrink-0">
-                    {sessionType === "famous-course" ? (
-                      <Sparkles className="w-6 h-6 text-secondary" />
-                    ) : (
-                      <Trophy className="w-6 h-6 text-primary" />
-                    )}
+        <div className="flex items-start sm:items-center gap-3 md:gap-4">
+          <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 shadow-md">
+            <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+              Confirm Booking
+            </h1>
+            <p className="text-muted-foreground text-sm md:text-base mt-1 leading-relaxed">
+              Review your details and complete payment
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto grid gap-6 md:gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-2 shadow-xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-secondary/10 to-secondary/5 border-b-2 border-secondary/20">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-secondary/20 border border-secondary/30">
+                    <Calendar className="w-5 h-5 text-secondary" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-muted-foreground mb-1">Session Type</p>
-                    <p className="font-bold text-lg text-foreground">{getSessionDescription()}</p>
-                    {sessionType === "famous-course" && (
-                      <>
-                        <Badge className="mt-3 bg-secondary/20 text-secondary border-0 font-semibold">
-                          Augusta National & 5000+ Pro Tee Famous Courses
-                        </Badge>
-                      </>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl sm:text-2xl font-bold">Booking Summary</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm mt-1">{getSessionDescription()}</CardDescription>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                    <div className="icon-badge-primary">
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-muted-foreground/10">
+                    <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/20 border border-primary/30">
                       <Users className="w-5 h-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-semibold">Players</p>
-                      <p className="font-bold text-lg text-foreground">{players}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium">Players</p>
+                      <p className="text-base sm:text-lg font-bold text-foreground mt-0.5">
+                        {players} {Number.parseInt(players) === 1 ? "Player" : "Players"}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-secondary/10 to-secondary/5 border border-secondary/20">
-                    <div className="icon-badge-secondary">
-                      <Calendar className="w-5 h-5 text-secondary" />
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-muted-foreground/10">
+                    <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-secondary/20 border border-secondary/30">
+                      <Clock className="w-5 h-5 text-secondary" />
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-semibold">Date</p>
-                      <p className="font-bold text-base text-foreground">{new Date(date).toLocaleDateString()}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium">Duration</p>
+                      <p className="text-base sm:text-lg font-bold text-foreground mt-0.5">
+                        {duration} {Number.parseFloat(duration) === 1 ? "Hour" : "Hours"}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                    <div className="icon-badge-primary">
-                      <Clock className="w-5 h-5 text-primary" />
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-muted-foreground/10 sm:col-span-2">
+                    <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/20 border border-primary/30">
+                      <Calendar className="w-5 h-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-semibold">Time & Duration</p>
-                      <p className="font-bold text-base text-foreground">
-                        {time} • {duration}h
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium">Date & Time</p>
+                      <p className="text-base sm:text-lg font-bold text-foreground mt-0.5 break-words">
+                        {new Date(date).toLocaleDateString("en-ZA", {
+                          weekday: "short",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        at {time}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {sessionType === "famous-course" && (
-                  <div className="p-4 bg-secondary/10 border-2 border-secondary/30 rounded-xl">
-                    <p className="text-sm font-semibold text-secondary flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" />
-                      Minimum booking requirement satisfied ({getMinimumHours()} hours)
-                    </p>
-                  </div>
+                {(golfClubs || coaching) && (
+                  <>
+                    <Separator className="my-6" />
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-base sm:text-lg text-foreground">Add-ons</h3>
+                      <div className="space-y-2">
+                        {golfClubs && (
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/5 border border-secondary/20">
+                            <span className="text-sm font-medium text-foreground">Golf Club Rental</span>
+                            <Badge variant="secondary" className="text-xs">
+                              R100
+                            </Badge>
+                          </div>
+                        )}
+                        {coaching && (
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <span className="text-sm font-medium text-foreground">Coaching Session</span>
+                            <Badge variant="default" className="text-xs">
+                              R450
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
