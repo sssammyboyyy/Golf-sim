@@ -191,8 +191,14 @@ export async function POST(request: NextRequest) {
       redirectUrl: yocoData.redirectUrl,
       booking_id: booking.id,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Server Error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    // ⚠️ TEMPORARY DEBUGGING: Send error details to browser ⚠️
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error.message || "Unknown error",
+      debug_yoco_key: process.env.YOCO_SECRET_KEY ? "Loaded" : "MISSING", // Don't print the actual key, just check if it exists
+      stack: JSON.stringify(error)
+    }, { status: 500 })
   }
 }
