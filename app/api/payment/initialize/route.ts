@@ -26,25 +26,36 @@ function calculateEndTimeText(start: string, duration: number): string {
   return date.toTimeString().slice(0, 5) 
 }
 
+
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    
+// --- 1. MAPPING VARIABLES (Fixes the Bug) ---
+    // We map camelCase (from frontend) to snake_case (for backend logic)
+    const booking_date = body.booking_date || body.date
+    const start_time = body.start_time || body.timeSlot
+    const duration_hours = body.duration_hours || body.duration
+    const player_count = body.player_count || body.players
+    
+    // CRITICAL: This was breaking the deposit logic
+    const session_type = body.session_type || body.sessionType 
+    const famous_course_option = body.famous_course_option || body.sessionType 
+    
+    const base_price = body.base_price || 0 
+    const total_price = body.total_price || body.totalPrice
+    
+    const guest_name = body.guest_name || body.customerName
+    const guest_email = body.guest_email || body.customerEmail
+    const guest_phone = body.guest_phone || body.customerPhone
+    
+    // Extract other fields normally
     const {
-      booking_date,
-      start_time,
-      duration_hours,
-      player_count,
-      session_type,
-      famous_course_option,
-      base_price,
-      total_price,
-      guest_name,
-      guest_email,
-      guest_phone,
+      simulator_id = 1,
       accept_whatsapp,
       enter_competition,
-      coupon_code,
-      simulator_id = 1, 
+      coupon_code
     } = body
 
     const supabase = await createClient()
@@ -153,19 +164,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // ---------------------------------------------------------
-    // 3. DEPOSIT LOGIC (40% Rule)
-    // ---------------------------------------------------------
-    let amountToCharge = dbTotalPrice; // Default: Charge full amount
+// --- 3. DEPOSIT LOGIC (40% Rule) ---
+    let amountToCharge = dbTotalPrice; 
 
-    // Check if it is a 3-Ball or 4-Ball Special
-    if (session_type === "famous-course" && famous_course_option) {
-      if (famous_course_option.includes("3") || famous_course_option.includes("4")) {
-         // Calculate 40%
+    // Helper to check if it's a special course even if casing is wrong
+    const sessionStr = String(session_type || "").toLowerCase();
+    const optionStr = String(famous_course_option || "").toLowerCase();
+    
+    // If it is Famous Course OR contains "ball" (like 4ball/3ball)
+    if (sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball")) {
+         // Calculate 40% Deposit
          amountToCharge = Math.ceil(dbTotalPrice * 0.40);
-      }
     }
-
+    
     const outstandingBalance = dbTotalPrice - amountToCharge;
 
     // ---------------------------------------------------------
@@ -192,7 +203,7 @@ export async function POST(request: NextRequest) {
           totalPrice: dbTotalPrice, 
           depositPaid: amountToCharge,
           outstandingBalance: outstandingBalance,
-          isDeposit: outstandingBalance > 0
+          isDeposit: (outstandingBalance > 0).toString()
         },
       }),
     })
