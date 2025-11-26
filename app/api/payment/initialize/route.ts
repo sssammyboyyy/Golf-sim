@@ -104,28 +104,44 @@ export async function POST(request: NextRequest) {
       skipYoco = true
     }
 
+// ---------------------------------------------------------
+    // 3. MULTI-BAY ASSIGNMENT LOGIC (Overlap Fixed)
     // ---------------------------------------------------------
-    // 3. MULTI-BAY ASSIGNMENT LOGIC (The Fix)
-    // ---------------------------------------------------------
-    // Check which bays are taken at this specific time
-    const { data: existingBookings } = await supabase
+    
+    // Define the requested time window
+    const requestedStartISO = createSASTTimestamp(booking_date, start_time);
+    const requestedEndISO = addHoursToTimestamp(requestedStartISO, duration_hours);
+
+    // Fetch ALL active bookings for the day to check overlaps in JS
+    // (Simpler and safer than complex SQL overlaps)
+    const { data: dailyBookings } = await supabase
         .from("bookings")
-        .select("simulator_id")
+        .select("simulator_id, slot_start, slot_end")
         .eq("booking_date", booking_date)
-        .eq("start_time", start_time)
         .neq("status", "cancelled")
 
-    const takenBays = existingBookings?.map(b => b.simulator_id) || []
+    // Find which bays are busy during the REQUESTED window
+    const takenBays = new Set<number>();
     
+    if (dailyBookings) {
+      dailyBookings.forEach(b => {
+        // Check overlap: (StartA < EndB) and (EndA > StartB)
+        const isOverlapping = (b.slot_start < requestedEndISO) && (b.slot_end > requestedStartISO);
+        
+        if (isOverlapping) {
+           takenBays.add(b.simulator_id);
+        }
+      });
+    }
+
     // Find first available bay (1, 2, or 3)
     let assignedSimulatorId = 0
-    if (!takenBays.includes(1)) assignedSimulatorId = 1
-    else if (!takenBays.includes(2)) assignedSimulatorId = 2
-    else if (!takenBays.includes(3)) assignedSimulatorId = 3
+    if (!takenBays.has(1)) assignedSimulatorId = 1
+    else if (!takenBays.has(2)) assignedSimulatorId = 2
+    else if (!takenBays.has(3)) assignedSimulatorId = 3
     
     if (assignedSimulatorId === 0) {
-        // Double check against race conditions or fully booked slots
-        return NextResponse.json({ error: "Sorry, all bays are full for this time." }, { status: 409 })
+        return NextResponse.json({ error: "Sorry, all bays are full for this time duration." }, { status: 409 })
     }
 
     // ---------------------------------------------------------
