@@ -79,7 +79,7 @@ export function BookingFlow({ onComplete }: BookingFlowProps) {
 
     // Add-ons
     if (golfClubRental) basePrice += 100
-    if (coachingSession) basePrice += 450
+    if (coachingSession) basePrice += 250
 
     return basePrice
   }, [sessionType, players, duration, golfClubRental, coachingSession])
@@ -572,7 +572,7 @@ export function BookingFlow({ onComplete }: BookingFlowProps) {
                 )}
               >
                 <span className="font-medium">Coaching Session</span>
-                <span className="text-primary font-bold">+R450</span>
+                <span className="text-primary font-bold">+R250</span>
               </button>
             </CardContent>
           </Card>
