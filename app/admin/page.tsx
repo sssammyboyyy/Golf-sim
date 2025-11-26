@@ -1,270 +1,239 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { format } from "date-fns"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lock, PlusCircle, RefreshCw, Calendar as CalendarIcon } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
+
+// Initialize Supabase Client for the Browser
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function AdminDashboard() {
-  // --- AUTH STATE (Local PIN System) ---
+  // --- STATE ---
+  const [pin, setPin] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [pinInput, setPinInput] = useState("")
-  
-  // --- DASHBOARD STATE ---
-  const [date, setDate] = useState(new Date())
-  const [bookings, setBookings] = useState<any[]>([])
+  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   
-  // --- WALK-IN FORM STATE ---
-  const [formData, setFormData] = useState({
-    name: "",
-    time: "14:00",
-    duration: 1,
-    type: "walk-in"
-  })
+  // Dashboard Data
+  const [bookings, setBookings] = useState<any[]>([])
+  
+  // Walk-in Form State
+  const [walkInName, setWalkInName] = useState("")
+  const [walkInTime, setWalkInTime] = useState("09:00")
+  const [walkInDate, setWalkInDate] = useState(new Date().toISOString().split('T')[0])
+  const [walkInDuration, setWalkInDuration] = useState(1)
 
-  const supabase = createClient()
+  // --- ACTIONS ---
 
-  // 1. Fetch Bookings
+  // 1. PIN LOGIN
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Hardcoded PIN for MVP (You can move this to env var later)
+    if (pin === "1234") {
+      setIsAuthenticated(true)
+      fetchBookings()
+    } else {
+      setError("Incorrect PIN")
+    }
+  }
+
+  // 2. FETCH BOOKINGS
   const fetchBookings = async () => {
     setLoading(true)
-    const dateStr = format(date, "yyyy-MM-dd")
-    
-    const { data } = await supabase
+    // Fetch bookings for the selected date
+    const { data, error } = await supabase
       .from("bookings")
       .select("*")
-      .eq("booking_date", dateStr)
-      .neq("status", "cancelled")
+      .eq("booking_date", walkInDate)
       .order("start_time", { ascending: true })
-
-    setBookings(data || [])
+    
+    if (data) setBookings(data)
     setLoading(false)
   }
 
-  // Fetch only when authenticated and date changes
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchBookings()
-    }
-  }, [date, isAuthenticated])
-
-  // 2. Handle Login (The Fix for your error)
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    // SIMPLE PIN CHECK - Bypasses Supabase Auth completely
-    if (pinInput === "2025") {
-      setIsAuthenticated(true)
-    } else {
-      alert("Incorrect PIN")
-    }
-  }
-
-  // 3. Handle Walk-in Booking
-  const handleWalkIn = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // 3. CREATE WALK-IN (Bypasses Yoco)
+  const handleWalkIn = async () => {
+    if (!walkInName || !walkInTime) return alert("Please fill in details")
     
+    setLoading(true)
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/payment/initialize", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          booking_date: format(date, "yyyy-MM-dd"),
-          start_time: formData.time,
-          duration_hours: formData.duration,
-          player_count: 1,
-          session_type: "quick",
-          // Dummy data for walk-ins
-          guest_name: formData.name || "Walk-in Guest",
-          guest_email: "walkin@themulligan.org",
-          guest_phone: "0000000000",
-          base_price: 0, 
-          total_price: 0,
-          // THIS KEY BYPASSES PAYMENT:
-          coupon_code: "MULLIGAN_ADMIN_100" 
-        })
+          booking_date: walkInDate,
+          start_time: walkInTime,
+          duration: walkInDuration,
+          players: 4, // Default to 4 for simplicity
+          session_type: "Walk-in",
+          guest_name: walkInName,
+          guest_email: "walkin@store.com", // Placeholder
+          base_price: 350 * walkInDuration, // Example Price
+          total_price: 350 * walkInDuration,
+          coupon_code: "MULLIGAN_ADMIN_100" // <--- CRITICAL: Triggers "paid_instore" logic
+        }),
       })
 
-      if (res.ok) {
-        alert("Walk-in successfully booked!")
-        fetchBookings() // Refresh the list
-        setFormData({...formData, name: ""}) // Reset name
-      } else {
-        const err = await res.json()
-        alert("Error: " + (err.error || "Failed to book"))
-      }
-    } catch (error) {
-      alert("Network error")
+      const result = await res.json()
+      
+      if (!res.ok) throw new Error(result.error || "Failed")
+
+      alert("Walk-in Confirmed! Bay Assigned: " + result.booking_id)
+      setWalkInName("")
+      fetchBookings() // Refresh list
+
+    } catch (err: any) {
+      alert("Error: " + err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
-  // --- VIEW 1: LOGIN SCREEN ---
+  // Auto-refresh when date changes
+  useEffect(() => {
+    if (isAuthenticated) fetchBookings()
+  }, [walkInDate, isAuthenticated])
+
+  // --- RENDER ---
+
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-md shadow-xl">
-          <CardHeader className="text-center space-y-2">
-            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
-              <Lock className="w-6 h-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Staff Access</CardTitle>
-            <p className="text-sm text-gray-500">Enter PIN to access the dashboard</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <Input 
-                type="password" 
-                placeholder="Enter PIN (2025)" 
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                className="text-center text-lg tracking-widest"
-                autoFocus
-              />
-              <Button type="submit" className="w-full h-12 text-lg">
-                Unlock Dashboard
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <form onSubmit={handleLogin} className="w-full max-w-sm rounded bg-white p-8 shadow">
+          <h2 className="mb-6 text-center text-2xl font-bold text-green-900">Admin Access</h2>
+          {error && <p className="mb-4 text-center text-sm text-red-600">{error}</p>}
+          <input
+            type="password"
+            placeholder="Enter PIN"
+            className="mb-4 w-full rounded border p-2"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            autoFocus
+          />
+          <button type="submit" className="w-full rounded bg-green-900 py-2 text-white hover:bg-green-800">
+            Unlock Dashboard
+          </button>
+        </form>
       </div>
     )
   }
 
-  // --- VIEW 2: DASHBOARD ---
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">⛳ Operations Dashboard</h1>
-            <p className="text-gray-500">Manage bookings and walk-ins</p>
-          </div>
-          <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
-             <CalendarIcon className="w-5 h-5 text-gray-500" />
-             <input 
-               type="date" 
-               value={format(date, "yyyy-MM-dd")}
-               onChange={(e) => setDate(new Date(e.target.value))}
-               className="outline-none font-medium bg-transparent"
-             />
-          </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Store Dashboard</h1>
+          <button onClick={() => setIsAuthenticated(false)} className="text-sm text-red-600 underline">Logout</button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* --- CONTROLS --- */}
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
           
-          {/* LEFT COLUMN: Booking List */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Schedule</h2>
-              <Button variant="outline" size="sm" onClick={fetchBookings}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
+          {/* 1. Add Walk-in */}
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">⛳ Add Walk-in</h3>
+            <div className="space-y-3">
+              <input 
+                className="w-full rounded border p-2" 
+                placeholder="Customer Name" 
+                value={walkInName}
+                onChange={e => setWalkInName(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <input 
+                  type="date" 
+                  className="w-1/2 rounded border p-2" 
+                  value={walkInDate}
+                  onChange={e => setWalkInDate(e.target.value)}
+                />
+                <input 
+                  type="time" 
+                  className="w-1/2 rounded border p-2" 
+                  value={walkInTime}
+                  onChange={e => setWalkInTime(e.target.value)}
+                />
+              </div>
+               <select 
+                  className="w-full rounded border p-2"
+                  value={walkInDuration}
+                  onChange={(e) => setWalkInDuration(Number(e.target.value))}
+                >
+                  <option value={1}>1 Hour</option>
+                  <option value={2}>2 Hours</option>
+                </select>
+              <button 
+                onClick={handleWalkIn}
+                disabled={loading}
+                className="w-full rounded bg-blue-600 py-2 font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? "Processing..." : "Confirm & Pay In-Store"}
+              </button>
             </div>
-
-            {loading ? (
-              <div className="text-center py-12">Loading schedule...</div>
-            ) : bookings.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-                No bookings found for this date.
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {bookings.map((b) => (
-                  <div key={b.id} className="bg-white rounded-xl p-4 border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition hover:shadow-md">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/10 text-primary font-bold text-xl px-4 py-3 rounded-lg min-w-[5rem] text-center">
-                        {b.start_time.slice(0,5)}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">{b.guest_name}</h3>
-                        <p className="text-sm text-gray-500 capitalize">{b.session_type} • {b.duration_hours} Hour(s)</p>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      {/* Payment Badge */}
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        b.payment_status === 'completed' || b.payment_status === 'paid_instore'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {b.payment_status === 'paid_instore' ? 'PAID IN STORE' : b.payment_status.toUpperCase()}
-                      </span>
-                      
-                      {b.payment_status === 'pending' && (
-                        <p className="text-xs text-red-600 font-bold mt-1">
-                          COLLECT: R{b.total_price}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* RIGHT COLUMN: Walk-in Form */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Quick Walk-in</h2>
-            <Card className="border-0 shadow-lg ring-1 ring-gray-200">
-              <CardHeader className="bg-gray-50/50 pb-4">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <PlusCircle className="w-5 h-5 text-primary" />
-                  New Booking
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleWalkIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Guest Name (Optional)</label>
-                    <Input 
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      placeholder="e.g. Junior Student"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Start Time</label>
-                      <select 
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                        value={formData.time}
-                        onChange={e => setFormData({...formData, time: e.target.value})}
-                      >
-                        {["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00"].map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Duration</label>
-                      <Input 
-                        type="number" 
-                        value={formData.duration}
-                        onChange={e => setFormData({...formData, duration: Number(e.target.value)})}
-                        min={1}
-                        max={4}
-                      />
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full bg-black hover:bg-gray-800 text-white font-semibold h-11">
-                    Confirm & Book Slot
-                  </Button>
-                  <p className="text-xs text-center text-gray-500">
-                    Bypasses Yoco Payment. Marks as Paid In-Store.
-                  </p>
-                </form>
-              </CardContent>
-            </Card>
+          {/* 2. Stats / Filter */}
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">📅 Daily View</h3>
+             <input 
+                  type="date" 
+                  className="mb-4 w-full rounded border p-2 text-lg" 
+                  value={walkInDate}
+                  onChange={e => setWalkInDate(e.target.value)}
+              />
+            <div className="text-center">
+              <p className="text-gray-500">Total Bookings Today</p>
+              <p className="text-4xl font-bold text-green-700">{bookings.length}</p>
+            </div>
           </div>
-
         </div>
+
+        {/* --- BOOKINGS TABLE --- */}
+        <div className="overflow-hidden rounded-lg bg-white shadow">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Bay</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Payment</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {bookings.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-gray-500">No bookings for this date.</td></tr>
+              ) : (
+                bookings.map((b) => (
+                  <tr key={b.id}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      {b.start_time} - {b.end_time}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      Bay {b.simulator_id}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      {b.guest_name}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                        b.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
+                        b.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {b.status}
+                      </span>
+                    </td>
+                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      {b.payment_status === 'paid_instore' ? 'Store Cash/Card' : b.payment_status}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </div>
   )
