@@ -7,34 +7,54 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const date = searchParams.get("date")
 
-  if (!date) return NextResponse.json({ error: "Date required" }, { status: 400 })
+  if (!date) {
+    return NextResponse.json({ error: "Date is required" }, { status: 400 })
+  }
 
-  try {
-    const supabase = await createClient()
+  const supabase = await createClient()
 
-    // 1. Get all active bookings for this date
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select("start_time")
-      .eq("booking_date", date)
-      .neq("status", "cancelled")
+  // 1. Fetch ALL bookings for this date (excluding cancelled)
+  // We fetch slot_start and slot_end to calculate overlaps
+  const { data: bookings, error } = await supabase
+    .from("bookings")
+    .select("slot_start, slot_end, simulator_id")
+    .eq("booking_date", date)
+    .neq("status", "cancelled")
 
-    // 2. Count bookings per hour
-    // Example: { "14:00": 1, "15:00": 3 }
-    const slotCounts: Record<string, number> = {}
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // 2. Define your operating hours (09:00 to 20:00)
+  const slots: string[] = []
+  for (let h = 9; h < 20; h++) {
+    slots.push(`${h.toString().padStart(2, "0")}:00`)
+    slots.push(`${h.toString().padStart(2, "0")}:30`)
+  }
+
+  // 3. Calculate Availability for each slot
+  const bookedSlots: string[] = []
+
+  // Helper to construct a comparison date for the specific slot time
+  const getSlotTimeISO = (dateStr: string, timeStr: string) => {
+    return `${dateStr}T${timeStr}:00+02:00` // SAST
+  }
+
+  slots.forEach((time) => {
+    const slotTimeISO = getSlotTimeISO(date, time)
     
-    bookings?.forEach((b) => {
-      const time = b.start_time.substring(0, 5) // ensure "14:00" format
-      slotCounts[time] = (slotCounts[time] || 0) + 1
+    // COUNT bookings that cover this specific 30-min block
+    // A booking covers this slot if:
+    // Booking Start <= Slot Time  AND  Booking End > Slot Time
+    const activeBookings = bookings.filter((b) => {
+      return b.slot_start <= slotTimeISO && b.slot_end > slotTimeISO
     })
 
-    // 3. Find Full Slots (Where count >= 3)
-    const MAX_BAYS = 3
-    const bookedSlots = Object.keys(slotCounts).filter(time => slotCounts[time] >= MAX_BAYS)
+    // If 3 or more bays are occupied during this 30-min block, mark it full
+    if (activeBookings.length >= 3) {
+      bookedSlots.push(time)
+    }
+  })
 
-    return NextResponse.json({ bookedSlots })
-    
-  } catch (error) {
-    return NextResponse.json({ error: "Server Error" }, { status: 500 })
-  }
+  return NextResponse.json(bookedSlots)
 }
