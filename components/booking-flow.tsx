@@ -156,8 +156,29 @@ export function BookingFlow({ onComplete }: BookingFlowProps) {
     }
   }, [sessionType, getMinDuration, duration])
 
-  // Check if a slot is booked
-  const isSlotBooked = (slot: string) => bookedSlots.includes(slot)
+ // ... existing code ...
+
+  // ROBUST SLOT CHECKER: Checks Database AND Past Time
+  const isSlotBooked = useCallback((slot: string) => {
+    // 1. Database Check
+    if (bookedSlots.includes(slot)) return true
+
+    // 2. Past Time Check (If today)
+    if (date && isToday(date)) {
+      const now = new Date()
+      const [hours, minutes] = slot.split(':').map(Number)
+      const slotDate = new Date(date)
+      slotDate.setHours(hours, minutes, 0, 0)
+
+      // Buffer: Disable slots if we are already 15 mins into them? 
+      // Or just strict: if slot is 14:00 and now is 14:01, disable it.
+      if (slotDate <= now) return true
+    }
+
+    return false
+  }, [bookedSlots, date])
+
+  // ... existing code ...
 
   // Handle session type selection
   const handleSessionSelect = (type: "4ball" | "3ball" | "quick") => {
