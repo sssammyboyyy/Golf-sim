@@ -5,7 +5,7 @@ export const runtime = "edge"
 
 export async function GET() {
   // CONFIG: Replace with your actual n8n Webhook URL
-  const N8N_WEBHOOK_URL = "https://[YOUR-N8N-DOMAIN]/webhook/payment-webhook"
+  const N8N_WEBHOOK_URL = "https://n8n.srv1127912.hstgr.cloud/webhook/payment-webhook"
   
   // Uses the key from your Cloudflare Env
   const YOCO_KEY = process.env.YOCO_SECRET_KEY
