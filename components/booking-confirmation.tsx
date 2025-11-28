@@ -120,56 +120,74 @@ export function BookingConfirmation() {
     setIsProcessing(true)
     setErrorMessage(null) // Clear previous errors
 
+// --- UPDATED PAYMENT HANDLER (CORRECTED) ---
+  const handlePayment = async () => {
+    // 1. Validation
+    if (!guestName || !guestEmail || !guestPhone || !acceptWhatsApp) {
+      setErrorMessage("Please fill in all required fields marked with *")
+      return
+    }
+
+    setIsProcessing(true)
+    setErrorMessage(null) 
+
     try {
       const response = await fetch("/api/payment/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          booking_date: new Date(date).toISOString().split("T")[0],
+          // Booking Details
+          booking_date: date,
           start_time: timeSlot,
           duration_hours: duration,
           player_count: players,
           session_type: sessionType,
-          famous_course_option: famousCourseOption || null,
-          base_price: basePrice,
-          total_price: totalPrice,
+          famous_course_option: famousCourseOption,
+          
+          // Customer Details
           guest_name: guestName,
           guest_email: guestEmail,
           guest_phone: guestPhone,
           accept_whatsapp: acceptWhatsApp,
           enter_competition: enterCompetition,
+          
+          // Financials
+          base_price: basePrice,
+          total_price: totalPrice, // Sends the price AFTER coupon
           coupon_code: couponApplied ? couponCode : null,
+          
+          // Add-ons
           golf_club_rental: golfClubRental,
-          coaching_session: coachingSession,
+          coaching_session: coachingSession
         }),
       })
 
       const data = await response.json()
 
-      // 2. Handle Success (Free or Paid)
-      if (response.ok) {
-        if (data.free_booking && data.booking_id) {
-          router.push(`/booking/success?reference=${data.booking_id}`)
-          return
-        }
-        
-        // ✅ FIXED: Look for 'redirectUrl' OR 'authorization_url' to be safe
-        const paymentUrl = data.redirectUrl || data.authorization_url;
-        if (paymentUrl) {
-          window.location.href = paymentUrl;
-          return;
-        }
-      }
-
-      // 3. Handle Specific "Double Booking" Error (409 Conflict)
-      if (response.status === 409 || (data.error && data.error.includes("Slot already taken"))) {
-        setErrorMessage("⚠️ Just missed it! Someone else booked this slot seconds ago. Please go back and choose another time.")
+      // 🛑 2. TRAP THE RACE CONDITION (409 Conflict)
+      if (response.status === 409) {
+        setErrorMessage("⚠️ High demand! That slot was just grabbed by another player. Please go back and choose another time.")
         setIsProcessing(false)
         return
       }
 
-      // 4. Handle Generic Errors
-      throw new Error(data.error || "Failed to initialize booking")
+      // 3. Handle Generic Errors
+      if (!response.ok) {
+        throw new Error(data.error || "Payment initialization failed")
+      }
+
+      // 4. Handle Success (Free Coupon or Paid)
+      if (data.free_booking && data.booking_id) {
+        router.push(`/booking/success?reference=${data.booking_id}`)
+        return
+      }
+      
+      // 5. Redirect to Yoco
+      const paymentUrl = data.redirectUrl || data.authorization_url;
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+        return;
+      }
 
     } catch (error) {
       console.error("Booking Error:", error)
