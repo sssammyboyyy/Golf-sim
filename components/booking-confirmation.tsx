@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, Users, Trophy, ChevronRight, MessageSquare, Mail, Phone, User, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Trophy, Mail, Phone, User, Info } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
+
+// NOTE: We use standard HTML inputs for checkboxes to avoid build errors 
+// if Shadcn Checkbox/Label components are missing.
 
 export default function BookingConfirmation() {
   const searchParams = useSearchParams()
@@ -40,11 +40,9 @@ export default function BookingConfirmation() {
   // -- CALCULATE PRICE --
   const calculateTotal = () => {
     let base = 0
-    // Famous/Special Logic
     if (sessionType === "4ball") base = 150 * 4 * duration
     else if (sessionType === "3ball") base = 160 * 3 * duration
     else {
-      // Quick Play Logic
       const pricing: Record<number, number> = { 1: 250, 2: 180, 3: 160, 4: 150 }
       const pricePerPerson = pricing[Math.min(players, 4)] || 150
       base = pricePerPerson * players * duration
@@ -58,7 +56,7 @@ export default function BookingConfirmation() {
   }
 
   const basePrice = calculateTotal()
-  const totalPrice = basePrice // (Coupon logic handled in backend mostly, or add simple frontend check here)
+  const totalPrice = basePrice 
   
   // Deposit Logic (40% for Famous/Ball options)
   const isDeposit = sessionType.includes("ball") || sessionType.includes("famous")
@@ -81,27 +79,20 @@ export default function BookingConfirmation() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Booking Details
           booking_date: date,
           start_time: timeSlot,
           duration_hours: duration,
           player_count: players,
           session_type: sessionType,
           famous_course_option: famousCourseOption,
-          
-          // Customer Details
           guest_name: guestName,
           guest_email: guestEmail,
           guest_phone: guestPhone,
           accept_whatsapp: acceptWhatsApp,
           enter_competition: enterCompetition,
-          
-          // Financials
           base_price: basePrice,
           total_price: totalPrice,
           coupon_code: couponCode || null,
-          
-          // Add-ons
           golf_club_rental: golfClubRental,
           coaching_session: coachingSession
         }),
@@ -109,25 +100,25 @@ export default function BookingConfirmation() {
 
       const data = await response.json()
 
-      // 🛑 2. TRAP THE RACE CONDITION (409 Conflict)
+      // 409 Conflict (Double Booking)
       if (response.status === 409) {
-        setErrorMessage("⚠️ High demand! That slot was just grabbed by another player. Please go back and choose another time.")
+        setErrorMessage("⚠️ That slot was just grabbed by another player. Please choose another time.")
         setIsProcessing(false)
         return
       }
 
-      // 3. Handle Generic Errors
+      // Generic Error
       if (!response.ok) {
         throw new Error(data.error || "Payment initialization failed")
       }
 
-      // 4. Handle Free Booking
+      // Success (Free)
       if (data.free_booking && data.booking_id) {
         router.push(`/booking/success?reference=${data.booking_id}`)
         return
       }
       
-      // 5. Redirect to Yoco
+      // Success (Redirect to Yoco)
       const paymentUrl = data.redirectUrl || data.authorization_url;
       if (paymentUrl) {
         window.location.href = paymentUrl;
@@ -136,16 +127,14 @@ export default function BookingConfirmation() {
 
     } catch (error) {
       console.error("Booking Error:", error)
-      setErrorMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.")
+      setErrorMessage(error instanceof Error ? error.message : "Something went wrong.")
       setIsProcessing(false)
     }
   }
 
   const formattedDate = date
     ? new Date(date).toLocaleDateString("en-ZA", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
+        weekday: "short", day: "numeric", month: "short",
       })
     : ""
 
@@ -175,7 +164,7 @@ export default function BookingConfirmation() {
               </div>
             </div>
             
-            <Separator />
+            <hr className="border-t border-border" />
             
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
@@ -219,7 +208,7 @@ export default function BookingConfirmation() {
              
              {/* Name */}
              <div className="space-y-2">
-               <Label htmlFor="name">Full Name *</Label>
+               <label htmlFor="name" className="text-sm font-medium leading-none">Full Name *</label>
                <div className="relative">
                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                  <Input 
@@ -234,7 +223,7 @@ export default function BookingConfirmation() {
 
              {/* Email */}
              <div className="space-y-2">
-               <Label htmlFor="email">Email Address *</Label>
+               <label htmlFor="email" className="text-sm font-medium leading-none">Email Address *</label>
                <div className="relative">
                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                  <Input 
@@ -250,7 +239,7 @@ export default function BookingConfirmation() {
 
              {/* Phone */}
              <div className="space-y-2">
-               <Label htmlFor="phone">Phone Number *</Label>
+               <label htmlFor="phone" className="text-sm font-medium leading-none">Phone Number *</label>
                <div className="relative">
                  <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                  <Input 
@@ -266,7 +255,7 @@ export default function BookingConfirmation() {
             
              {/* Coupon Code */}
              <div className="space-y-2 pt-2">
-               <Label htmlFor="coupon">Coupon Code (Optional)</Label>
+               <label htmlFor="coupon" className="text-sm font-medium leading-none">Coupon Code (Optional)</label>
                <Input 
                  id="coupon" 
                  placeholder="Enter code" 
@@ -275,28 +264,32 @@ export default function BookingConfirmation() {
                />
              </div>
 
-             {/* Checkboxes */}
+             {/* Checkboxes (Standard HTML) */}
              <div className="space-y-4 pt-4">
                <div className="flex items-start space-x-2">
-                 <Checkbox 
-                   id="whatsapp" 
-                   checked={acceptWhatsApp} 
-                   onCheckedChange={(c) => setAcceptWhatsApp(c === true)} 
+                 <input 
+                    type="checkbox"
+                    id="whatsapp"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={acceptWhatsApp}
+                    onChange={(e) => setAcceptWhatsApp(e.target.checked)}
                  />
-                 <Label htmlFor="whatsapp" className="text-sm leading-none pt-0.5 cursor-pointer">
+                 <label htmlFor="whatsapp" className="text-sm leading-snug cursor-pointer">
                    I accept receiving booking confirmation via WhatsApp/SMS *
-                 </Label>
+                 </label>
                </div>
                
                <div className="flex items-start space-x-2">
-                 <Checkbox 
-                   id="competition" 
-                   checked={enterCompetition} 
-                   onCheckedChange={(c) => setEnterCompetition(c === true)} 
+                 <input 
+                    type="checkbox"
+                    id="competition"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={enterCompetition}
+                    onChange={(e) => setEnterCompetition(e.target.checked)}
                  />
-                 <Label htmlFor="competition" className="text-sm leading-none pt-0.5 cursor-pointer text-muted-foreground">
+                 <label htmlFor="competition" className="text-sm leading-snug cursor-pointer text-muted-foreground">
                    Enter me into the monthly "Free Round" competition
-                 </Label>
+                 </label>
                </div>
              </div>
 
