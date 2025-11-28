@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
         amount: Math.round(amountToCharge * 100), // Yoco requires cents
         currency: "ZAR",
         cancelUrl: `${appUrl}/booking?cancelled=true`,
-        successUrl: `${appUrl}/success?bookingId=${booking.id}`, 
+        successUrl: `${appUrl}/booking/success?reference=${booking.id}`, 
         failureUrl: `${appUrl}/booking?error=payment_failed`,
         metadata: {
           bookingId: booking.id,
