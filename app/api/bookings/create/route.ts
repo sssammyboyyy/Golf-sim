@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 // 1. Force Edge Runtime
 export const runtime = "edge"
 
-// --- HELPERS (Same as Checkout Route for consistency) ---
+// --- HELPERS ---
 function createSASTTimestamp(dateStr: string, timeStr: string): string {
   const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr
   return `${dateStr}T${cleanTime}+02:00`
@@ -38,13 +38,17 @@ export async function POST(request: NextRequest) {
       guest_name,
       guest_email,
       guest_phone,
-      payment_status, // e.g. "completed" for cash/card in store
+      payment_status, 
     } = bookingData
 
     // 2. CALCULATE TIMES
     const slotStartISO = createSASTTimestamp(booking_date, start_time)
     const slotEndISO = addHoursToTimestamp(slotStartISO, duration_hours)
     const endTimeText = calculateEndTimeText(start_time, duration_hours)
+
+    // Convert requested times to Milliseconds for safe comparison
+    const reqStartMs = new Date(slotStartISO).getTime()
+    const reqEndMs = new Date(slotEndISO).getTime()
 
     // 3. CHECK AVAILABILITY (MULTI-BAY LOGIC)
     
@@ -60,8 +64,13 @@ export async function POST(request: NextRequest) {
     
     if (dailyBookings) {
       dailyBookings.forEach((b) => {
+        // Safe Date Comparison (using .getTime())
+        const existStartMs = new Date(b.slot_start).getTime()
+        const existEndMs = new Date(b.slot_end).getTime()
+
         // Overlap Logic: (StartA < EndB) and (EndA > StartB)
-        const isOverlapping = b.slot_start < slotEndISO && b.slot_end > slotStartISO
+        const isOverlapping = existStartMs < reqEndMs && existEndMs > reqStartMs
+        
         if (isOverlapping) {
           takenBays.add(b.simulator_id)
         }
@@ -92,16 +101,14 @@ export async function POST(request: NextRequest) {
         slot_start: slotStartISO,
         slot_end: slotEndISO,
         duration_hours,
-        simulator_id: assignedSimulatorId, // <--- Assigned Dynamically
-        user_type: "walk_in", // Track that this was an admin/walk-in
+        simulator_id: assignedSimulatorId, 
+        user_type: "walk_in", 
         guest_name: guest_name || "Walk-In Guest",
         guest_email,
         guest_phone,
         total_price,
-        // If admin says "completed", mark as confirmed & paid_instore
         status: payment_status === "completed" ? "confirmed" : "pending",
         payment_status: payment_status === "completed" ? "paid_instore" : "pending",
-        // Default fields
         players: bookingData.players || 1,
         session_type: bookingData.session_type || "quick",
         created_at: new Date().toISOString(),
@@ -111,11 +118,11 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
+      // Return specific error so we know what broke
       console.error("Walk-in Insert Error:", insertError)
-      // CHANGE THIS LINE to send the full error details to the frontend
       return NextResponse.json({ 
-        error: insertError.message, 
-        details: insertError 
+        error: "Failed to create booking", 
+        details: insertError.message 
       }, { status: 500 })
     }
 
