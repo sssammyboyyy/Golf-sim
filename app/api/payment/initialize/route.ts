@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
     const {
       accept_whatsapp,
       enter_competition,
-      coupon_code
+      coupon_code,
+      pay_full_amount
     } = body
 
     const supabase = await createClient()
@@ -200,14 +201,19 @@ export async function POST(request: NextRequest) {
     }
 
     // ---------------------------------------------------------
-    // 5. DEPOSIT LOGIC (40% Rule)
+    // 5. DEPOSIT LOGIC (40% Rule with Override)
     // ---------------------------------------------------------
     let amountToCharge = dbTotalPrice; 
 
     const sessionStr = String(session_type || "").toLowerCase();
     const optionStr = String(famous_course_option || "").toLowerCase();
     
-    if (sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball")) {
+    // Only apply 40% logic IF:
+    // 1. It's a "Famous/Ball" session
+    // 2. AND the user did NOT ask to pay in full
+    const isDepositEligible = sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball");
+
+    if (isDepositEligible && !pay_full_amount) {
          amountToCharge = Math.ceil(dbTotalPrice * 0.40);
     }
     
