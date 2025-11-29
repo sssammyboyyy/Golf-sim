@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-import { ArrowLeft, ArrowRight, Users, CalendarIcon, Clock, Check, Trophy, Zap, Sparkles } from "lucide-react"
+// FIXED: Added Loader2 to the imports below
+import { ArrowLeft, ArrowRight, Users, CalendarIcon, Clock, Check, Trophy, Zap, Sparkles, Loader2 } from "lucide-react"
 import { format, addDays, startOfToday, isToday, isTomorrow, isWeekend, getDay } from "date-fns"
 
 const PRICING = {
