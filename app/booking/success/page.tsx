@@ -9,11 +9,17 @@ import { Button } from "@/components/ui/button";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const bookingId = searchParams.get("bookingId");
+  
+  // ---------------------------------------------------------
+  // FIX 1: Look for 'bookingId' OR 'reference' (for Coupon Bypass)
+  // ---------------------------------------------------------
+  const bookingId = searchParams.get("bookingId") || searchParams.get("reference");
+  
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
 
   useEffect(() => {
     if (!bookingId) {
+      console.error("No ID found in URL");
       setStatus("error");
       return;
     }
@@ -22,7 +28,7 @@ function SuccessContent() {
       try {
         const supabase = createClient();
 
-        // 1. Get Booking Details (to pass to n8n for emails)
+        // 1. Get Booking Details
         const { data: booking, error } = await supabase
           .from("bookings")
           .select("*")
@@ -31,22 +37,37 @@ function SuccessContent() {
 
         if (error || !booking) throw new Error("Booking not found");
 
-        if (booking.status === 'confirmed') {
+        // Prevent infinite loops if user refreshes, BUT allow Coupon/Admin codes to trigger emails
+        // if they haven't been processed by n8n yet (we assume 'confirmed' via Coupon needs an email)
+        // If you want strictly NO duplicate emails, keep the return. 
+        // For now, we allow the script to run to ensure you get your receipt.
+        if (booking.status === 'confirmed' && booking.payment_status === 'paid') {
              setStatus("success");
-             return; // Already done
+             return; 
         }
 
         // 2. Calculate Financials for Email
-        // (Replicating logic briefly here to ensure n8n gets clean numbers)
-        const total = Number(booking.total_price);
-        const isDeposit = booking.payment_status === "pending" && booking.total_price > 0;
-        // NOTE: You might want to store 'deposit_amount' in DB to be safer, 
-        // but assuming 40% rule applies if it was a deposit flow:
-        // Ideally, checkout/route.ts should have saved these values in metadata or DB columns.
-        // For now, let's assume we calculate it or pass 0 if fully paid.
+        const total = Number(booking.total_price || 0);
         
-        // SIMPLE VERSION: We just tell n8n to mark it paid. 
-        // n8n will use the values we send here.
+        // Check if it was a Deposit Flow or Full Payment (or Coupon)
+        let depositPaid = "0.00";
+        let outstandingBalance = "0.00";
+
+        // FIX 2: Better Financial Logic
+        if (booking.payment_status === 'paid_instore' || booking.payment_status === 'completed') {
+            // 100% Coupon or Admin Bypass
+            depositPaid = "0.00";
+            outstandingBalance = "0.00";
+        } else if (booking.payment_status === 'deposit_paid' || (booking.status === 'pending' && total > 0)) {
+            // Standard Deposit Flow (40%)
+            const depCalc = total * 0.4;
+            depositPaid = depCalc.toFixed(2);
+            outstandingBalance = (total - depCalc).toFixed(2);
+        } else {
+            // Full Payment
+            depositPaid = total.toFixed(2);
+            outstandingBalance = "0.00";
+        }
         
         const payload = {
           bookingId: booking.id,
@@ -58,14 +79,12 @@ function SuccessContent() {
           booking_date: booking.booking_date,
           start_time: booking.start_time,
           simulator_id: booking.simulator_id,
-          // Formatting for email
           totalPrice: total.toFixed(2),
-          // If you don't have these columns in DB, you might calculate approx or 0
-          depositPaid: (total * 0.4).toFixed(2), // Approximate based on logic
-          outstandingBalance: (total * 0.6).toFixed(2)
+          depositPaid: depositPaid,
+          outstandingBalance: outstandingBalance
         };
 
-        // 3. Call our Proxy API
+        // 3. Call our Proxy API (Triggers n8n)
         const res = await fetch("/api/payment/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
