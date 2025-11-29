@@ -1,20 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js" // Import generic client
 
 // 1. Force Edge Runtime
 export const runtime = "edge"
 
 // --- HELPER FUNCTIONS ---
 
-// Helper: Force SAST Timezone (+02:00)
 function createSASTTimestamp(dateStr: string, timeStr: string): string {
-  // Ensure time is HH:mm:00
   const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
   return `${dateStr}T${cleanTime}+02:00`;
 }
 
-// Helper: Add hours (Fixed for 1.5h support)
-// We use milliseconds to avoid setHours() truncating decimals
 function addHoursToTimestamp(timestamp: string, hours: number): string {
   const date = new Date(timestamp);
   const millisecondsToAdd = hours * 60 * 60 * 1000;
@@ -22,14 +19,11 @@ function addHoursToTimestamp(timestamp: string, hours: number): string {
   return date.toISOString(); 
 }
 
-// Helper: Calculate text end time (e.g. "15:30")
 function calculateEndTimeText(start: string, duration: number): string {
   const [hours, minutes] = start.split(":").map(Number);
   const totalMinutes = (hours * 60) + minutes + (duration * 60);
-  
   const endH = Math.floor(totalMinutes / 60);
   const endM = totalMinutes % 60;
-  
   return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
 }
 
@@ -37,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // --- 1. MAPPING VARIABLES (Robust Parsing) ---
+    // --- 1. MAPPING VARIABLES ---
     const booking_date = body.booking_date || body.date
     const start_time = body.start_time || body.timeSlot
     const duration_hours = Number(body.duration_hours || body.duration)
@@ -61,6 +55,7 @@ export async function POST(request: NextRequest) {
       coaching_session
     } = body
 
+    // Client for Inserting (Respects RLS usually, but we need it for Auth context)
     const supabase = await createClient()
 
     // ---------------------------------------------------------
@@ -75,18 +70,15 @@ export async function POST(request: NextRequest) {
     const cleanCouponCode = coupon_code ? String(coupon_code).trim().toUpperCase() : null
 
     if (cleanCouponCode && cleanCouponCode.length > 0) {
-      
-      // A. ADMIN BYPASS (Walk-ins)
       if (cleanCouponCode === "MULLIGAN_ADMIN_100") {
           console.log("Admin Bypass Detected")
-          dbTotalPrice = Number(base_price) // Keep base price for revenue stats
+          dbTotalPrice = Number(base_price) 
           dbPaymentStatus = "paid_instore" 
-          dbStatus = "confirmed" // Instant confirmation
+          dbStatus = "confirmed" 
           skipYoco = true
           couponApplied = cleanCouponCode
-      } 
-      // B. STANDARD COUPONS
-      else {
+      } else {
+        // Fetch Coupon (Requires Public Read Access on Coupons table)
         const { data: couponData } = await supabase
           .from("coupons")
           .select("*")
@@ -96,14 +88,12 @@ export async function POST(request: NextRequest) {
 
         if (couponData) {
           couponApplied = cleanCouponCode
-          
           if (couponData.discount_percent === 100) {
             dbTotalPrice = 0
             dbPaymentStatus = "completed"
             dbStatus = "confirmed"
             skipYoco = true
-          }
-          else if (couponData.discount_percent > 0) {
+          } else if (couponData.discount_percent > 0) {
              const discountAmount = (Number(base_price) * (couponData.discount_percent / 100));
              dbTotalPrice = Math.max(0, Number(base_price) - discountAmount);
           }
@@ -111,7 +101,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Safety: If price is 0 for any reason, auto-confirm
     if (dbTotalPrice === 0 && !skipYoco) {
       dbPaymentStatus = "completed"
       dbStatus = "confirmed"
@@ -119,21 +108,34 @@ export async function POST(request: NextRequest) {
     }
 
     // ---------------------------------------------------------
-    // 3. MULTI-BAY ASSIGNMENT LOGIC
+    // 3. MULTI-BAY ASSIGNMENT LOGIC (FIXED RLS ISSUE)
     // ---------------------------------------------------------
     const requestedStartISO = createSASTTimestamp(booking_date, start_time);
     const requestedEndISO = addHoursToTimestamp(requestedStartISO, duration_hours);
 
-    const { data: dailyBookings } = await supabase
+    // CRITICAL FIX: Create an Admin/Service Client to see ALL bookings
+    // We try to use the Service Key (if available) to bypass RLS.
+    // If not, we use the Anon key and hope RLS allows public select.
+    const adminSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const { data: dailyBookings, error: fetchError } = await adminSupabase
         .from("bookings")
         .select("simulator_id, slot_start, slot_end")
         .eq("booking_date", booking_date)
         .neq("status", "cancelled")
+    
+    if (fetchError) {
+      console.error("Availability Check Failed:", fetchError)
+      // Fail safe: If we can't check availability, don't allow booking
+      return NextResponse.json({ error: "System check failed. Please contact support." }, { status: 500 })
+    }
 
     const takenBays = new Set<number>();
     if (dailyBookings) {
       dailyBookings.forEach(b => {
-        // Check overlap: (StartA < EndB) and (EndA > StartB)
         const isOverlapping = (b.slot_start < requestedEndISO) && (b.slot_end > requestedStartISO);
         if (isOverlapping) takenBays.add(b.simulator_id);
       });
@@ -145,7 +147,10 @@ export async function POST(request: NextRequest) {
     else if (!takenBays.has(3)) assignedSimulatorId = 3
     
     if (assignedSimulatorId === 0) {
-        return NextResponse.json({ error: "Sorry, all bays are full for this time duration." }, { status: 409 })
+        return NextResponse.json({ 
+          error: "All bays are full for this time.", 
+          details: "Overlap detected with existing bookings." 
+        }, { status: 409 })
     }
 
     // ---------------------------------------------------------
@@ -153,20 +158,20 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------
     const endTimeText = calculateEndTimeText(start_time, duration_hours);
 
-    // Derive slot_type to satisfy Check Constraints (if any exist in your DB)
     const sessionStr = String(session_type || "").toLowerCase();
     let derivedSlotType = "regular";
     if (sessionStr.includes("3ball")) derivedSlotType = "3ball18";
     if (sessionStr.includes("4ball")) derivedSlotType = "4ball18";
     if (sessionStr.includes("quick")) derivedSlotType = "quickplay";
 
+    // Insert using standard client (so owner_id is set if user is logged in, though usually anon)
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         booking_date,
         start_time,
         end_time: endTimeText,
-        slot_start: requestedStartISO, // Use the ISO we calculated earlier
+        slot_start: requestedStartISO,
         slot_end: requestedEndISO,
         duration_hours,
         player_count,
@@ -178,16 +183,12 @@ export async function POST(request: NextRequest) {
         total_price: dbTotalPrice,
         status: dbStatus,
         payment_status: dbPaymentStatus,
-        
-        // Customer Data
         guest_name,
         guest_email,
         guest_phone,
         accept_whatsapp: !!accept_whatsapp,
         enter_competition: !!enter_competition,
         coupon_code: couponApplied,
-
-        // Technical Fields
         slot_type: derivedSlotType, 
         payment_type: skipYoco ? "bypass" : "deposit", 
         notes: `Addons: Clubs=${!!golf_club_rental}, Coach=${!!coaching_session}`
@@ -197,13 +198,20 @@ export async function POST(request: NextRequest) {
 
     if (bookingError) {
       console.error("Booking Insert Error:", bookingError)
+      // Check for specific Postgres Double Booking error code
+      if (bookingError.code === "23P01" || bookingError.message.includes("constraint")) {
+         return NextResponse.json({ 
+          error: "Slot was just taken.", 
+          details: "Race condition detected. Please try another time." 
+        }, { status: 409 })
+      }
+
       return NextResponse.json({ 
         error: "Failed to create booking", 
         details: bookingError.message 
       }, { status: 500 })
     }
 
-    // --- SUCCESS: Return early if no payment needed (Admin/Walk-in) ---
     if (skipYoco) {
       return NextResponse.json({
         free_booking: true,
@@ -218,7 +226,6 @@ export async function POST(request: NextRequest) {
     let amountToCharge = dbTotalPrice; 
     const optionStr = String(famous_course_option || "").toLowerCase();
     
-    // Deposit Rule: 40% for Famous Courses or Multi-ball
     if (sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball")) {
          amountToCharge = Math.ceil(dbTotalPrice * 0.40);
     }
@@ -233,14 +240,13 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        amount: Math.round(amountToCharge * 100), // Yoco needs cents
+        amount: Math.round(amountToCharge * 100),
         currency: "ZAR",
         cancelUrl: `${appUrl}/booking?cancelled=true`,
-        successUrl: `${appUrl}/success?bookingId=${booking.id}`, 
+        successUrl: `${appUrl}/booking/success?reference=${booking.id}`, 
         failureUrl: `${appUrl}/booking?error=payment_failed`,
         metadata: {
           bookingId: booking.id,
-          // Fixed to 2 decimals for clean emails
           totalPrice: dbTotalPrice.toFixed(2), 
           depositPaid: amountToCharge.toFixed(2),
           outstandingBalance: outstandingBalance.toFixed(2),
@@ -251,14 +257,12 @@ export async function POST(request: NextRequest) {
 
     const yocoData = await yocoResponse.json()
 
-    // Save Yoco ID immediately
     if (yocoData.id) {
        await supabase.from("bookings").update({ yoco_payment_id: yocoData.id }).eq("id", booking.id)
     }
 
     if (!yocoResponse.ok) {
-      console.error("Yoco Init Failed:", yocoData)
-      return NextResponse.json({ error: "Payment initialization failed" }, { status: 500 })
+      return NextResponse.json({ error: "Payment initialization failed", details: yocoData }, { status: 500 })
     }
 
     return NextResponse.json({
