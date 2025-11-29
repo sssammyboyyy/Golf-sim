@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Define operating hours
   const slots: string[] = []
   for (let h = 9; h < 20; h++) {
     slots.push(`${h.toString().padStart(2, "0")}:00`)
@@ -30,19 +31,29 @@ export async function GET(request: NextRequest) {
   }
 
   const bookedSlots: string[] = []
-  const getSlotTimeISO = (dateStr: string, timeStr: string) => `${dateStr}T${timeStr}:00+02:00`
+  
+  // Helper: Create a real Date object for the requested slot
+  const getSlotDate = (dateStr: string, timeStr: string) => {
+    return new Date(`${dateStr}T${timeStr}:00+02:00`)
+  }
 
   slots.forEach((time) => {
-    const slotTimeISO = getSlotTimeISO(date, time)
-    
+    const slotDate = getSlotDate(date, time)
+    const slotEnd = new Date(slotDate.getTime() + 30 * 60000) // +30 mins
+
+    // ROBUST OVERLAP CHECK (Date vs Date)
     const activeBookings = bookings.filter((b) => {
-      return b.slot_start <= slotTimeISO && b.slot_end > slotTimeISO
+      const bStart = new Date(b.slot_start)
+      const bEnd = new Date(b.slot_end)
+      // Overlap formula: (StartA < EndB) and (EndA > StartB)
+      return bStart < slotEnd && bEnd > slotDate
     })
 
+    // Block if 3 bays are full
     if (activeBookings.length >= 3) {
       bookedSlots.push(time)
     }
   })
 
-  return NextResponse.json({ bookedSlots }) 
+  return NextResponse.json({ bookedSlots })
 }
