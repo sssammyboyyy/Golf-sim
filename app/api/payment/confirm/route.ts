@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
     // 1. CONFIGURATION
     // Add these to your .env.local file!
-    const N8N_URL = "https://[YOUR-N8N-DOMAIN]/webhook/manual-confirm";
+    const N8N_URL = "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm";
     const N8N_SECRET = "mulligan-secure-8821"; // Must match the string in n8n Code Node
 
     // 2. FORWARD TO N8N
