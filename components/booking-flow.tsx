@@ -571,7 +571,10 @@ export function BookingFlow({ onComplete }: BookingFlowProps) {
                   coachingSession ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
                 )}
               >
-                <span className="font-medium">Coaching Session</span>
+                <div className="text-left">
+                  <span className="font-medium block">Coaching Session</span>
+                  <span className="text-xs text-muted-foreground">Professional instruction (30 mins)</span>
+                </div>
                 <span className="text-primary font-bold">+R250</span>
               </button>
             </CardContent>
