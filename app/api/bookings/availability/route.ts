@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient()
 
-  // 1. Fetch ALL bookings for this date (excluding cancelled)
+  // 1. Fetch ALL bookings (We need created_at to filter stale ones)
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select("slot_start, slot_end")
+    .select("slot_start, slot_end, status, created_at") // <--- Added created_at
     .eq("booking_date", date)
     .neq("status", "cancelled")
 
@@ -24,48 +24,51 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // 2. Define your operating hours (09:00 to 20:00)
+  // 2. Define operating hours
   const slots: string[] = []
   for (let h = 9; h < 20; h++) {
     slots.push(`${h.toString().padStart(2, "0")}:00`)
     slots.push(`${h.toString().padStart(2, "0")}:30`)
   }
 
-  // 3. Calculate Availability for each slot
-  const bookedSlots: string[] = []
+  // 3. Filter "Ghost" Bookings
+  // A booking is valid if it is CONFIRMED OR if it is PENDING but created < 20 mins ago
+  const now = Date.now();
+  const validBookings = bookings.filter(b => {
+    if (b.status === 'confirmed') return true;
+    if (b.status === 'paid_instore') return true; // (For coupons)
+    if (b.status === 'pending') {
+       const createdTime = new Date(b.created_at).getTime();
+       // Keep it if it's less than 20 minutes old (1200000 ms)
+       return (now - createdTime) < 1200000; 
+    }
+    return false; // Pending and old? Ignore it.
+  });
 
-  // Helper to construct a comparison date for the specific slot time
+  // 4. Calculate Availability
+  const bookedSlots: string[] = []
+  
+  // Helper for SAST Date
   const getSlotTimeDate = (dateStr: string, timeStr: string) => {
-    return new Date(`${dateStr}T${timeStr}:00+02:00`); // Force SAST Date Object
+    return new Date(`${dateStr}T${timeStr}:00+02:00`); 
   }
 
   slots.forEach((time) => {
-    // Current slot time
     const slotStart = getSlotTimeDate(date, time).getTime();
-    const slotEnd = slotStart + (30 * 60 * 1000); // +30 mins
+    const slotEnd = slotStart + (30 * 60 * 1000); 
 
-    // COUNT bookings that cover this specific 30-min block
-    const activeBookings = bookings.filter((b) => {
-      // Convert DB timestamps (often UTC) to Milliseconds for safe comparison
+    // Count VALID bookings in this slot
+    const activeCount = validBookings.filter((b) => {
       const bStart = new Date(b.slot_start).getTime();
       const bEnd = new Date(b.slot_end).getTime();
-
-      // Check overlap: Booking starts before Slot ends AND Booking ends after Slot starts
       return bStart < slotEnd && bEnd > slotStart;
-    })
-    // DEBUG LOG: See what the server counts
-    if (activeBookings.length > 0) {
-        console.log(`Slot ${time} has ${activeBookings.length} bookings`);
-    }
+    }).length;
 
-    if (activeBookings.length >= 3) {
-      bookedSlots.push(time)
-    }
-    // If 3 or more bays are occupied during this 30-min block, mark it full
-    if (activeBookings.length >= 3) {
+    // CHECK: Is it 3 or more?
+    if (activeCount >= 3) {
       bookedSlots.push(time)
     }
   })
 
-  return NextResponse.json({ bookedSlots }) // Return object { bookedSlots: [...] } to match frontend
+  return NextResponse.json({ bookedSlots })
 }
