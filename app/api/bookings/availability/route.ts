@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 export const runtime = "edge"
+export const dynamic = "force-dynamic" // <--- CRITICAL FIX
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -13,48 +14,55 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient()
 
-  // 1. Fetch ALL bookings for this date (excluding cancelled)
-  // We fetch slot_start and slot_end to calculate overlaps
+  // 1. Fetch ALL bookings for this date
+  // We include 'pending' to prevent double-booking while someone is entering CC details
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select("slot_start, slot_end, simulator_id")
+    .select("slot_start, slot_end, simulator_id, status")
     .eq("booking_date", date)
-    .neq("status", "cancelled")
+    .neq("status", "cancelled") // Count Pending + Confirmed + Completed
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // 2. Define your operating hours (09:00 to 20:00)
+  // 2. Define Operating Hours
   const slots: string[] = []
   for (let h = 9; h < 20; h++) {
     slots.push(`${h.toString().padStart(2, "0")}:00`)
     slots.push(`${h.toString().padStart(2, "0")}:30`)
   }
 
-  // 3. Calculate Availability for each slot
-  const bookedSlots: string[] = []
-
-  // Helper to construct a comparison date for the specific slot time
-  const getSlotTimeISO = (dateStr: string, timeStr: string) => {
-    return `${dateStr}T${timeStr}:00+02:00` // SAST
+  // 3. Logic Helper: Timezone Safe Comparison
+  // We use .getTime() to compare explicit milliseconds
+  const getSlotTimeMs = (dateStr: string, timeStr: string) => {
+    // Construct strict ISO string for SAST (+02:00)
+    // This ensures we are comparing Apples to Apples
+    return new Date(`${dateStr}T${timeStr}:00+02:00`).getTime()
   }
 
+  const bookedSlots: string[] = []
+
   slots.forEach((time) => {
-    const slotTimeISO = getSlotTimeISO(date, time)
+    const slotTimeMs = getSlotTimeMs(date, time)
     
-    // COUNT bookings that cover this specific 30-min block
-    // A booking covers this slot if:
-    // Booking Start <= Slot Time  AND  Booking End > Slot Time
+    // Count bookings covering this 30min slot
     const activeBookings = bookings.filter((b) => {
-      return b.slot_start <= slotTimeISO && b.slot_end > slotTimeISO
+      const startMs = new Date(b.slot_start).getTime()
+      const endMs = new Date(b.slot_end).getTime()
+      
+      // A booking covers this slot if:
+      // It starts on or before the slot AND ends after the slot
+      return startMs <= slotTimeMs && endMs > slotTimeMs
     })
 
-    // If 3 or more bays are occupied during this 30-min block, mark it full
+    // 4. The "3-Bay" Rule
+    // If 3 or more bookings overlap this specific moment, the time is Full.
     if (activeBookings.length >= 3) {
       bookedSlots.push(time)
     }
   })
 
+  // Returns { bookedSlots: ["14:00", "14:30"] }
   return NextResponse.json({ bookedSlots })
 }
