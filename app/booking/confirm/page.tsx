@@ -114,7 +114,7 @@ function BookingDetails() {
         window.location.href = data.redirectUrl
       } else if (data.free_booking) {
          // Handle 100% Coupon Success (Bypass Yoco)
-         window.location.href = `/success?bookingId=${data.booking_id}`
+         window.location.href = `/booking/success?bookingId=${data.booking_id}`
       } else {
         throw new Error("No payment redirect found")
       }
