@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-// 1. Force Edge Runtime for Cloudflare Pages (CRITICAL)
+// 1. Force Edge Runtime
 export const runtime = "edge"
 
 // Helper: Force SAST Timezone (+02:00) construction
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // --- 1. MAPPING VARIABLES ---
+    // --- MAPPING VARIABLES ---
     const booking_date = body.booking_date || body.date
     const start_time = body.start_time || body.timeSlot
     const duration_hours = body.duration_hours || body.duration
@@ -109,18 +109,16 @@ export async function POST(request: NextRequest) {
     // 3. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Filter)
     // ---------------------------------------------------------
     
-    // Define the requested time window
     const requestedStartISO = createSASTTimestamp(booking_date, start_time);
     const requestedEndISO = addHoursToTimestamp(requestedStartISO, duration_hours);
 
-    // Fetch ALL active bookings for the day
+    // Fetch ALL active bookings
     const { data: dailyBookings } = await supabase
         .from("bookings")
         .select("simulator_id, slot_start, slot_end, status, created_at")
         .eq("booking_date", booking_date)
         .neq("status", "cancelled")
 
-    // Find which bays are busy during the REQUESTED window
     const takenBays = new Set<number>();
     const now = Date.now();
     
@@ -130,8 +128,7 @@ export async function POST(request: NextRequest) {
         let isActive = true;
         if (b.status === 'pending') {
             const createdTime = new Date(b.created_at).getTime();
-            // If created more than 20 mins ago (1200000ms), ignore it
-            if ((now - createdTime) > 1200000) {
+            if ((now - createdTime) > 1200000) { // 20 mins
                 isActive = false;
             }
         }
@@ -151,7 +148,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find first available bay (1, 2, or 3)
     let assignedSimulatorId = 0
     if (!takenBays.has(1)) assignedSimulatorId = 1
     else if (!takenBays.has(2)) assignedSimulatorId = 2
@@ -201,7 +197,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create booking" }, { status: 500 })
     }
 
-    // Return Early if Coupon handled it
     if (skipYoco) {
       return NextResponse.json({
         free_booking: true,
@@ -211,15 +206,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ---------------------------------------------------------
-    // 5. DEPOSIT LOGIC (40% Rule)
+    // 5. DEPOSIT LOGIC
     // ---------------------------------------------------------
     let amountToCharge = dbTotalPrice; 
-
     const sessionStr = String(session_type || "").toLowerCase();
     const optionStr = String(famous_course_option || "").toLowerCase();
-    
-    // Logic: If it involves "famous" or "ball" (multi-player), take 40% deposit.
-    // UNLESS the user checked "Pay Full Amount"
     const isDepositEligible = sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball");
 
     if (isDepositEligible && !pay_full_amount) {
@@ -243,6 +234,7 @@ export async function POST(request: NextRequest) {
         amount: Math.round(amountToCharge * 100),
         currency: "ZAR",
         cancelUrl: `${appUrl}/booking?cancelled=true`,
+        // FIXED URL HERE:
         successUrl: `${appUrl}/booking/success?bookingId=${booking.id}`, 
         failureUrl: `${appUrl}/booking?error=payment_failed`,
         metadata: {
