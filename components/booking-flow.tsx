@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-// FIXED: Added Loader2 to the imports below
-import { ArrowLeft, ArrowRight, Users, CalendarIcon, Clock, Check, Trophy, Zap, Sparkles, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Users, CalendarIcon, Clock, Check, Trophy, Zap, Sparkles, Loader2, GraduationCap } from "lucide-react"
 import { format, addDays, startOfToday, isToday, isTomorrow, isWeekend, getDay } from "date-fns"
 
 const PRICING = {
@@ -511,7 +510,20 @@ export function BookingFlow({ onComplete }: BookingFlowProps) {
                 <span className="font-medium">Golf Club Rental</span>
                 <span className="text-primary font-bold">+R100</span>
               </button>
-              {/* Add other add-ons here... */}
+
+              <button
+                onClick={() => setCoachingSession(!coachingSession)}
+                className={cn(
+                  "w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+                  coachingSession ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50",
+                )}
+              >
+                <div className="flex flex-col items-start text-left">
+                  <span className="font-medium">Pro Coaching (30 min)</span>
+                  <span className="text-xs text-muted-foreground">Expert tuition included</span>
+                </div>
+                <span className="text-primary font-bold">+R250</span>
+              </button>
             </CardContent>
           </Card>
         </div>
