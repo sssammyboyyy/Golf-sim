@@ -18,11 +18,12 @@ import {
   Loader2,
   AlertCircle,
   Filter,
-  MoreVertical
+  MoreVertical,
+  XCircle
 } from "lucide-react"
 import { format } from "date-fns"
 
-// Initialize Supabase Client
+// Initialize Supabase Client (For Reading Data)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -54,9 +55,7 @@ export default function AdminDashboard() {
   // --- AUTHENTICATION ---
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // Production Note: In a full app, this would use Supabase Auth.
-    // For this MVP "War Mode", we use a hardcoded PIN.
-    if (pin === "8821") { // Changed to a slightly less generic PIN
+    if (pin === "8821") {
       setIsAuthenticated(true)
       fetchBookings()
     } else {
@@ -69,12 +68,10 @@ export default function AdminDashboard() {
     setIsLoading(true)
     setErrorMsg(null)
     try {
-      // Fetch bookings for the selected date
-      // We explicitly select columns to match your schema
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .eq("booking_date", currentDate) // Matches schema column
+        .eq("booking_date", currentDate)
         .order("start_time", { ascending: true })
       
       if (error) throw error
@@ -89,26 +86,36 @@ export default function AdminDashboard() {
     }
   }
 
-  // Reload when date changes
   useEffect(() => {
     if (isAuthenticated) fetchBookings()
   }, [currentDate])
 
   // --- ADMIN ACTIONS ---
 
-  // 1. DELETE BOOKING (The requested flexibility feature)
+  // 1. DELETE BOOKING (Via Secure API)
   const handleDelete = async (id: string) => {
-    if (!confirm("⚠️ PERMANENT DELETE\n\nThis will remove the booking record entirely.\nUse this if a booking was moved to a different day to clear the slot.")) return
+    if (!confirm("⚠️ PERMANENT DELETE\n\nAre you sure? This will permanently remove this slot.")) return
 
     setIsActionLoading(true)
     try {
-      const { error } = await supabase.from("bookings").delete().eq("id", id)
-      if (error) throw error
+      // We send the PIN to the server to verify permission
+      const res = await fetch("/api/bookings/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, pin }) 
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Delete failed")
+      }
       
-      // Optimistic Update
+      // Optimistic UI Update
       setBookings(prev => prev.filter(b => b.id !== id))
+      
     } catch (err: any) {
-      alert("Failed to delete: " + err.message)
+      alert("Error: " + err.message)
     } finally {
       setIsActionLoading(false)
     }
@@ -123,7 +130,7 @@ export default function AdminDashboard() {
         .update({ 
             status: "confirmed", 
             payment_status: "paid_instore",
-            payment_type: "bypass" // Matches your schema constraint
+            payment_type: "bypass"
         })
         .eq("id", id)
 
@@ -136,19 +143,17 @@ export default function AdminDashboard() {
     }
   }
 
-  // 3. CREATE WALK-IN (Via API to handle Timezone/Constraints)
+  // 3. CREATE WALK-IN (Via API)
   const handleWalkInSubmit = async () => {
     if(!walkInName) return alert("Please enter guest name")
 
     setIsActionLoading(true)
     try {
-        // Calculate Price based on Quick Play Rate (Production Pricing)
         const pricing = { 1: 250, 2: 180, 3: 160, 4: 150 }
         // @ts-ignore
         const rate = pricing[Math.min(walkInPlayers, 4)] || 150
         const total = rate * walkInPlayers * walkInDuration
 
-        // Use the API to ensure 'slot_start' and 'slot_end' exclude constraints are checked
         const res = await fetch("/api/bookings/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -157,7 +162,7 @@ export default function AdminDashboard() {
                 start_time: walkInTime,
                 duration_hours: walkInDuration,
                 players: walkInPlayers,
-                session_type: "quick", // Will map to 'quickplay' in DB via API
+                session_type: "quick",
                 guest_name: walkInName,
                 guest_email: "walkin@venue-os.com", 
                 guest_phone: "0000000000",
@@ -185,7 +190,6 @@ export default function AdminDashboard() {
 
   // --- STATS ENGINE ---
   const stats = useMemo(() => {
-    // Schema uses 'payment_status' and 'total_price'
     const totalRevenue = bookings
       .filter(b => b.payment_status === "paid_instore" || b.payment_status === "completed" || b.payment_status === "paid")
       .reduce((acc, curr) => acc + (Number(curr.total_price) || 0), 0)
@@ -216,7 +220,6 @@ export default function AdminDashboard() {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-100 p-4 font-sans">
         <div className="w-full max-w-sm relative">
-          {/* Decorative Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-600/20 rounded-full blur-[100px] pointer-events-none" />
           
           <div className="text-center mb-8 relative z-10">
@@ -391,7 +394,6 @@ export default function AdminDashboard() {
           // --- WALK IN TERMINAL ---
           <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500 pb-20">
              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden ring-1 ring-white/5">
-                {/* Background Decor */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
                 <div className="flex items-center gap-4 mb-8 pb-8 border-b border-zinc-800 relative">
@@ -460,7 +462,6 @@ export default function AdminDashboard() {
                      <div className="flex justify-between items-end mb-6 bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50">
                         <span className="text-zinc-400 font-medium">Total Due Now</span>
                         <div className="text-right">
-                            {/* Assuming Quick Play rate for Walk-ins roughly */}
                             <span className="block text-3xl font-bold text-white tracking-tight">
                                 R{((walkInPlayers <= 4 ? (walkInPlayers === 1 ? 250 : walkInPlayers === 2 ? 180 : walkInPlayers === 3 ? 160 : 150) : 150) * walkInPlayers * walkInDuration).toFixed(2)}
                             </span>
@@ -498,7 +499,6 @@ export default function AdminDashboard() {
                  <tbody className="divide-y divide-zinc-800/50">
                    {filteredBookings.map((b) => (
                      <tr key={b.id} className="hover:bg-zinc-800/40 transition-colors group">
-                       {/* Time */}
                        <td className="px-8 py-5 font-mono text-zinc-300 text-sm">
                          <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-zinc-600" />
@@ -508,8 +508,6 @@ export default function AdminDashboard() {
                             <span className="text-zinc-600 text-xs">({b.duration_hours}h)</span>
                          </div>
                        </td>
-                       
-                       {/* Bay */}
                        <td className="px-6 py-5">
                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border ${
                             b.simulator_id === 1 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
@@ -519,8 +517,6 @@ export default function AdminDashboard() {
                            Simulator {b.simulator_id}
                          </span>
                        </td>
-
-                       {/* Guest */}
                        <td className="px-6 py-5">
                          <div className="font-bold text-zinc-200">
                             {b.guest_name || b.name || "Unknown Guest"}
@@ -529,26 +525,17 @@ export default function AdminDashboard() {
                             <Users className="w-3 h-3" /> {b.player_count} Players
                          </div>
                        </td>
-
-                       {/* Type */}
                        <td className="px-6 py-5 text-sm text-zinc-400 capitalize font-medium">
                          {b.session_type === 'quick' ? 'Quick Play' : b.session_type}
                        </td>
-
-                       {/* Value */}
                        <td className="px-6 py-5 text-right font-mono text-zinc-300 font-medium">
                          R{b.total_price}
                        </td>
-
-                       {/* Status */}
                        <td className="px-6 py-5 text-center">
                           <StatusBadge status={b.status} payment={b.payment_status} />
                        </td>
-
-                       {/* Actions */}
                        <td className="px-8 py-5 text-right">
                          <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                            {/* MARK PAID ACTION */}
                             {(b.payment_status === 'pending' && b.status !== 'cancelled') && (
                               <button 
                                 onClick={() => handleMarkPaid(b.id)}
@@ -558,8 +545,6 @@ export default function AdminDashboard() {
                                 <DollarSign className="w-4 h-4" />
                               </button>
                             )}
-                            
-                            {/* DELETE ACTION */}
                             <button 
                               onClick={() => handleDelete(b.id)}
                               title="Permanently Delete Booking"
@@ -571,8 +556,6 @@ export default function AdminDashboard() {
                        </td>
                      </tr>
                    ))}
-                   
-                   {/* EMPTY STATE */}
                    {filteredBookings.length === 0 && (
                      <tr>
                        <td colSpan={7} className="px-6 py-20 text-center">
@@ -587,9 +570,6 @@ export default function AdminDashboard() {
                              <p className="text-zinc-400 font-medium text-lg">
                                 {isLoading ? "Syncing live data..." : `No active bookings for ${format(new Date(currentDate), "MMMM do, yyyy")}`}
                              </p>
-                             {!isLoading && (
-                                <p className="text-zinc-600 text-sm mt-1">Change the date or check your filters.</p>
-                             )}
                           </div>
                        </td>
                      </tr>
