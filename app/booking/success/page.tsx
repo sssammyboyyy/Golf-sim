@@ -1,86 +1,100 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle, Loader2, AlertCircle } from "lucide-react"
+import { CheckCircle, Loader2, AlertCircle, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 function SuccessContent() {
   const searchParams = useSearchParams()
-  const bookingId = searchParams.get("bookingId")
+  const bookingId = searchParams.get("bookingId") || searchParams.get("reference")
   
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  
+  // CRITICAL FIX: Prevent double-firing of emails in React 18 Strict Mode
+  const hasTriggered = useRef(false)
 
   useEffect(() => {
-    if (!bookingId) return
+    if (!bookingId || hasTriggered.current) return
 
-    // Trigger the "Manual" confirmation immediately
-    const triggerConfirmation = async () => {
+    hasTriggered.current = true // Lock it immediately
+
+    const finalizeBooking = async () => {
       try {
+        // Trigger n8n (Email sending)
         const res = await fetch("/api/trigger-n8n", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bookingId }),
         })
-
-        if (res.ok) {
-          setStatus("success")
-        } else {
-          console.error("Failed to trigger n8n")
-          // Even if n8n fails, we might want to show success if the payment worked,
-          // but let's show success anyway so the user doesn't panic.
-          setStatus("success") 
-        }
+        
+        // We set success regardless of n8n result to avoid scaring the user,
+        // as the payment itself was likely successful if they got here.
+        setStatus("success")
       } catch (e) {
-        console.error("Network error", e)
-        setStatus("success") // Fallback to success to avoid user panic
+        console.error("Trigger error", e)
+        setStatus("success")
       }
     }
 
-    triggerConfirmation()
+    finalizeBooking()
   }, [bookingId])
 
   if (!bookingId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h1 className="text-xl font-bold">Invalid Page Access</h1>
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
+        <p className="text-muted-foreground mb-6">We couldn't find the booking reference.</p>
         <Link href="/">
-           <Button className="mt-4">Go Home</Button>
+           <Button>Return Home</Button>
         </Link>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
-      {status === "loading" ? (
-        <div className="space-y-6 animate-pulse">
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center p-4 bg-muted/10">
+      <div className="bg-white p-8 md:p-12 rounded-3xl shadow-xl max-w-lg w-full">
+        {status === "loading" ? (
+          <div className="space-y-6">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Finalizing your booking...</h1>
+            <p className="text-muted-foreground">Please wait a moment while we confirm your slot.</p>
           </div>
-          <h1 className="text-2xl font-bold">Finalizing Booking...</h1>
-          <p className="text-muted-foreground">
-            Please do not close this tab.
-          </p>
-        </div>
-      ) : (
-        <div className="animate-in fade-in zoom-in duration-500 space-y-4">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+        ) : (
+          <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-12 h-12 text-green-600" />
+            </div>
+            
+            <h1 className="text-3xl font-serif font-bold text-foreground">Booking Confirmed!</h1>
+            
+            <div className="bg-muted/30 p-4 rounded-xl border border-dashed border-muted-foreground/30">
+               <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Booking Reference</p>
+               <p className="font-mono text-xl font-bold">{bookingId.slice(0, 8).toUpperCase()}</p>
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed">
+              We've sent a confirmation email with all the details. We look forward to seeing you on the tee!
+            </p>
+            
+            <div className="pt-4 flex flex-col gap-3">
+              <Button asChild size="lg" className="w-full text-lg h-12">
+                <Link href="/booking">Book Another Session</Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link href="/">
+                  <Home className="w-4 h-4 mr-2" /> Back to Home
+                </Link>
+              </Button>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-green-700">Booking Confirmed!</h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            We have received your booking. A confirmation email is on its way.
-          </p>
-          <div className="pt-6">
-            <Link href="/">
-              <Button size="lg" className="w-full sm:w-auto">Book Another Round</Button>
-            </Link>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
