@@ -44,6 +44,7 @@ export default function AdminDashboard() {
 
   // Walk-in Form
   const [walkInName, setWalkInName] = useState("")
+  const [walkInPhone, setWalkInPhone] = useState("")
   const [walkInTime, setWalkInTime] = useState("12:00")
   const [walkInDuration, setWalkInDuration] = useState(1)
   const [walkInPlayers, setWalkInPlayers] = useState(1)
@@ -116,7 +117,7 @@ export default function AdminDashboard() {
                 session_type: "quick", 
                 guest_name: walkInName,
                 guest_email: "walkin@venue-os.com", 
-                guest_phone: "0000000000",
+                guest_phone: walkInPhone || "0000000000",
                 total_price: total,
                 amount_paid: paidAmount,
                 payment_status: isFullyPaid ? "paid_instore" : "pending",
@@ -130,6 +131,7 @@ export default function AdminDashboard() {
         alert(`✅ Walk-in Created!\n${BAY_NAMES[data.assigned_bay]}\nBalance Due: R${total - paidAmount}`)
         
         setWalkInName("")
+        setWalkInPhone("")
         setWalkInAmountPaid("")
         setActiveTab("dashboard")
         fetchBookings()
@@ -161,6 +163,7 @@ export default function AdminDashboard() {
           guest_phone: editingBooking.guest_phone,
           start_time: editingBooking.start_time,
           duration_hours: editingBooking.duration_hours,
+          player_count: editingBooking.player_count,
           total_price: total,
           amount_paid: paid,
           payment_status: newPaymentStatus,
@@ -212,7 +215,7 @@ export default function AdminDashboard() {
   const totalRev = bookings.reduce((acc, b) => acc + (b.amount_paid || 0), 0)
   const outstanding = bookings.reduce((acc, b) => acc + (b.total_price - (b.amount_paid || 0)), 0)
 
-  // Helper to check if booking is a walk-in based on multiple possible fields
+  // Helper to check if booking is a walk-in
   const isWalkIn = (b: any) => b.booking_source === 'walk_in' || b.user_type === 'walk_in'
 
   if (!isAuthenticated) return <LoginScreen pin={pin} setPin={setPin} handleLogin={handleLogin} />
@@ -267,11 +270,12 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Contact</label>
-                    <input className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_phone} onChange={e => setEditingBooking({...editingBooking, guest_phone: e.target.value})} />
+                    <input type="tel" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_phone} onChange={e => setEditingBooking({...editingBooking, guest_phone: e.target.value})} />
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
+                {/* IMPROVED GRID LAYOUT */}
+                <div className="grid grid-cols-2 gap-4">
                    <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Bay</label>
                     <select 
@@ -288,9 +292,23 @@ export default function AdminDashboard() {
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Time</label>
                     <input type="time" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.start_time} onChange={e => setEditingBooking({...editingBooking, start_time: e.target.value})} />
                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                    <div>
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Duration</label>
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Duration (h)</label>
                     <input type="number" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.duration_hours} onChange={e => setEditingBooking({...editingBooking, duration_hours: parseFloat(e.target.value)})} />
+                   </div>
+                   <div>
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Player Count</label>
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={8} 
+                      className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" 
+                      value={editingBooking.player_count} 
+                      onChange={e => setEditingBooking({...editingBooking, player_count: parseInt(e.target.value)})} 
+                    />
                    </div>
                 </div>
 
@@ -395,9 +413,16 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="space-y-6 relative">
-                   <div>
-                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Guest Name</label>
-                     <input value={walkInName} onChange={e => setWalkInName(e.target.value)} className="w-full mt-2 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-white text-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all placeholder:text-zinc-700" placeholder="e.g. Gary Player" />
+                   {/* Guest Details */}
+                   <div className="grid grid-cols-2 gap-6">
+                     <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Guest Name</label>
+                        <input value={walkInName} onChange={e => setWalkInName(e.target.value)} className="w-full mt-2 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-white text-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all placeholder:text-zinc-700" placeholder="e.g. Gary Player" />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Phone Number</label>
+                        <input type="tel" value={walkInPhone} onChange={e => setWalkInPhone(e.target.value)} className="w-full mt-2 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-white text-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all placeholder:text-zinc-700" placeholder="082 123 4567" />
+                     </div>
                    </div>
                    
                    <div className="grid grid-cols-2 gap-6">
