@@ -19,6 +19,18 @@ const BAY_NAMES: Record<number, string> = {
 
 const DURATION_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4]
 
+// --- PRICING LOGIC ---
+const calculateTotal = (players: number, duration: number) => {
+  const p = Math.max(1, players || 1)
+  const d = Math.max(0.5, duration || 1)
+  
+  const pricing: Record<number, number> = { 1: 250, 2: 180, 3: 160, 4: 150 }
+  // Use 4+ rate (150) if players > 4
+  const rate = pricing[Math.min(p, 4)] || 150
+  
+  return rate * p * d
+}
+
 // Initialize Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,16 +104,29 @@ export default function AdminDashboard() {
     if (isAuthenticated) fetchBookings()
   }, [currentDate, activeTab, weekStart])
 
+  // --- REACTIVE EDIT HANDLERS ---
+  const handleEditChange = (field: string, value: any) => {
+    if (!editingBooking) return
+
+    const newBooking = { ...editingBooking, [field]: value }
+
+    // Auto-calculate price if players or duration change
+    if (field === 'player_count' || field === 'duration_hours') {
+        const p = field === 'player_count' ? Number(value) : Number(editingBooking.player_count)
+        const d = field === 'duration_hours' ? Number(value) : Number(editingBooking.duration_hours)
+        newBooking.total_price = calculateTotal(p, d)
+    }
+
+    setEditingBooking(newBooking)
+  }
+
   // --- ACTIONS ---
   const handleWalkInSubmit = async () => {
     if(!walkInName) return alert("Enter guest name")
     setIsActionLoading(true)
     
     try {
-        const pricing = { 1: 250, 2: 180, 3: 160, 4: 150 }
-        // @ts-ignore
-        const rate = pricing[Math.min(walkInPlayers, 4)] || 150
-        const total = rate * walkInPlayers * walkInDuration
+        const total = calculateTotal(walkInPlayers, walkInDuration)
         
         const paidAmount = walkInAmountPaid ? parseFloat(walkInAmountPaid) : 0
         const isFullyPaid = paidAmount >= total
@@ -266,11 +291,11 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Guest Name</label>
-                    <input className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_name} onChange={e => setEditingBooking({...editingBooking, guest_name: e.target.value})} />
+                    <input className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_name} onChange={e => handleEditChange('guest_name', e.target.value)} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Contact</label>
-                    <input type="tel" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_phone} onChange={e => setEditingBooking({...editingBooking, guest_phone: e.target.value})} />
+                    <input type="tel" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" value={editingBooking.guest_phone} onChange={e => handleEditChange('guest_phone', e.target.value)} />
                   </div>
                 </div>
                 
@@ -281,7 +306,7 @@ export default function AdminDashboard() {
                     <select 
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none"
                       value={editingBooking.simulator_id}
-                      onChange={e => setEditingBooking({...editingBooking, simulator_id: parseInt(e.target.value)})}
+                      onChange={e => handleEditChange('simulator_id', parseInt(e.target.value))}
                     >
                       <option value={1}>Lounge</option>
                       <option value={2}>Middle</option>
@@ -290,14 +315,14 @@ export default function AdminDashboard() {
                    </div>
                    <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Time</label>
-                    <input type="time" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.start_time} onChange={e => setEditingBooking({...editingBooking, start_time: e.target.value})} />
+                    <input type="time" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.start_time} onChange={e => handleEditChange('start_time', e.target.value)} />
                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                    <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Duration (h)</label>
-                    <input type="number" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.duration_hours} onChange={e => setEditingBooking({...editingBooking, duration_hours: parseFloat(e.target.value)})} />
+                    <input type="number" step="0.5" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" value={editingBooking.duration_hours} onChange={e => handleEditChange('duration_hours', parseFloat(e.target.value))} />
                    </div>
                    <div>
                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider ml-1">Player Count</label>
@@ -307,7 +332,7 @@ export default function AdminDashboard() {
                       max={8} 
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 mt-1.5 outline-none" 
                       value={editingBooking.player_count} 
-                      onChange={e => setEditingBooking({...editingBooking, player_count: parseInt(e.target.value)})} 
+                      onChange={e => handleEditChange('player_count', parseInt(e.target.value))} 
                     />
                    </div>
                 </div>
@@ -322,11 +347,11 @@ export default function AdminDashboard() {
                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Total (R)</label>
-                        <input type="number" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 mt-1 font-mono" value={editingBooking.total_price} onChange={e => setEditingBooking({...editingBooking, total_price: parseFloat(e.target.value)})} />
+                        <input type="number" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 mt-1 font-mono" value={editingBooking.total_price} onChange={e => handleEditChange('total_price', parseFloat(e.target.value))} />
                       </div>
                       <div>
                         <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Paid (R)</label>
-                        <input type="number" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 mt-1 font-mono" value={editingBooking.amount_paid} onChange={e => setEditingBooking({...editingBooking, amount_paid: parseFloat(e.target.value)})} />
+                        <input type="number" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 mt-1 font-mono" value={editingBooking.amount_paid} onChange={e => handleEditChange('amount_paid', parseFloat(e.target.value))} />
                       </div>
                    </div>
                 </div>
@@ -457,7 +482,7 @@ export default function AdminDashboard() {
                       <div className="flex justify-between items-end mb-6">
                          <div>
                            <span className="text-zinc-400 font-medium text-sm">Total Amount Due</span>
-                           <div className="text-3xl font-bold text-white tracking-tight mt-1">R{( (walkInPlayers <= 4 ? (walkInPlayers === 1 ? 250 : walkInPlayers === 2 ? 180 : walkInPlayers === 3 ? 160 : 150) : 150) * walkInPlayers * walkInDuration ).toFixed(0)}</div>
+                           <div className="text-3xl font-bold text-white tracking-tight mt-1">R{calculateTotal(walkInPlayers, walkInDuration).toFixed(0)}</div>
                          </div>
                          <div className="text-right">
                             <span className="text-[10px] font-bold bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full uppercase tracking-wider border border-purple-500/20">Ready to Charge</span>
