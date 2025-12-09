@@ -185,22 +185,29 @@ export default function AdminDashboard() {
       if (paid >= total) newPaymentStatus = "paid_instore"
       else if (paid > 0) newPaymentStatus = "pending"
 
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          guest_name: editingBooking.guest_name,
-          guest_phone: editingBooking.guest_phone,
-          start_time: editingBooking.start_time,
-          duration_hours: editingBooking.duration_hours,
-          player_count: editingBooking.player_count,
-          total_price: total,
-          amount_paid: paid,
-          payment_status: newPaymentStatus,
-          simulator_id: editingBooking.simulator_id
+      const res = await fetch("/api/bookings/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingBooking.id,
+          pin: "8821",
+          updates: {
+            guest_name: editingBooking.guest_name,
+            guest_phone: editingBooking.guest_phone,
+            start_time: editingBooking.start_time,
+            duration_hours: editingBooking.duration_hours,
+            player_count: editingBooking.player_count,
+            total_price: total,
+            amount_paid: paid,
+            payment_status: newPaymentStatus,
+            simulator_id: editingBooking.simulator_id
+          }
         })
-        .eq("id", editingBooking.id)
+      })
 
-      if (error) throw error
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Update failed")
+
       setEditingBooking(null)
       fetchBookings()
     } catch (err: any) {
@@ -213,16 +220,21 @@ export default function AdminDashboard() {
   const handleQuickSettle = async (booking: any) => {
     if (!confirm(`Mark remainder (R${booking.total_price - (booking.amount_paid || 0)}) as PAID?`)) return
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({
-        amount_paid: booking.total_price,
-        payment_status: "paid_instore",
-        status: "confirmed"
+    const res = await fetch("/api/bookings/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: booking.id,
+        pin: "8821",
+        updates: {
+          amount_paid: booking.total_price,
+          payment_status: "paid_instore",
+          status: "confirmed"
+        }
       })
-      .eq("id", booking.id)
+    })
 
-    if (error) alert("Error")
+    if (!res.ok) alert("Error settling booking")
     else fetchBookings()
   }
 
