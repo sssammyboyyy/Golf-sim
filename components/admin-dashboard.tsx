@@ -34,7 +34,7 @@ export function AdminDashboard() {
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Today's Bookings</CardDescription>
+              <CardDescription>Today&apos;s Bookings</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-3">
@@ -50,7 +50,7 @@ export function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Today's Revenue</CardDescription>
+              <CardDescription>Today&apos;s Revenue</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
-export type UserType = "adult" | "student" | "junior" | "senior"
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed"
+export type UserType = "adult" | "student" | "junior" | "senior" | "guest" | "walk_in"
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded"
 export type DayType = "weekday" | "weekend" | "holiday"
 export type SessionType = "famous-course" | "quickplay"
@@ -14,12 +14,14 @@ export interface Booking {
   duration_hours: number
   player_count: number
   session_type: SessionType
+  simulator_id?: number
   famous_course_option?: string
   user_type: UserType
   base_price: number
   total_price: number
   status: BookingStatus
   payment_status: PaymentStatus
+  payment_type?: "full" | "deposit" | "bypass"
   payment_reference?: string
   guest_name?: string
   guest_email?: string
@@ -31,6 +33,8 @@ export interface Booking {
   created_at: string
   updated_at: string
   cancelled_at?: string
+  reminder_1h_sent?: boolean
+  reminder_24h_sent?: boolean
 }
 
 export interface Upsell {

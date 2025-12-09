@@ -140,8 +140,8 @@ export default function HomePage() {
       <section className="relative bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground py-24 md:py-40 lg:py-48 overflow-hidden">
         {/* Optimized Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image 
-            src="/golf-simulator-bay-with-augusta-national-on-screen.jpg" 
+          <Image
+            src="/golf-simulator-bay-with-augusta-national-on-screen.jpg"
             alt="Golf Simulator Bay"
             fill
             className="object-cover opacity-30 mix-blend-overlay"
@@ -163,7 +163,7 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-secondary/20 backdrop-blur-sm border border-secondary/40 rounded-full px-6 py-3 mb-8 animate-fade-in">
               <span className="w-2 h-2 bg-secondary rounded-full animate-pulse" />
               <span className="text-sm sm:text-base font-semibold tracking-wide">
-                VANDERBIJLPARK'S PREMIER SIMULATOR
+                VANDERBIJLPARK&apos;S PREMIER SIMULATOR
               </span>
             </div>
 
@@ -343,7 +343,7 @@ export default function HomePage() {
               World-Class GS Pro Simulation
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Experience GS Pro's industry-leading golf simulation platform with 5000+ championship courses and photorealistic graphics
+              Experience GS Pro&apos;s industry-leading golf simulation platform with 5000+ championship courses and photorealistic graphics
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -383,13 +383,12 @@ export default function HomePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-7 max-w-6xl mx-auto">
             {PRICING_PLANS.map((plan, i) => (
-              <Card 
-                key={i} 
-                className={`border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden backdrop-blur-sm ${
-                  plan.highlight 
-                    ? "border-secondary/40 hover:border-secondary bg-gradient-to-br from-secondary/5 to-secondary/10" 
+              <Card
+                key={i}
+                className={`border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden backdrop-blur-sm ${plan.highlight
+                    ? "border-secondary/40 hover:border-secondary bg-gradient-to-br from-secondary/5 to-secondary/10"
                     : "border-border hover:border-secondary/50 bg-card/50"
-                }`}
+                  }`}
               >
                 {plan.highlight && (
                   <div className="absolute top-3 right-3">
@@ -539,19 +538,19 @@ export default function HomePage() {
       <section className="relative py-12 md:py-16 bg-primary text-primary-foreground overflow-hidden">
         {/* Optimized background */}
         <div className="absolute inset-0 z-0">
-          <Image 
-            src="/golf-simulator-bay-with-augusta-national-on-screen.jpg" 
-            alt="Golf Simulator Bay" 
+          <Image
+            src="/golf-simulator-bay-with-augusta-national-on-screen.jpg"
+            alt="Golf Simulator Bay"
             fill
             className="object-cover opacity-20"
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-primary/80 to-primary/60 z-0" />
-        
+
         <div className="container mx-auto px-4 text-center relative z-10">
           <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">Ready to Experience Augusta National?</h2>
           <p className="text-lg mb-6 text-primary-foreground/90 max-w-2xl mx-auto">
-            Book your bay now and play the world's most legendary golf course. Walk-ins welcome!
+            Book your bay now and play the world&apos;s most legendary golf course. Walk-ins welcome!
           </p>
           <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-base">
             <Link href="/booking">Check Availability Now</Link>
@@ -584,7 +583,7 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground text-center md:text-left italic">
-                "The Simulator Never Judges"
+                &ldquo;The Simulator Never Judges&rdquo;
               </p>
             </div>
 

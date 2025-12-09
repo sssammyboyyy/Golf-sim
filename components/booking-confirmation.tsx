@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils"
 export default function BookingConfirmation() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  
+
   // -- STATE --
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [payFullAmount, setPayFullAmount] = useState(false)
-  
+
   // -- INPUTS --
   const [guestName, setGuestName] = useState("")
   const [guestEmail, setGuestEmail] = useState("")
@@ -66,7 +66,7 @@ export default function BookingConfirmation() {
           accept_whatsapp: acceptWhatsApp,
           enter_competition: enterCompetition,
           total_price: totalPrice,
-          pay_full_amount: payFullAmount, 
+          pay_full_amount: payFullAmount,
           coupon_code: couponCode || null,
         }),
       })
@@ -93,7 +93,7 @@ export default function BookingConfirmation() {
   return (
     <div className="min-h-screen bg-muted/10 pb-20 pt-8">
       <div className="max-w-6xl mx-auto px-4">
-        
+
         <div className="mb-8">
           <Link href="/booking" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" />
@@ -103,7 +103,7 @@ export default function BookingConfirmation() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          
+
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-0 shadow-sm">
@@ -124,19 +124,19 @@ export default function BookingConfirmation() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                   <label className="text-xs font-bold uppercase text-muted-foreground">Email Address</label>
-                   <Input placeholder="name@example.com" type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="bg-muted/10 border-muted" />
+                  <label className="text-xs font-bold uppercase text-muted-foreground">Email Address</label>
+                  <Input placeholder="name@example.com" type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="bg-muted/10 border-muted" />
                 </div>
-                
+
                 <div className="flex flex-col gap-3 pt-2">
-                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
-                      <input type="checkbox" checked={acceptWhatsApp} onChange={e => setAcceptWhatsApp(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                      <span className="text-sm">Receive booking confirmation via Email</span>
-                   </label>
-                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
-                      <input type="checkbox" checked={enterCompetition} onChange={e => setEnterCompetition(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                      <span className="text-sm">Enter me into the monthly "Free Round" competition</span>
-                   </label>
+                  <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
+                    <input type="checkbox" checked={acceptWhatsApp} onChange={e => setAcceptWhatsApp(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                    <span className="text-sm">Receive booking confirmation via Email</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
+                    <input type="checkbox" checked={enterCompetition} onChange={e => setEnterCompetition(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                    <span className="text-sm">Enter me into the monthly &ldquo;Free Round&rdquo; competition</span>
+                  </label>
                 </div>
               </CardContent>
             </Card>
@@ -150,7 +150,7 @@ export default function BookingConfirmation() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid md:grid-cols-2 gap-4">
-                    <div 
+                    <div
                       onClick={() => setPayFullAmount(false)}
                       className={cn(
                         "relative p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md",
@@ -165,7 +165,7 @@ export default function BookingConfirmation() {
                       </p>
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => setPayFullAmount(true)}
                       className={cn(
                         "relative p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md",
@@ -187,83 +187,83 @@ export default function BookingConfirmation() {
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-1">
-             <div className="sticky top-8 space-y-6">
-               <Card className="bg-primary text-primary-foreground border-none shadow-xl overflow-hidden relative">
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-                  <div className="absolute bottom-10 left-10 w-24 h-24 bg-secondary/20 rounded-full blur-xl" />
+            <div className="sticky top-8 space-y-6">
+              <Card className="bg-primary text-primary-foreground border-none shadow-xl overflow-hidden relative">
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                <div className="absolute bottom-10 left-10 w-24 h-24 bg-secondary/20 rounded-full blur-xl" />
 
-                  <CardHeader className="pb-4 border-b border-white/10 relative z-10">
-                    <CardTitle>Session Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6 space-y-4 relative z-10">
-                    <div>
-                      <p className="text-primary-foreground/70 text-xs font-bold uppercase tracking-wider mb-1">Date & Time</p>
-                      <div className="flex items-center gap-2 font-medium">
-                        <Calendar className="w-4 h-4" /> {formattedDate}
-                      </div>
-                      <div className="flex items-center gap-2 font-medium mt-1">
-                        <Clock className="w-4 h-4" /> {timeSlot} ({duration} hrs)
-                      </div>
+                <CardHeader className="pb-4 border-b border-white/10 relative z-10">
+                  <CardTitle>Session Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4 relative z-10">
+                  <div>
+                    <p className="text-primary-foreground/70 text-xs font-bold uppercase tracking-wider mb-1">Date & Time</p>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Calendar className="w-4 h-4" /> {formattedDate}
                     </div>
-
-                    <div>
-                      <p className="text-primary-foreground/70 text-xs font-bold uppercase tracking-wider mb-1">Experience</p>
-                      <div className="font-medium">{sessionType === "4ball" ? "4-Ball Special" : sessionType === "3ball" ? "3-Ball Special" : "Quick Play"}</div>
-                      <div className="text-sm opacity-90">{players} Players</div>
+                    <div className="flex items-center gap-2 font-medium mt-1">
+                      <Clock className="w-4 h-4" /> {timeSlot} ({duration} hrs)
                     </div>
-                    
-                    <div className="pt-4 mt-4 border-t border-white/10 space-y-2">
-                       <div className="flex justify-between text-sm">
-                         <span>Subtotal</span>
-                         <span>R{totalPrice}</span>
-                       </div>
-                       {amountDueLater > 0 && (
-                         <div className="flex justify-between text-sm text-secondary font-medium">
-                           <span>Pay Later</span>
-                           <span>-R{amountDueLater}</span>
-                         </div>
-                       )}
-                       <div className="flex justify-between text-xl font-bold pt-2">
-                         <span>Total Due</span>
-                         <span>R{amountToPay}</span>
-                       </div>
-                    </div>
-                  </CardContent>
-               </Card>
-
-               <Card className="border-dashed border-2">
-                 <CardContent className="pt-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Ticket className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-bold">Have a promo code?</span>
-                    </div>
-                    <Input 
-                      placeholder="Enter code" 
-                      className="uppercase placeholder:normal-case"
-                      value={couponCode}
-                      onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                    />
-                 </CardContent>
-               </Card>
-
-               {errorMessage && (
-                  <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex gap-2">
-                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5" /> {errorMessage}
                   </div>
-               )}
 
-               <Button 
-                 onClick={handlePayment} 
-                 disabled={isProcessing}
-                 className="w-full h-14 text-lg font-bold shadow-lg shadow-primary/25 rounded-xl"
-               >
-                 {isProcessing ? "Processing..." : `Pay R${amountToPay}`}
-               </Button>
-               
-               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                 <ShieldCheck className="w-3 h-3" /> Secure Payment by Yoco
-               </div>
-             </div>
+                  <div>
+                    <p className="text-primary-foreground/70 text-xs font-bold uppercase tracking-wider mb-1">Experience</p>
+                    <div className="font-medium">{sessionType === "4ball" ? "4-Ball Special" : sessionType === "3ball" ? "3-Ball Special" : "Quick Play"}</div>
+                    <div className="text-sm opacity-90">{players} Players</div>
+                  </div>
+
+                  <div className="pt-4 mt-4 border-t border-white/10 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal</span>
+                      <span>R{totalPrice}</span>
+                    </div>
+                    {amountDueLater > 0 && (
+                      <div className="flex justify-between text-sm text-secondary font-medium">
+                        <span>Pay Later</span>
+                        <span>-R{amountDueLater}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xl font-bold pt-2">
+                      <span>Total Due</span>
+                      <span>R{amountToPay}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-dashed border-2">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ticket className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold">Have a promo code?</span>
+                  </div>
+                  <Input
+                    placeholder="Enter code"
+                    className="uppercase placeholder:normal-case"
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  />
+                </CardContent>
+              </Card>
+
+              {errorMessage && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" /> {errorMessage}
+                </div>
+              )}
+
+              <Button
+                onClick={handlePayment}
+                disabled={isProcessing}
+                className="w-full h-14 text-lg font-bold shadow-lg shadow-primary/25 rounded-xl"
+              >
+                {isProcessing ? "Processing..." : `Pay R${amountToPay}`}
+              </Button>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="w-3 h-3" /> Secure Payment by Yoco
+              </div>
+            </div>
           </div>
 
         </div>

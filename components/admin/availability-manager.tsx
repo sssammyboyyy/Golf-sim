@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,24 +12,32 @@ export function AvailabilityManager() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
   // Sample time slots (would be fetched from API)
-  const timeSlots = [
-    { time: "06:00", available: true, bookings: 0, capacity: 2 },
-    { time: "07:00", available: true, bookings: 1, capacity: 2 },
-    { time: "08:00", available: true, bookings: 2, capacity: 2 },
-    { time: "09:00", available: true, bookings: 0, capacity: 2 },
-    { time: "10:00", available: true, bookings: 1, capacity: 2 },
-    { time: "11:00", available: true, bookings: 0, capacity: 2 },
-    { time: "12:00", available: true, bookings: 2, capacity: 2 },
-    { time: "13:00", available: true, bookings: 1, capacity: 2 },
-    { time: "14:00", available: true, bookings: 0, capacity: 2 },
-    { time: "15:00", available: true, bookings: 0, capacity: 2 },
-    { time: "16:00", available: true, bookings: 2, capacity: 2 },
-    { time: "17:00", available: true, bookings: 1, capacity: 2 },
-    { time: "18:00", available: true, bookings: 2, capacity: 2 },
-    { time: "19:00", available: true, bookings: 1, capacity: 2 },
-    { time: "20:00", available: true, bookings: 0, capacity: 2 },
-    { time: "21:00", available: true, bookings: 0, capacity: 2 },
-  ]
+  // State for fetched slots
+  const [timeSlots, setTimeSlots] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Fetch availability when date changes
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!selectedDate) return
+      setLoading(true)
+      try {
+        // Format date as YYYY-MM-DD for API
+        const dateStr = selectedDate.toLocaleDateString('en-CA') // YYYY-MM-DD
+        const res = await fetch(`/api/availability?date=${dateStr}`)
+        if (res.ok) {
+          const data = await res.json()
+          setTimeSlots(data)
+        }
+      } catch (error) {
+        console.error("Failed to load availability", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAvailability()
+  }, [selectedDate])
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">

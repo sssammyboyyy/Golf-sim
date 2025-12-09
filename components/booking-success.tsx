@@ -209,7 +209,7 @@ export function BookingSuccess() {
           {/* Next Steps */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>What's Next?</CardTitle>
+              <CardTitle>What&apos;s Next?</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-start gap-3">
@@ -219,7 +219,7 @@ export function BookingSuccess() {
                 <div>
                   <p className="font-semibold text-foreground">Check Your Messages</p>
                   <p className="text-sm text-muted-foreground">
-                    We've sent confirmation via {booking.accept_whatsapp ? "WhatsApp and email" : "email"}
+                    We&apos;ve sent confirmation via {booking.accept_whatsapp ? "WhatsApp and email" : "email"}
                   </p>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export function BookingSuccess() {
                 <div>
                   <p className="font-semibold text-foreground mb-1">Need to Reschedule?</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Contact us at least 2 hours before your session to reschedule or cancel. We're here to help make it
+                    Contact us at least 2 hours before your session to reschedule or cancel. We&apos;re here to help make it
                     easy!
                   </p>
                 </div>
