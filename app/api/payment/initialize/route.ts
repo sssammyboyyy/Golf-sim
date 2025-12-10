@@ -14,7 +14,7 @@ function createSASTTimestamp(dateStr: string, timeStr: string): string {
 function addHoursToTimestamp(timestamp: string, hours: number): string {
   const date = new Date(timestamp);
   date.setHours(date.getHours() + hours);
-  return date.toISOString(); 
+  return date.toISOString();
 }
 
 // Helper: Calculate text end time
@@ -23,29 +23,29 @@ function calculateEndTimeText(start: string, duration: number): string {
   const date = new Date()
   date.setHours(hours, minutes, 0, 0)
   date.setHours(date.getHours() + duration)
-  return date.toTimeString().slice(0, 5) 
+  return date.toTimeString().slice(0, 5)
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     // --- MAPPING VARIABLES ---
     const booking_date = body.booking_date || body.date
     const start_time = body.start_time || body.timeSlot
     const duration_hours = body.duration_hours || body.duration
     const player_count = body.player_count || body.players
-    
-    const session_type = body.session_type || body.sessionType 
-    const famous_course_option = body.famous_course_option || body.sessionType 
-    
-    const base_price = body.base_price || 0 
+
+    const session_type = body.session_type || body.sessionType
+    const famous_course_option = body.famous_course_option || body.sessionType
+
+    const base_price = body.base_price || 0
     const total_price = body.total_price || body.totalPrice
-    
+
     const guest_name = body.guest_name || body.customerName
     const guest_email = body.guest_email || body.customerEmail
     const guest_phone = body.guest_phone || body.customerPhone
-    
+
     const {
       accept_whatsapp,
       enter_competition,
@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
 
       if (couponData) {
         couponApplied = cleanCouponCode
-        
+
         // ADMIN BYPASS
         if (cleanCouponCode === "MULLIGAN_ADMIN_100") {
           dbTotalPrice = Number(base_price)
-          dbPaymentStatus = "paid_instore" 
+          dbPaymentStatus = "paid_instore"
           dbStatus = "confirmed"
           skipYoco = true
         }
@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
         }
         // PERCENTAGE DISCOUNT
         else if (couponData.discount_percent > 0) {
-           const discountAmount = (Number(base_price) * (couponData.discount_percent / 100));
-           dbTotalPrice = Math.max(0, Number(base_price) - discountAmount);
+          const discountAmount = (Number(base_price) * (couponData.discount_percent / 100));
+          dbTotalPrice = Math.max(0, Number(base_price) - discountAmount);
         }
       }
     }
@@ -108,42 +108,42 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------
     // 3. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Filter)
     // ---------------------------------------------------------
-    
+
     const requestedStartISO = createSASTTimestamp(booking_date, start_time);
     const requestedEndISO = addHoursToTimestamp(requestedStartISO, duration_hours);
 
     // Fetch ALL active bookings
     const { data: dailyBookings } = await supabase
-        .from("bookings")
-        .select("simulator_id, slot_start, slot_end, status, created_at")
-        .eq("booking_date", booking_date)
-        .neq("status", "cancelled")
+      .from("bookings")
+      .select("simulator_id, slot_start, slot_end, status, created_at")
+      .eq("booking_date", booking_date)
+      .neq("status", "cancelled")
 
     const takenBays = new Set<number>();
     const now = Date.now();
-    
+
     if (dailyBookings) {
       dailyBookings.forEach(b => {
         // SMART FILTER: Ignore "pending" bookings older than 20 mins
         let isActive = true;
         if (b.status === 'pending') {
-            const createdTime = new Date(b.created_at).getTime();
-            if ((now - createdTime) > 1200000) { // 20 mins
-                isActive = false;
-            }
+          const createdTime = new Date(b.created_at).getTime();
+          if ((now - createdTime) > 1200000) { // 20 mins
+            isActive = false;
+          }
         }
 
         if (isActive) {
-            const bStart = new Date(b.slot_start).getTime();
-            const bEnd = new Date(b.slot_end).getTime();
-            const reqStart = new Date(requestedStartISO).getTime();
-            const reqEnd = new Date(requestedEndISO).getTime();
+          const bStart = new Date(b.slot_start).getTime();
+          const bEnd = new Date(b.slot_end).getTime();
+          const reqStart = new Date(requestedStartISO).getTime();
+          const reqEnd = new Date(requestedEndISO).getTime();
 
-            const isOverlapping = (bStart < reqEnd) && (bEnd > reqStart);
-            
-            if (isOverlapping) {
-               takenBays.add(b.simulator_id);
-            }
+          const isOverlapping = (bStart < reqEnd) && (bEnd > reqStart);
+
+          if (isOverlapping) {
+            takenBays.add(b.simulator_id);
+          }
         }
       });
     }
@@ -152,9 +152,9 @@ export async function POST(request: NextRequest) {
     if (!takenBays.has(1)) assignedSimulatorId = 1
     else if (!takenBays.has(2)) assignedSimulatorId = 2
     else if (!takenBays.has(3)) assignedSimulatorId = 3
-    
+
     if (assignedSimulatorId === 0) {
-        return NextResponse.json({ error: "Sorry, all bays are full for this time duration." }, { status: 409 })
+      return NextResponse.json({ error: "Sorry, all bays are full for this time duration." }, { status: 409 })
     }
 
     // ---------------------------------------------------------
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         slot_end: slotEndISO,
         duration_hours,
         player_count,
-        simulator_id: assignedSimulatorId, 
+        simulator_id: assignedSimulatorId,
         user_type: "guest",
         session_type,
         famous_course_option,
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     if (bookingError) {
       console.error("Booking Insert Error:", bookingError)
-      return NextResponse.json({ error: "Failed to create booking" }, { status: 500 })
+      return NextResponse.json({ error: "Failed to create booking", details: bookingError }, { status: 500 })
     }
 
     if (skipYoco) {
@@ -208,15 +208,15 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------
     // 5. DEPOSIT LOGIC
     // ---------------------------------------------------------
-    let amountToCharge = dbTotalPrice; 
+    let amountToCharge = dbTotalPrice;
     const sessionStr = String(session_type || "").toLowerCase();
     const optionStr = String(famous_course_option || "").toLowerCase();
     const isDepositEligible = sessionStr.includes("famous") || sessionStr.includes("ball") || optionStr.includes("ball");
 
     if (isDepositEligible && !pay_full_amount) {
-         amountToCharge = Math.ceil(dbTotalPrice * 0.40);
+      amountToCharge = Math.ceil(dbTotalPrice * 0.40);
     }
-    
+
     const outstandingBalance = dbTotalPrice - amountToCharge;
 
     // ---------------------------------------------------------
@@ -235,11 +235,11 @@ export async function POST(request: NextRequest) {
         currency: "ZAR",
         cancelUrl: `${appUrl}/booking?cancelled=true`,
         // FIXED URL HERE:
-        successUrl: `${appUrl}/booking/success?bookingId=${booking.id}`, 
+        successUrl: `${appUrl}/booking/success?bookingId=${booking.id}`,
         failureUrl: `${appUrl}/booking?error=payment_failed`,
         metadata: {
           bookingId: booking.id,
-          totalPrice: dbTotalPrice.toFixed(2), 
+          totalPrice: dbTotalPrice.toFixed(2),
           depositPaid: amountToCharge.toFixed(2),
           outstandingBalance: outstandingBalance.toFixed(2),
           isDeposit: (outstandingBalance > 0).toString()
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
     const yocoData = await yocoResponse.json()
 
     if (yocoData.id) {
-       await supabase
+      await supabase
         .from("bookings")
         .update({ yoco_payment_id: yocoData.id })
         .eq("id", booking.id)
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
       booking_id: booking.id,
     })
 
- } catch (error: any) {
+  } catch (error: any) {
     console.error("Server Error:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
