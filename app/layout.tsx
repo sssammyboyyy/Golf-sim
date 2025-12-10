@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: "The Mulligan | Premier Golf Simulator",
   description: "Book 4-ball games, coaching, and practice sessions at The Mulligan. Top-tier golf simulation technology.",
   icons: {
-    icon: "/icon-filled.jpg",
-    shortcut: "/icon-filled.jpg",
-    apple: "/icon-filled.jpg",
+    icon: "/icon-mulligan.png",
+    shortcut: "/icon-mulligan.png",
+    apple: "/icon-mulligan.png",
   },
 }
 
