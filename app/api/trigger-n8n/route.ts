@@ -121,17 +121,33 @@ export async function POST(request: NextRequest) {
     // 6. Send to n8n
     const n8nUrl = process.env.N8N_WEBHOOK_URL || "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm"
 
-    // Fire and forget
-    fetch(n8nUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch(err => console.error("n8n Trigger Error:", err))
+    let n8nStatus = "pending";
+    let n8nText = "";
+
+    try {
+      console.log(`[API] Sending to n8n: ${n8nUrl}`);
+      const n8nRes = await fetch(n8nUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      n8nStatus = n8nRes.status.toString();
+      n8nText = await n8nRes.text();
+      console.log(`[API] n8n Response: ${n8nStatus} - ${n8nText}`);
+
+    } catch (err: any) {
+      console.error("n8n Trigger Error:", err);
+      n8nStatus = "error";
+      n8nText = err.message;
+    }
 
     return NextResponse.json({
       success: true,
       fixed_race_condition: dbPaid > 0 && booking.amount_paid === 0,
-      debug_target: n8nUrl
+      debug_target: n8nUrl,
+      n8n_status: n8nStatus,
+      n8n_response: n8nText
     })
 
   } catch (error: any) {
