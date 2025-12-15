@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 export const runtime = 'edge';
 
@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ valid: false, message: "Coupon code is required" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
     // Query the coupons table
     const { data: coupon, error } = await supabase

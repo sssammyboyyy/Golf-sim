@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 // 1. Force Edge Runtime
 export const runtime = "edge"
@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
       pay_full_amount
     } = body
 
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
     // ---------------------------------------------------------
     // 2. ROBUST COUPON & PRICE LOGIC

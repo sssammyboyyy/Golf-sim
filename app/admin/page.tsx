@@ -3,8 +3,8 @@
 // Disable static generation for this page
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
-import { createClient } from "@supabase/supabase-js"
+import { useState, useEffect, useMemo } from "react"
+import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import {
   Trash2, CheckCircle, Clock, DollarSign, Users, Calendar as CalendarIcon,
   Search, RefreshCw, LogOut, CreditCard, Target, Trophy, Loader2,
@@ -34,13 +34,17 @@ const calculateTotal = (players: number, duration: number) => {
   return rate * p * d
 }
 
-// Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Supabase client will be created inside component using useMemo
 
 export default function AdminDashboard() {
+  // Create Supabase client only on client-side (lazy init to avoid build-time errors)
+  const supabase = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !key) return null
+    return createClient(url, key)
+  }, [])
   // --- STATE ---
   const [pin, setPin] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -81,6 +85,7 @@ export default function AdminDashboard() {
 
   // --- FETCHING ---
   const fetchBookings = async () => {
+    if (!supabase) return // Guard for SSR
     setIsLoading(true)
     try {
 
@@ -200,7 +205,8 @@ export default function AdminDashboard() {
             total_price: total,
             amount_paid: paid,
             payment_status: newPaymentStatus,
-            simulator_id: editingBooking.simulator_id
+            simulator_id: editingBooking.simulator_id,
+            status: "confirmed" // Ensure booking is counted in availability
           }
         })
       })

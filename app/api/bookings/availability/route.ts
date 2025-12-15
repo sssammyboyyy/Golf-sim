@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 export const runtime = "edge"
 
@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Date is required" }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   // 1. Fetch ALL bookings (We need created_at to filter stale ones)
   const { data: bookings, error } = await supabase
@@ -38,24 +41,24 @@ export async function GET(request: NextRequest) {
     if (b.status === 'confirmed') return true;
     if (b.status === 'paid_instore') return true; // (For coupons)
     if (b.status === 'pending') {
-       const createdTime = new Date(b.created_at).getTime();
-       // Keep it if it's less than 20 minutes old (1200000 ms)
-       return (now - createdTime) < 1200000; 
+      const createdTime = new Date(b.created_at).getTime();
+      // Keep it if it's less than 20 minutes old (1200000 ms)
+      return (now - createdTime) < 1200000;
     }
     return false; // Pending and old? Ignore it.
   });
 
   // 4. Calculate Availability
   const bookedSlots: string[] = []
-  
+
   // Helper for SAST Date
   const getSlotTimeDate = (dateStr: string, timeStr: string) => {
-    return new Date(`${dateStr}T${timeStr}:00+02:00`); 
+    return new Date(`${dateStr}T${timeStr}:00+02:00`);
   }
 
   slots.forEach((time) => {
     const slotStart = getSlotTimeDate(date, time).getTime();
-    const slotEnd = slotStart + (30 * 60 * 1000); 
+    const slotEnd = slotStart + (30 * 60 * 1000);
 
     // Count VALID bookings in this slot
     const activeCount = validBookings.filter((b) => {

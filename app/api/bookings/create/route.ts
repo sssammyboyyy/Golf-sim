@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 // 1. Force Edge Runtime
 export const runtime = "edge"
@@ -26,7 +26,10 @@ function calculateEndTimeText(start: string, duration: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
     const bookingData = await request.json()
 
     // 1. EXTRACT DATA
@@ -107,7 +110,8 @@ export async function POST(request: NextRequest) {
         guest_email,
         guest_phone,
         total_price,
-        status: payment_status === "completed" ? "confirmed" : "pending",
+        // Walk-in bookings created by staff are always confirmed (not subject to 20-min pending filter)
+        status: bookingData.booking_source === "walk_in" ? "confirmed" : (payment_status === "completed" ? "confirmed" : "pending"),
         payment_status: payment_status === "completed" ? "paid_instore" : "pending",
         booking_source: bookingData.booking_source || "walk_in",
         player_count: bookingData.players || 1,

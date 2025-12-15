@@ -1,12 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 export const runtime = "edge"
 
 export async function POST(request: NextRequest) {
   try {
     const { players, duration, sessionType } = await request.json()
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
     // Call the SQL function we just created
     const { data: price, error } = await supabase
