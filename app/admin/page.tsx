@@ -353,7 +353,7 @@ export default function AdminDashboard() {
         {/* EDIT MODAL */}
         {editingBooking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <div className="bg-[#09090b] border border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 ring-1 ring-white/10">
+            <div className="bg-[#09090b] border border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 ring-1 ring-white/10">
               <div className="flex justify-between items-center p-6 border-b border-zinc-800">
                 <div>
                   <h3 className="text-xl font-bold text-white">Edit Booking</h3>
