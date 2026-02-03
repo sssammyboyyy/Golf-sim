@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
     // CRITICAL FIX: Validate required env vars
     const envCheck = validateEnvVars([
       "NEXT_PUBLIC_SUPABASE_URL",
-      "SUPABASE_SERVICE_ROLE_KEY"
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "YOCO_SECRET_KEY"
     ])
     if (envCheck) {
       logEvent("env_validation_failed", { correlationId, missing: envCheck.missing }, "error")
@@ -188,7 +189,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Send to n8n
-    const n8nUrl = process.env.N8N_WEBHOOK_URL || "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm"
+    const n8nUrlFromEnv = process.env.N8N_WEBHOOK_URL
+    if (!n8nUrlFromEnv) {
+      logEvent("n8n_url_fallback", { correlationId, message: "Using hardcoded fallback URL" }, "warn")
+    }
+    const n8nUrl = n8nUrlFromEnv || "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm"
 
     let n8nStatus = "pending";
     let n8nText = "";

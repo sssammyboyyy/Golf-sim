@@ -342,8 +342,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!yocoResponse.ok) {
-      console.error("Yoco Error:", yocoData)
-      return NextResponse.json({ error: "Payment initialization failed" }, { status: 500 })
+      logEvent("yoco_checkout_failed", { correlationId, yocoError: yocoData }, "error")
+      return NextResponse.json({
+        error: "Payment initialization failed",
+        error_code: "YOCO_CHECKOUT_FAILED",
+        correlation_id: correlationId
+      }, { status: 500 })
     }
 
     return NextResponse.json({
