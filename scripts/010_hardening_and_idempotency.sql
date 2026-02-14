@@ -82,7 +82,7 @@ BEGIN
 
   RETURN v_new_booking;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- 4. Permissions
 -- -------------------------------------------------------------

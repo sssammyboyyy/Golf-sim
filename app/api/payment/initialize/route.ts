@@ -342,7 +342,12 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: "Failed to create booking", error_code: "BOOKING_INSERT_FAILED", correlation_id: correlationId },
+        {
+          error: "Failed to create booking",
+          error_code: "BOOKING_INSERT_FAILED",
+          correlation_id: correlationId,
+          debug_error: bookingError.message // TEMPORARY DEBUG
+        },
         { status: 500 }
       )
     }
