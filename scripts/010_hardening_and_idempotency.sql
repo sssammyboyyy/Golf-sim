@@ -82,4 +82,9 @@ BEGIN
 
   RETURN v_new_booking;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 4. Permissions
+-- -------------------------------------------------------------
+-- Grant execute permission to API roles (anonymous and logged in users)
+GRANT EXECUTE ON FUNCTION public.create_booking_atomic TO anon, authenticated, service_role;
