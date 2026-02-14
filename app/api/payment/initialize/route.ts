@@ -227,129 +227,104 @@ export async function POST(request: NextRequest) {
     const outstandingBalance = dbTotalPrice - amountToCharge;
 
     // ---------------------------------------------------------
-    // 5. CREATE DB ROW
-    // ---------------------------------------------------------
-    // ---------------------------------------------------------
-    // 5. CREATE DB ROW (ATOMIC / IDEMPOTENT)
+    // 5. CREATE DB ROW (WITH IDEMPOTENCY)
     // ---------------------------------------------------------
     const slotStartISO = createSASTTimestamp(booking_date, start_time);
     const slotEndISO = addHoursToTimestamp(slotStartISO, duration_hours);
     const endTimeText = calculateEndTimeText(start_time, duration_hours);
 
-    // Fallback: If no ID sent (legacy frontend), generate one
-    const bookingRequestId = body.booking_request_id || crypto.randomUUID()
+    // Generate or reuse idempotency key
+    const bookingRequestId = body.booking_request_id || idempotencyKey || crypto.randomUUID()
 
-    // Payload for RPC or Insert
-    const bookingPayload = {
-      booking_request_id: bookingRequestId,
-      booking_date,
-      start_time: start_time + ":00", // Ensure HH:MM:SS format
-      duration_hours,
-      simulator_id: assignedSimulatorId,
-      slot_start: slotStartISO,
-      slot_end: slotEndISO,
-      guest_name,
-      guest_email,
-      guest_phone,
-      total_price: dbTotalPrice,
-      amount_paid: skipYoco ? dbTotalPrice : amountToCharge,
-      payment_type: skipYoco ? 'bypass' : (outstandingBalance > 0 ? 'deposit' : 'full'),
-      payment_status: dbPaymentStatus,
-      status: dbStatus,
-      session_type,
-      coupon_code: couponApplied,
-      correlation_id: correlationId
-    }
+    // A. IDEMPOTENCY CHECK: If this request ID was already processed, return existing booking
+    const { data: existingBooking } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("booking_request_id", bookingRequestId)
+      .maybeSingle()
 
-    let booking = null;
-    let bookingError = null;
+    let booking = existingBooking;
 
-    // TRY ATOMIC RPC FIRST
-    const { data: atomicBooking, error: atomicError } = await supabase
-      .rpc('create_booking_atomic', {
-        p_booking_request_id: bookingRequestId,
-        p_booking_date: booking_date,
-        p_start_time: start_time,
-        p_duration_hours: duration_hours,
-        p_simulator_id: assignedSimulatorId,
-        p_slot_start: slotStartISO,
-        p_slot_end: slotEndISO,
-        p_guest_details: { name: guest_name, email: guest_email, phone: guest_phone },
-        p_payment_details: {
+    // B. CREATE NEW BOOKING (only if not already existing)
+    if (!booking) {
+      const { data: newBooking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert({
+          booking_request_id: bookingRequestId,
+          booking_date,
+          start_time,
+          end_time: endTimeText,
+          slot_start: slotStartISO,
+          slot_end: slotEndISO,
+          duration_hours,
+          player_count,
+          simulator_id: assignedSimulatorId,
+          user_type: "guest",
+          session_type,
+          famous_course_option,
+          base_price,
           total_price: dbTotalPrice,
           amount_paid: skipYoco ? dbTotalPrice : amountToCharge,
           payment_type: skipYoco ? 'bypass' : (outstandingBalance > 0 ? 'deposit' : 'full'),
+          status: dbStatus,
           payment_status: dbPaymentStatus,
-          status: dbStatus
-        },
-        p_metadata: {
-          session_type,
+          guest_name,
+          guest_email,
+          guest_phone,
+          accept_whatsapp,
+          enter_competition,
           coupon_code: couponApplied,
-          correlation_id: correlationId
+        })
+        .select()
+        .single()
+
+      if (bookingError) {
+        logEvent("booking_insert_error", { correlationId, error: bookingError.message, code: bookingError.code }, "error")
+
+        // Handle FK violations (simulator doesn't exist)
+        if (bookingError.code === "23503") {
+          return NextResponse.json({
+            error: "Invalid simulator configuration. Please contact support.",
+            error_code: "SIMULATOR_FK_VIOLATION",
+            correlation_id: correlationId
+          }, { status: 500 })
         }
-      })
-      .single()
 
-    if (atomicBooking) {
-      booking = atomicBooking
-    } else if (atomicError) {
-      // If function missing, fall back to legacy INSERT
-      if (atomicError.message?.includes('function') && atomicError.message?.includes('does not exist')) {
-        logEvent("atomic_rpc_missing_fallback", { correlationId }, "warn")
+        // Handle constraint violations (race condition - slot taken)
+        if (bookingError.code === '23P01' || bookingError.message?.includes('exclusion constraint')) {
+          return NextResponse.json({
+            error: "Sorry, this time slot just became unavailable. Please select a different time.",
+            error_code: "SLOT_UNAVAILABLE",
+            correlation_id: correlationId
+          }, { status: 409 })
+        }
 
-        const { data: fallbackBooking, error: fallbackError } = await supabase
-          .from("bookings")
-          .insert({
-            ...bookingPayload,
-            // Ensure start_time is just HH:MM
-            start_time: start_time,
-            end_time: endTimeText,
-            user_type: "guest",
-            famous_course_option,
-            accept_whatsapp,
-            enter_competition
-          })
-          .select()
-          .single()
+        // Handle unique constraint on booking_request_id (concurrent duplicate)
+        if (bookingError.code === '23505' && bookingError.message?.includes('booking_request_id')) {
+          const { data: retryBooking } = await supabase
+            .from("bookings")
+            .select("*")
+            .eq("booking_request_id", bookingRequestId)
+            .single()
+          if (retryBooking) {
+            booking = retryBooking
+          }
+        }
 
-        booking = fallbackBooking
-        bookingError = fallbackError
+        if (!booking) {
+          return NextResponse.json(
+            {
+              error: "Failed to create booking",
+              error_code: "BOOKING_INSERT_FAILED",
+              correlation_id: correlationId,
+              debug_error: bookingError.message
+            },
+            { status: 500 }
+          )
+        }
       } else {
-        // Real error from RPC (e.g. constraint violation)
-        bookingError = atomicError
+        booking = newBooking
       }
-    }
-
-    if (bookingError) {
-      logEvent("booking_insert_error", { correlationId, error: bookingError.message, code: bookingError.code }, "error")
-
-      // CRITICAL FIX: Handle FK violations (simulator doesn't exist)
-      if (bookingError.code === "23503") {
-        return NextResponse.json({
-          error: "Invalid simulator configuration. Please contact support.",
-          error_code: "SIMULATOR_FK_VIOLATION",
-          correlation_id: correlationId
-        }, { status: 500 })
-      }
-
-      // Handle constraint violations gracefully (race condition protection)
-      if (bookingError.code === '23P01' || bookingError.message?.includes('exclusion constraint')) {
-        return NextResponse.json({
-          error: "Sorry, this time slot just became unavailable. Please select a different time.",
-          error_code: "SLOT_UNAVAILABLE",
-          correlation_id: correlationId
-        }, { status: 409 })
-      }
-
-      return NextResponse.json(
-        {
-          error: "Failed to create booking",
-          error_code: "BOOKING_INSERT_FAILED",
-          correlation_id: correlationId,
-          debug_error: bookingError.message // TEMPORARY DEBUG
-        },
-        { status: 500 }
-      )
     }
 
     logEvent("booking_created", { correlationId, bookingId: booking.id, simulatorId: assignedSimulatorId })

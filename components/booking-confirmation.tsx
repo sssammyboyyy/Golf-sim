@@ -138,11 +138,11 @@ export default function BookingConfirmation() {
 
                 <div className="flex flex-col gap-3 pt-2">
                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
-                    <input type="checkbox" checked={acceptWhatsApp} onChange={e => setAcceptWhatsApp(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                    <input id="acceptWhatsApp" name="acceptWhatsApp" type="checkbox" checked={acceptWhatsApp} onChange={e => setAcceptWhatsApp(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
                     <span className="text-sm">Receive booking confirmation via Email</span>
                   </label>
                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
-                    <input type="checkbox" checked={enterCompetition} onChange={e => setEnterCompetition(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                    <input id="enterCompetition" name="enterCompetition" type="checkbox" checked={enterCompetition} onChange={e => setEnterCompetition(e.target.checked)} className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" />
                     <span className="text-sm">Enter me into the monthly &ldquo;Free Round&rdquo; competition</span>
                   </label>
                 </div>
@@ -246,6 +246,8 @@ export default function BookingConfirmation() {
                     <span className="text-sm font-bold">Have a promo code?</span>
                   </div>
                   <Input
+                    id="couponCode"
+                    name="couponCode"
                     placeholder="Enter code"
                     className="uppercase placeholder:normal-case"
                     value={couponCode}
