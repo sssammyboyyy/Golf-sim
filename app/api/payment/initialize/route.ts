@@ -5,26 +5,7 @@ import { getCorrelationId, logEvent, validateEnvVars } from "@/lib/utils"
 // 1. Force Edge Runtime
 export const runtime = "edge"
 
-// Helper: Force SAST Timezone (+02:00) construction
-function createSASTTimestamp(dateStr: string, timeStr: string): string {
-  const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
-  return `${dateStr}T${cleanTime}+02:00`;
-}
-
-// Helper: Add hours to a timestamp for the end time (preserves SAST offset)
-function addHoursToTimestamp(timestamp: string, hours: number): string {
-  const date = new Date(timestamp);
-  date.setTime(date.getTime() + hours * 60 * 60 * 1000);
-  // Return in SAST format to maintain consistency
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const yyyy = date.getFullYear();
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
-  const hh = pad(date.getHours());
-  const min = pad(date.getMinutes());
-  const ss = pad(date.getSeconds());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}+02:00`;
-}
+// Helper: Calculate text end time
 
 // Helper: Calculate text end time
 function calculateEndTimeText(start: string, duration: number): string {
@@ -136,12 +117,54 @@ export async function POST(request: NextRequest) {
       skipYoco = true
     }
 
+
     // ---------------------------------------------------------
-    // 3. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Filter)
+    // 3. ROBUST DATE CALCULATION (Moved Up)
+    // ---------------------------------------------------------
+    // We assume input date/time are SAST. We construct the ISO string with +02:00 explicitly.
+    // This creates a Date object representing the correct absolute instant.
+    const cleanTime = (start_time || "").length === 5 ? `${start_time}:00` : start_time;
+    const baseISO = `${booking_date}T${cleanTime}+02:00`;
+
+    const startDate = new Date(baseISO);
+    const durationNum = Number(duration_hours);
+
+    if (isNaN(startDate.getTime()) || isNaN(durationNum)) {
+      console.error("Invalid Date/Duration", { baseISO, duration_hours });
+      return NextResponse.json({
+        error: "Invalid date or duration format",
+        error_code: "INVALID_DATE",
+        correlation_id: correlationId
+      }, { status: 400 });
+    }
+
+    // Calculate End Date safely using millisecond math
+    const endDate = new Date(startDate.getTime() + (durationNum * 60 * 60 * 1000));
+
+    // Store as standard ISO (UTC) - Postgres handles this perfectly
+    const slotStartISO = startDate.toISOString();
+    const slotEndISO = endDate.toISOString();
+
+    // Calculate text display time (SAST based)
+    const endTimeText = calculateEndTimeText(start_time, durationNum);
+
+    logEvent("date_debug", {
+      correlationId,
+      baseISO,
+      slotStartISO,
+      slotEndISO,
+      durationNum,
+      startOb: startDate.toString(),
+      endOb: endDate.toString()
+    });
+
+    // ---------------------------------------------------------
+    // 3b. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Filter)
     // ---------------------------------------------------------
 
-    const requestedStartISO = createSASTTimestamp(booking_date, start_time);
-    const requestedEndISO = addHoursToTimestamp(requestedStartISO, duration_hours);
+    // Use the robustly calculated ISOs for availability checking
+    const requestedStartISO = slotStartISO;
+    const requestedEndISO = slotEndISO;
 
     // CRITICAL FIX: Fetch simulator inventory from DB (source of truth)
     const { data: simulators, error: simError } = await supabase
@@ -181,8 +204,8 @@ export async function POST(request: NextRequest) {
         if (isActive) {
           const bStart = new Date(b.slot_start).getTime();
           const bEnd = new Date(b.slot_end).getTime();
-          const reqStart = new Date(requestedStartISO).getTime();
-          const reqEnd = new Date(requestedEndISO).getTime();
+          const reqStart = new Date(requestedStartISO).getTime(); // Use robust ISO
+          const reqEnd = new Date(requestedEndISO).getTime();     // Use robust ISO
 
           const isOverlapping = (bStart < reqEnd) && (bEnd > reqStart);
 
@@ -226,12 +249,12 @@ export async function POST(request: NextRequest) {
 
     const outstandingBalance = dbTotalPrice - amountToCharge;
 
+
     // ---------------------------------------------------------
     // 5. CREATE DB ROW (WITH IDEMPOTENCY)
     // ---------------------------------------------------------
-    const slotStartISO = createSASTTimestamp(booking_date, start_time);
-    const slotEndISO = addHoursToTimestamp(slotStartISO, duration_hours);
-    const endTimeText = calculateEndTimeText(start_time, duration_hours);
+
+    // (Date calculations moved up)
 
     // Generate or reuse idempotency key
     const bookingRequestId = body.booking_request_id || idempotencyKey || crypto.randomUUID()
