@@ -186,10 +186,10 @@ export async function POST(request: NextRequest) {
     const simulatorIds = simulators?.length ? simulators.map(s => s.id) : [1, 2, 3]
     logEvent("simulators_loaded", { correlationId, simulatorIds, fromDb: !!simulators?.length })
 
-    // Fetch ALL active bookings
+    // Fetch ALL active bookings (also fetch yoco_payment_id to detect truly abandoned rows)
     const { data: dailyBookings } = await supabase
       .from("bookings")
-      .select("simulator_id, slot_start, slot_end, status, created_at")
+      .select("simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id")
       .eq("booking_date", booking_date)
       .neq("status", "cancelled")
 
@@ -198,11 +198,18 @@ export async function POST(request: NextRequest) {
 
     if (dailyBookings) {
       dailyBookings.forEach(b => {
-        // SMART FILTER: Ignore "pending" bookings older than 20 mins
+        // SMART FILTER: Ignore stale "pending" bookings
         let isActive = true;
         if (b.status === 'pending') {
           const createdTime = new Date(b.created_at).getTime();
-          if ((now - createdTime) > 1200000) { // 20 mins
+          const ageMs = now - createdTime;
+
+          // If row has NO yoco_payment_id, user never even got to Yoco — definitely a ghost
+          if (!b.yoco_payment_id) {
+            isActive = false;
+          }
+          // If row is older than 5 mins and still pending, treat as ghost
+          else if (ageMs > 300000) { // 5 mins
             isActive = false;
           }
         }
