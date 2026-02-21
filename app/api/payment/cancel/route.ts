@@ -33,21 +33,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, message: "Booking already processed" })
         }
 
-        // Hard delete or mark cancelled (we'll mark cancelled so we have a record, but free the slot)
-        const { error: updateError } = await supabase
+        // Hard delete to free the slot entirely from the unique constraint
+        const { error: deleteError } = await supabase
             .from("bookings")
-            .update({
-                status: "cancelled",
-                payment_status: "cancelled",
-                guest_name: "Abandoned Checkout"
-            })
+            .delete()
             .eq("id", reference)
 
-        if (updateError) {
-            throw new Error(updateError.message)
+        if (deleteError) {
+            throw new Error(deleteError.message)
         }
 
-        return NextResponse.json({ success: true, message: "Abandoned booking cleared." })
+        return NextResponse.json({ success: true, message: "Abandoned booking completely removed." })
 
     } catch (error: any) {
         console.error("Cancel Webhook Error:", error)
