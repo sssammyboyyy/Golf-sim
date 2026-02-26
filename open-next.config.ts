@@ -1,2 +1,3 @@
-// opennext.config.ts
-export default {};
+import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+
+export default defineCloudflareConfig({});
