@@ -6,8 +6,6 @@ import { getCorrelationId, logEvent, validateEnvVars } from "@/lib/utils"
 export const runtime = "edge"
 
 // Helper: Calculate text end time
-
-// Helper: Calculate text end time
 function calculateEndTimeText(start: string, duration: number): string {
   const [hours, minutes] = start.split(":").map(Number)
   const date = new Date()
@@ -165,7 +163,7 @@ export async function POST(request: NextRequest) {
     });
 
     // ---------------------------------------------------------
-    // 3b. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Filter)
+    // 3b. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Cleanup)
     // ---------------------------------------------------------
 
     // Use the robustly calculated literal times for availability checking
@@ -186,62 +184,74 @@ export async function POST(request: NextRequest) {
     const simulatorIds = simulators?.length ? simulators.map(s => s.id) : [1, 2, 3]
     logEvent("simulators_loaded", { correlationId, simulatorIds, fromDb: !!simulators?.length })
 
-    // Fetch ALL active bookings (also fetch yoco_payment_id to detect truly abandoned rows)
+    // SURGICAL FIX: Fetch ALL bookings for the date — INCLUDING cancelled ones.
+    // The PostgreSQL exclusion constraint has no WHERE clause, so cancelled rows
+    // still physically block slot inserts. We MUST fetch them to delete them.
     const { data: dailyBookings } = await supabase
       .from("bookings")
-      .select("id, simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id")
+      .select("id, simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id, payment_status")
       .eq("booking_date", booking_date)
-      .neq("status", "cancelled")
 
     const takenBays = new Set<number>();
     const now = Date.now();
-    const ghostIds: string[] = [];
+    const deleteIds: string[] = [];
 
     if (dailyBookings) {
       dailyBookings.forEach(b => {
-        // SMART FILTER: Ignore stale "pending" bookings
-        let isActive = true;
+        // --- GHOST / DEAD ROW CLASSIFICATION ---
+        // A row should be DELETED from the DB if:
+        //   1. It is already cancelled (frees exclusion constraint lock)
+        //   2. It is pending with no yoco_payment_id (user never reached payment)
+        //   3. It is pending with yoco_payment_id but older than 5 mins (abandoned checkout)
+        // A row is ACTIVE (blocks the bay) only if it is confirmed or a fresh pending checkout.
+
+        if (b.status === 'cancelled') {
+          // Already cancelled — delete to free the exclusion constraint
+          deleteIds.push(b.id);
+          return; // skip to next
+        }
+
         if (b.status === 'pending') {
           const createdTime = new Date(b.created_at).getTime();
           const ageMs = now - createdTime;
 
-          // If row has NO yoco_payment_id, user never even got to Yoco — definitely a ghost
+          // No yoco_payment_id = user never even got to Yoco — definitely a ghost
           if (!b.yoco_payment_id) {
-            isActive = false;
-            ghostIds.push(b.id);
+            deleteIds.push(b.id);
+            return;
           }
-          // If row is older than 5 mins and still pending, treat as ghost
-          else if (ageMs > 300000) { // 5 mins
-            isActive = false;
-            ghostIds.push(b.id);
+          // Has yoco_payment_id but older than 5 mins and still pending = abandoned
+          if (ageMs > 300000) { // 5 mins
+            deleteIds.push(b.id);
+            return;
           }
         }
 
-        if (isActive) {
-          const bStart = new Date(b.slot_start).getTime();
-          const bEnd = new Date(b.slot_end).getTime();
-          // Because b.slot_start comes back as '2025-12-25T14:00:00.000Z' (even though it's local)
-          // we just do a straight numeric comparison here
-          const reqStart = new Date(requestedStartStr).getTime();
-          const reqEnd = new Date(requestedEndStr).getTime();
+        // This row is ACTIVE — check if it overlaps with the requested slot
+        const bStart = new Date(b.slot_start).getTime();
+        const bEnd = new Date(b.slot_end).getTime();
+        const reqStart = new Date(requestedStartStr).getTime();
+        const reqEnd = new Date(requestedEndStr).getTime();
 
-          const isOverlapping = (bStart < reqEnd) && (bEnd > reqStart);
+        const isOverlapping = (bStart < reqEnd) && (bEnd > reqStart);
 
-          if (isOverlapping) {
-            takenBays.add(b.simulator_id);
-          }
+        if (isOverlapping) {
+          takenBays.add(b.simulator_id);
         }
       });
     }
 
-    // CRITICAL FIX: Hard delete ghost bookings in DB so the exclusion constraint doesn't block new inserts.
-    // Setting status='cancelled' doesn't free the slot because the exclusion constraint applies to all rows.
-    if (ghostIds.length > 0) {
-      logEvent("ghost_cleanup", { correlationId, action: "hard_delete", ghostIds, count: ghostIds.length })
-      await supabase
+    // HARD DELETE all ghost/cancelled rows to free exclusion constraint locks
+    if (deleteIds.length > 0) {
+      logEvent("ghost_cleanup", { correlationId, action: "hard_delete", deleteIds, count: deleteIds.length })
+      const { error: deleteError } = await supabase
         .from("bookings")
         .delete()
-        .in("id", ghostIds)
+        .in("id", deleteIds)
+
+      if (deleteError) {
+        logEvent("ghost_cleanup_error", { correlationId, error: deleteError.message }, "error")
+      }
     }
 
     // CRITICAL FIX: Use actual simulator IDs from DB, not hardcoded 1/2/3
@@ -256,7 +266,12 @@ export async function POST(request: NextRequest) {
     if (assignedSimulatorId === 0) {
       logEvent("slot_unavailable", { correlationId, booking_date, start_time, takenBays: Array.from(takenBays) }, "warn")
       return NextResponse.json(
-        { error: "Sorry, all bays are full for this time duration.", error_code: "SLOT_UNAVAILABLE", correlation_id: correlationId },
+        {
+          error: "Sorry, all bays are full for this time slot.",
+          error_code: "SLOT_UNAVAILABLE",
+          correlation_id: correlationId,
+          debug: { takenBays: Array.from(takenBays), simulatorIds, deletedGhosts: deleteIds.length }
+        },
         { status: 409 }
       )
     }
@@ -281,8 +296,6 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------
     // 5. CREATE DB ROW (WITH IDEMPOTENCY)
     // ---------------------------------------------------------
-
-    // (Date calculations moved up)
 
     // Generate or reuse idempotency key
     const bookingRequestId = body.booking_request_id || idempotencyKey || crypto.randomUUID()
@@ -330,24 +343,34 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (bookingError) {
-        logEvent("booking_insert_error", { correlationId, error: bookingError.message, code: bookingError.code }, "error")
+        logEvent("booking_insert_error", {
+          correlationId,
+          error: bookingError.message,
+          code: bookingError.code,
+          assignedSimulatorId,
+          slotStartLiteral,
+          slotEndLiteral,
+          deletedGhosts: deleteIds.length
+        }, "error")
 
         // Handle FK violations (simulator doesn't exist)
         if (bookingError.code === "23503") {
           return NextResponse.json({
             error: "Invalid simulator configuration. Please contact support.",
             error_code: "SIMULATOR_FK_VIOLATION",
-            correlation_id: correlationId
+            correlation_id: correlationId,
+            debug_error: bookingError.message
           }, { status: 500 })
         }
 
         // Handle constraint violations (race condition - slot taken)
         if (bookingError.code === '23P01' || bookingError.message?.includes('exclusion constraint')) {
           return NextResponse.json({
-            error: "Sorry, this time slot just became unavailable. Please select a different time.",
-            error_code: "SLOT_UNAVAILABLE",
+            error: "This time slot was just booked by another customer. Please select a different time.",
+            error_code: "SLOT_RACE_CONDITION",
             correlation_id: correlationId,
-            debug_error: bookingError.message
+            debug_error: bookingError.message,
+            debug: { assignedSimulatorId, deletedGhosts: deleteIds.length }
           }, { status: 409 })
         }
 
@@ -367,7 +390,7 @@ export async function POST(request: NextRequest) {
         if (!booking) {
           return NextResponse.json(
             {
-              error: `Failed to create booking: ${bookingError.message} (Code: ${bookingError.code})`,
+              error: `Booking failed: ${bookingError.message} (Code: ${bookingError.code})`,
               error_code: "BOOKING_INSERT_FAILED",
               correlation_id: correlationId,
               debug_error: bookingError.message,
@@ -391,8 +414,6 @@ export async function POST(request: NextRequest) {
         message: dbPaymentStatus === "paid_instore" ? "Walk-in Confirmed" : "Booking confirmed with coupon",
       })
     }
-
-    // (Deposit logic moved to before booking insert)
 
     // ---------------------------------------------------------
     // 6. YOCO CHECKOUT
