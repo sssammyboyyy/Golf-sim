@@ -189,12 +189,13 @@ export async function POST(request: NextRequest) {
     // Fetch ALL active bookings (also fetch yoco_payment_id to detect truly abandoned rows)
     const { data: dailyBookings } = await supabase
       .from("bookings")
-      .select("simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id")
+      .select("id, simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id")
       .eq("booking_date", booking_date)
       .neq("status", "cancelled")
 
     const takenBays = new Set<number>();
     const now = Date.now();
+    const ghostIds: string[] = [];
 
     if (dailyBookings) {
       dailyBookings.forEach(b => {
@@ -207,10 +208,12 @@ export async function POST(request: NextRequest) {
           // If row has NO yoco_payment_id, user never even got to Yoco — definitely a ghost
           if (!b.yoco_payment_id) {
             isActive = false;
+            ghostIds.push(b.id);
           }
           // If row is older than 5 mins and still pending, treat as ghost
           else if (ageMs > 300000) { // 5 mins
             isActive = false;
+            ghostIds.push(b.id);
           }
         }
 
@@ -229,6 +232,15 @@ export async function POST(request: NextRequest) {
           }
         }
       });
+    }
+
+    // CRITICAL FIX: Actually cancel ghost bookings in DB so the exclusion constraint doesn't block new inserts
+    if (ghostIds.length > 0) {
+      logEvent("ghost_cleanup", { correlationId, ghostIds, count: ghostIds.length })
+      await supabase
+        .from("bookings")
+        .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+        .in("id", ghostIds)
     }
 
     // CRITICAL FIX: Use actual simulator IDs from DB, not hardcoded 1/2/3
