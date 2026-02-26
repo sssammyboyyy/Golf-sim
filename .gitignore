@@ -40,3 +40,7 @@ next-env.d.ts
 .wrangler/
 .dev.vars
 wrangler.toml.backup
+
+# PROTECT CUSTOMER DATA
+bookings_rows.csv
+bookings_rows_backup.csv
