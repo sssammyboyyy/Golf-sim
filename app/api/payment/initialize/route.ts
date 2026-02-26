@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
           famous_course_option,
           base_price,
           total_price: dbTotalPrice,
-          amount_paid: skipYoco ? dbTotalPrice : amountToCharge,
+          amount_paid: skipYoco ? dbTotalPrice : 0,
           payment_type: skipYoco ? 'bypass' : (outstandingBalance > 0 ? 'deposit' : 'full'),
           status: dbStatus,
           payment_status: dbPaymentStatus,
