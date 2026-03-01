@@ -9,13 +9,13 @@ import { format, getDay } from "date-fns"
 
 // Standard operating hours by day of week (0 = Sunday, 6 = Saturday)
 export const OPERATING_HOURS: Record<number, { open: number; close: number }> = {
-    0: { open: 10, close: 15.5 }, // Sunday (10:00-15:30)
-    1: { open: 9, close: 19.5 },  // Monday (9:00-19:30)
-    2: { open: 9, close: 19.5 },  // Tuesday (9:00-19:30)
-    3: { open: 9, close: 19.5 },  // Wednesday (9:00-19:30)
-    4: { open: 9, close: 19.5 },  // Thursday (9:00-19:30)
-    5: { open: 9, close: 19.5 },  // Friday (9:00-19:30)
-    6: { open: 8, close: 19.5 },  // Saturday (8:00-19:30)
+    0: { open: 10, close: 20 }, // Sunday (10:00-20:00)
+    1: { open: 9, close: 20 },  // Monday (9:00-20:00)
+    2: { open: 9, close: 20 },  // Tuesday (9:00-20:00)
+    3: { open: 9, close: 20 },  // Wednesday (9:00-20:00)
+    4: { open: 9, close: 20 },  // Thursday (9:00-20:00)
+    5: { open: 9, close: 20 },  // Friday (9:00-20:00)
+    6: { open: 8, close: 20 },  // Saturday (8:00-20:00)
 }
 
 /**
