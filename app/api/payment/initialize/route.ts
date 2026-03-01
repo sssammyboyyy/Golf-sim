@@ -350,6 +350,8 @@ export async function POST(request: NextRequest) {
           accept_whatsapp,
           enter_competition,
           coupon_code: couponApplied,
+          addon_coaching: addon_coaching || false,
+          addon_club_rental: addon_club_rental || false,
         })
         .select()
         .single()
