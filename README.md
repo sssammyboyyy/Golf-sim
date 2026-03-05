@@ -1,245 +1,281 @@
-# Elite Golf Sim - Vanderbijlpark Golf Simulator Booking Platform
+# The Mulligan — AI-Automated Booking & Operations Platform
 
-Vanderbijlpark's premier indoor golf simulator experience featuring Augusta National, skills challenges, and real-time bay availability.
+> **Full-stack SaaS platform** for a live indoor golf simulator venue, built from zero to production in weeks. Features **event-driven workflow automation**, **real-time payment orchestration**, and an **AI-powered operations pipeline** — all shipped to real paying customers.
 
-## 🏌️ Features
+[![Live](https://img.shields.io/badge/Status-Live%20in%20Production-brightgreen)](https://themulligan.org)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![Edge Runtime](https://img.shields.io/badge/Runtime-Cloudflare%20Edge-orange)](https://pages.cloudflare.com/)
+[![n8n Automations](https://img.shields.io/badge/Automations-n8n%20Workflows-red)](https://n8n.io/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E)](https://supabase.com/)
 
-### Customer-Facing
-- **Real-Time Bay Availability**: Live status display showing available bays with color indicators
-- **Augusta National 18 Holes**: Premium experience for 3-4 players (R480/R600)
-- **Quick Play Sessions**: Solo (R250) and duo (R360) sessions on all courses
-- **Walk-In Friendly**: Pay at Yoco terminal on-site at SW5 Vanderbijlpark
-- **Monthly Competitions**: Longest Drive (R2000 voucher), Hole-in-One, and Closest to Pin challenges
-- **POPIA Compliant**: WhatsApp opt-in for booking confirmations
-- **Mobile-First Design**: Optimized for "golf simulator near me" searches
-- **Secure Payments**: Yoco payment processing with cards, Apple Pay, and Google Pay
+---
 
-### Admin Dashboard
-- **Walk-In Bookings**: Password-protected admin page for on-site bookings
-- **Booking Management**: View, search, filter, and cancel bookings
-- **Availability Control**: Manage time slots and bay status
-- **Revenue Reports**: Track daily, weekly, and monthly revenue
-- **Competition Management**: Monitor entries and leaderboards
+## Why This Project Matters
 
-## 🚀 Cloudflare Pages Deployment
+This isn't a tutorial project or a weekend side project. **The Mulligan is a live revenue-generating platform** handling real bookings, processing real payments, and sending automated communications to real customers for an operating golf simulator venue.
 
-This project is configured for deployment on Cloudflare Pages using `@cloudflare/next-on-pages`.
+It demonstrates:
 
-### Prerequisites
+- **Shipping under pressure** — Built and iterated to production with real-world business deadlines
+- **End-to-end ownership** — From database schema design to payment integration to automated email workflows
+- **Automation-first mindset** — Manual operational work replaced by event-driven n8n workflows that handle confirmations, reminders, and store notifications without human intervention
+- **Production-grade engineering** — Race condition handling, idempotency guards, Row-Level Security, self-healing payment state machines, and structured observability
 
-- Node.js 22+
-- pnpm package manager
-- Cloudflare account
-- Supabase account
-- Yoco account (South African payment gateway)
+---
 
-### Setup
+## System Architecture
 
-1. **Install dependencies:**
-\`\`\`bash
-pnpm install
-\`\`\`
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        CUSTOMER EXPERIENCE                          │
+│  Mobile-First Booking Flow → Session Selection → Payment → Success  │
+└────────────────────────────┬─────────────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    EDGE RUNTIME (Cloudflare Workers)                 │
+│                                                                      │
+│  ┌─────────────┐  ┌──────────────────┐  ┌────────────────────────┐  │
+│  │  Booking API │  │  Payment Gateway │  │  n8n Trigger Engine    │  │
+│  │  /api/book   │  │  /api/payment/*  │  │  /api/trigger-n8n     │  │
+│  │              │  │                  │  │                        │  │
+│  │  • Availability│ │  • Yoco Checkout │  │  • Race Condition Fix  │  │
+│  │  • Slot Lock  │  │  • Webhook Verify│  │  • Self-Healing State  │  │
+│  │  • Idempotency│ │  • Deposit/Full  │  │  • Email Filtering     │  │
+│  └──────┬───────┘  └────────┬─────────┘  └──────────┬─────────────┘  │
+│         │                   │                       │                │
+└─────────┼───────────────────┼───────────────────────┼────────────────┘
+          │                   │                       │
+          ▼                   ▼                       ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                     SUPABASE (PostgreSQL + RLS)                      │
+│                                                                      │
+│  bookings │ simulators │ pricing │ coupons                           │
+│  • Row-Level Security policies    • 11+ versioned migrations        │
+│  • Idempotent booking constraints • Unique slot conflict guards     │
+└──────────────────────────────────┬───────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                  AUTOMATION LAYER (Self-Hosted n8n)                   │
+│                                                                      │
+│  ┌─────────────────────┐    ┌────────────────────────────────┐      │
+│  │  Booking Confirmed  │    │  24h / 1h Reminder Engine      │      │
+│  │  (Webhook Trigger)  │    │  (Schedule: Every 30 min)      │      │
+│  │                     │    │                                │      │
+│  │  1. Validate + Auth │    │  1. Query upcoming bookings    │      │
+│  │  2. Update DB State │    │  2. Filter unnotified guests   │      │
+│  │  3. Render Customer │    │  3. Send branded HTML email    │      │
+│  │     Email (HTML)    │    │  4. Mark reminder as sent      │      │
+│  │  4. Send via Resend │    │                                │      │
+│  │  5. Render Store    │    └────────────────────────────────┘      │
+│  │     Notification    │                                            │
+│  │  6. Send to Owner   │    ┌────────────────────────────────┐      │
+│  └─────────────────────┘    │  Lead Gen Pipeline (AI)        │      │
+│                             │  • Google Dorking → Parse      │      │
+│                             │  • Dedup via Supabase          │      │
+│                             │  • Gemini AI Pitch Synthesis   │      │
+│                             │  • Telegram Notifications      │      │
+│                             └────────────────────────────────┘      │
+│                                                                      │
+│  Transport: Resend API (transactional email)                        │
+│  Observability: n8n_status tracking per booking row                 │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
-2. **Run database migrations:**
-Execute the SQL scripts in the `scripts/` folder in order:
-- `001_create_tables.sql` - Creates database tables
-- `002_enable_rls.sql` - Enables Row Level Security
-- `003_seed_data.sql` - Seeds initial data
-- `004_create_functions.sql` - Creates database functions
+---
 
-Run these directly in v0 or in your Supabase SQL editor.
+## Key Engineering Decisions
 
-3. **Configure environment variables** (in Cloudflare dashboard or locally):
-\`\`\`bash
-# Supabase
-SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+### 1. Race Condition Resolution (Payment ↔ Email Timing)
 
-# Yoco Payment Gateway
-YOCO_SECRET_KEY=sk_test_your_secret_key
+**Problem:** After Yoco payment, the webhook updating `amount_paid` and the frontend triggering the confirmation email fired concurrently. The email engine would see `amount_paid = 0` and send incorrect financial details.
 
-# App URL (for payment callbacks)
-NEXT_PUBLIC_SITE_URL=https://your-site.pages.dev
-\`\`\`
+**Solution:** The `/api/trigger-n8n` endpoint implements a **self-healing state machine** — if the database shows `amount_paid = 0` but a `yoco_payment_id` exists, it proactively verifies the payment status directly with the Yoco API, patches the database, and constructs the email payload with corrected data. Zero manual intervention required.
 
-4. **Build for Cloudflare:**
-\`\`\`bash
-pnpm build
-\`\`\`
+```typescript
+// Self-healing: verify with payment provider when DB state lags
+if (booking.yoco_payment_id && dbPaid === 0) {
+  const yocoData = await verifyPaymentWithYoco(booking.yoco_payment_id)
+  if (yocoData.status === 'successful') {
+    dbPaid = yocoData.metadata?.depositPaid ?? yocoData.amount / 100
+    await supabaseAdmin.from("bookings").update({ amount_paid: dbPaid, status: "confirmed" })
+  }
+}
+```
 
-5. **Deploy to Cloudflare Pages:**
-\`\`\`bash
-pnpm pages:deploy
-\`\`\`
+### 2. Idempotent Booking Architecture
 
-For detailed deployment instructions, see [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md).
+**Problem:** Double-click submissions, network retries, and webhook replays all risk creating duplicate bookings.
 
-## 💳 Payment Integration
+**Solution:** Every booking carries a `booking_request_id` (client-generated idempotency key). A unique constraint on `(simulator_id, slot_start, slot_end)` prevents physical double-booking at the database level, regardless of application-layer bugs.
 
-- **Processor**: Yoco (South African payment gateway)
-- **Methods**: All major cards, Apple Pay, Google Pay
-- **Compliance**: PCI-DSS compliant hosted checkout
-- **Features**: Instant settlements, no setup fees, competitive rates
+### 3. n8n Workflow Automation (Replacing Manual Work)
 
-### Yoco Test Cards
-- **Success**: 4111 1111 1111 1111 (CVV: 123, any future date)
-- **Declined**: 4000 0000 0000 0002
+Three production n8n workflows automate what would otherwise require a full-time operations person:
 
-## 📍 Location & Hours
+| Workflow | Trigger | What It Replaces |
+|---|---|---|
+| **Booking Confirmation** | Webhook (POST from app) | Manual email composition + sending to customer AND store owner |
+| **24h/1h Reminders** | Cron (every 30 min) | Staff manually texting/calling customers before their session |
+| **Lead Gen Pipeline** | Cron (scheduled) | Manual lead research, qualification, and outreach drafting |
 
-**Elite Golf Sim**  
-SW5 Vanderbijlpark, Gauteng, South Africa
+Each workflow is **secret-authenticated**, writes execution status back to the database (`n8n_status`, `n8n_response`, `n8n_last_attempt_at`), and produces **branded HTML email templates** rendered at execution time with booking-specific data.
 
-**Operating Hours:**  
-Monday - Saturday: 9AM - 8PM  
-Sunday: Closed
+### 4. Edge-First, Zero Cold Starts
 
-**Walk-ins Welcome:** Pay via Yoco card terminal on-site
+The entire app runs on **Cloudflare Workers edge runtime**. API routes execute in <100ms globally. No server provisioning, no container management, no cold start penalties.
 
-## 🔍 SEO & Keywords
+---
 
-**Primary Keywords:**
-- "golf simulator near me Vanderbijlpark"
-- "indoor golf simulator near me Gauteng"
+## Tech Stack
 
-**Features:**
-- Augusta National course simulation
-- Real-time 3-bay availability display
-- Walk-in welcome with on-site payment
-- Mobile-optimized booking (320px+)
-- Schema markup for LocalBusiness and SportsActivityLocation
+| Layer | Technology | Why |
+|---|---|---|
+| **Framework** | Next.js 15 (App Router) | Server components, edge-compatible API routes, file-based routing |
+| **Runtime** | Cloudflare Workers | Sub-100ms globally, zero cold starts, DDoS protection included |
+| **Database** | Supabase PostgreSQL | Row-Level Security, real-time subscriptions, managed auth |
+| **Payments** | Yoco | South African payment gateway — cards, Apple Pay, Google Pay |
+| **Automation** | n8n (self-hosted) | Visual workflow builder, webhooks, cron triggers, 400+ integrations |
+| **Email** | Resend | Transactional email API with deliverability tracking |
+| **AI/LLM** | Google Gemini | Pitch synthesis in lead gen pipeline |
+| **Styling** | Tailwind CSS v4 + shadcn/ui | Rapid UI iteration with accessible component primitives |
+| **Notifications** | Telegram Bot API | Real-time founder alerts for new leads and bookings |
+| **Observability** | Structured logging + DB tracking | Correlation IDs, n8n execution status, payment audit trail |
 
-## 🛠️ Tech Stack
+---
 
-- **Framework**: Next.js 15 (App Router)
-- **Runtime**: Cloudflare Workers (Edge Runtime)
-- **Database**: Supabase (PostgreSQL with RLS)
-- **Payments**: Yoco payment gateway
-- **Styling**: Tailwind CSS v4 + shadcn/ui
-- **Deployment**: Cloudflare Pages with OpenNext
-- **Node Version**: 22+
+## Database Schema
 
-## 📱 Mobile Optimization
+11 versioned migrations managing the full lifecycle:
 
-- **Breakpoint**: 320px minimum width
-- **Above-the-fold**: Real-time bay status on mobile
-- **Simplified Flow**: 2-step booking for quick conversions
-- **Local Search**: Optimized for "near me" searches
-- **Click Actions**: Direct maps and payment integration
+```
+scripts/
+├── 001_create_tables.sql           # Core schema: bookings, simulators, pricing, coupons
+├── 002_enable_rls.sql              # Row-Level Security policies
+├── 003_seed_data.sql               # Initial pricing and simulator configuration
+├── 004_create_functions.sql        # PostgreSQL functions for availability checks
+├── 005_add_booking_fields.sql      # Payment tracking fields
+├── 006_update_pricing_and_courses.sql  # Business rule updates
+├── 007_add_addons_to_bookings.sql  # Coaching + club hire add-ons
+├── 008_add_public_booking_policy.sql   # Anonymous booking RLS policy
+├── 009_add_consumable_addons.sql   # Walk-in consumable items
+├── 010_hardening_and_idempotency.sql   # Unique constraints, conflict guards
+├── 011_fix_unique_slot_constraint.sql  # Double-booking prevention
+├── fix_double_booking_constraint.sql   # Hotfix: production slot collision
+├── migration_reminders.sql         # Reminder tracking columns
+└── supabase_security_patch.sql     # Security hardening
+```
 
-## 🏆 Competition Features
+---
 
-**Included with Every Booking:**
-- **Longest Drive Challenge**: Win R2000 Pro Shop voucher monthly
-- **Hole-in-One Challenge**: Instant prizes on designated holes
-- **Closest to Pin**: Free 2-hour session for monthly winner
+## API Surface
 
-## 💰 Pricing Structure (December Launch)
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/availability` | `GET` | Real-time bay availability for a given date |
+| `/api/payment/initialize` | `POST` | Create Yoco checkout session with deposit/full payment logic |
+| `/api/payment/verify` | `POST` | Webhook endpoint for Yoco payment confirmation |
+| `/api/trigger-n8n` | `POST` | Orchestrate post-payment automation (emails, DB updates) |
+| `/api/bookings` | `GET/POST` | CRUD operations for booking management |
+| `/api/bays/status` | `GET` | Live bay occupancy status |
+| `/api/quote` | `POST` | Dynamic pricing calculation |
+| `/api/coupons` | `POST` | Coupon validation and application |
 
-### Augusta National 18 Holes
-- **3 Players**: R480 (2-hour minimum required)
-- **4 Players**: R600 (3-hour minimum required)
-- *Note: Full time block required, no overtime permitted*
+All API routes run on **edge runtime** with structured error responses, correlation IDs, and environment variable validation.
 
-### Quick Play Sessions
-- **Solo**: R250 (1-hour minimum)
-- **Duo**: R360 (1-hour minimum)
-- *All courses and skills challenges included*
+---
 
-## 🗂️ Project Structure
+## Project Structure
 
-\`\`\`
+```
+the-mulligan/
 ├── app/
-│   ├── page.tsx                    # Homepage with SEO optimization
-│   ├── layout.tsx                  # Layout with schema markup
+│   ├── page.tsx                    # Landing page (SEO-optimized)
+│   ├── layout.tsx                  # Root layout with schema markup
 │   ├── booking/
-│   │   ├── page.tsx               # 2-step booking flow
-│   │   ├── confirm/page.tsx       # POPIA-compliant confirmation
-│   │   └── success/page.tsx       # Payment success
+│   │   ├── page.tsx                # Multi-step booking flow
+│   │   ├── confirm/page.tsx        # Payment confirmation + POPIA consent
+│   │   └── success/page.tsx        # Post-payment success + automation trigger
 │   ├── admin/
-│   │   └── page.tsx               # Walk-in booking admin
-│   └── api/
-│       ├── bays/status/route.ts   # Real-time bay availability
-│       └── payment/
-│           ├── initialize/route.ts # Yoco payment init
-│           └── verify/route.ts     # Payment verification
+│   │   └── page.tsx                # Operations dashboard (943 lines)
+│   └── api/                        # 9 API route groups (all edge runtime)
 ├── components/
-│   ├── bay-status-display.tsx     # Live 3-bay status widget
-│   ├── booking-flow.tsx           # Session type + booking flow
-│   ├── booking-confirmation.tsx   # POPIA checkboxes + payment
-│   └── admin-dashboard.tsx        # Admin interface
+│   ├── booking-flow.tsx            # Session selection + player config
+│   ├── booking-confirmation.tsx    # Payment gateway integration
+│   ├── BayStatusDisplay.tsx        # Real-time availability widget
+│   ├── booking-success.tsx         # Post-payment state management
+│   └── ui/                         # 15 shadcn/ui primitives
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts              # Browser Supabase client
-│   │   ├── server.ts              # Server Supabase client
-│   │   └── middleware.ts          # Auth middleware
-│   └── types.ts                   # TypeScript types
-└── scripts/
-    ├── 001_create_tables.sql      # Database schema
-    ├── 002_enable_rls.sql         # Security policies
-    ├── 003_seed_data.sql          # Initial data
-    └── 004_create_functions.sql   # Database functions
-\`\`\`
+│   ├── types.ts                    # Full TypeScript domain model
+│   ├── schedule-config.ts          # Operating hours + pricing rules
+│   ├── utils.ts                    # Correlation IDs, logging, validation
+│   └── supabase/                   # Client/server/middleware Supabase setup
+├── scripts/
+│   ├── *.sql                       # 15 database migrations
+│   ├── n8n_*.json                  # Exportable n8n workflow definitions
+│   └── update_n8n.py               # Programmatic workflow patching tool
+└── worker.js                       # Cloudflare Worker entry point
+```
 
-## 🔑 Admin Access
+---
 
-**Walk-In Bookings:**
-1. Navigate to `/admin`
-2. Enter password protection
-3. Create walk-in booking (bypasses payment)
-4. Generate printable receipt with QR code
+## Automation Highlight: What I'd Build Next
 
-**Booking Management:**
-- View all bookings in real-time
-- Manage bay availability
-- Export revenue reports
-- Track competition entries
+This project demonstrates the **foundation** of what I build: systems that replace manual operational work with event-driven automation. The natural evolution:
 
-## 🌐 Cloudflare Advantages
+- **AI-powered customer service agent** — Handle booking inquiries, modifications, and FAQs via a conversational interface connected to the live Supabase data
+- **Predictive scheduling agent** — Analyze historical booking patterns to suggest optimal pricing and staffing
+- **Voice agent integration** — Phone-based booking and inquiry handling using the existing API surface
+- **Multi-venue orchestration** — Generalize the automation layer to manage N venues from a single n8n instance
 
-- **Global Edge Network**: Sub-100ms response times
-- **Zero Cold Starts**: Always-on edge runtime
-- **DDoS Protection**: Enterprise-grade security
-- **Unlimited Bandwidth**: No egress charges
-- **Cost Effective**: More affordable than Vercel
+---
 
-## 🚦 Launch Checklist
+## Running Locally
 
-- [x] Augusta National and 5000+ courses
-- [x] Real-time bay availability display
-- [x] Walk-in payment messaging
-- [x] POPIA-compliant WhatsApp opt-ins
-- [x] December pricing structure
-- [x] Operating hours in header + footer
-- [x] SEO optimization for "near me" searches
-- [x] Mobile-first responsive design
-- [x] Yoco webhook endpoints configured
-- [x] Schema markup for local search
-- [x] Custom domain setup
-- [x] Production Yoco keys
-- [x] n8n automation webhook testing
+```bash
+# Install dependencies
+npm install
 
-## 📈 Performance Targets
+# Set environment variables (see .env.example)
+cp .env.example .env.local
 
-- **Lighthouse Performance**: >90
-- **Lighthouse Accessibility**: >95
-- **Mobile Booking Time**: <60 seconds
-- **Page Load Time**: <2 seconds
-- **Bay Status Refresh**: 30 seconds
+# Run development server
+npm run dev
 
-## 🆘 Support
+# Build for Cloudflare Pages
+npm run pages:build
 
-**Deployment Issues:** See [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md)
+# Deploy to production
+npm run deploy
+```
 
-**Technical Support:**
-- Database: Check Supabase dashboard and RLS policies
-- Payments: Verify Yoco keys and webhook configuration
-- Environment: Confirm all variables in Cloudflare dashboard
+### Required Environment Variables
 
-**Production Launch:** Ensure all environment variables are updated from test to production values.
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+YOCO_SECRET_KEY=
+N8N_WEBHOOK_URL=
+NEXT_PUBLIC_SITE_URL=
+```
 
-## 📄 License
+---
 
-© 2025 Elite Golf Sim. All rights reserved.
+## Metrics
+
+| Metric | Value |
+|---|---|
+| **Time to Production** | Weeks, not months |
+| **Database Migrations** | 15 (versioned, idempotent) |
+| **API Endpoints** | 9 edge-runtime routes |
+| **Automated Workflows** | 3 production n8n pipelines |
+| **Lines of Application Code** | ~4,000+ (excluding node_modules) |
+| **Manual Operations Replaced** | Booking confirmations, reminders, store alerts, lead gen |
+
+---
+
+## License
+
+Proprietary. Built and maintained by [Samuel](https://github.com/sssammyboyyy).

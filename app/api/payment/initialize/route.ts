@@ -179,8 +179,15 @@ export async function POST(request: NextRequest) {
     // 3b. MULTI-BAY ASSIGNMENT LOGIC (With Ghost Cleanup)
     // ---------------------------------------------------------
     // Absolute Unix timestamps for perfect math against DB
-    const reqStartMs = startDate.getTime();
-    const reqEndMs = endDate.getTime();
+    const reqStartMs = startDate.getTime()
+    const reqEndMs = endDate.getTime()
+
+    // ---------------------------------------------------------
+    // 3c. IDEMPOTENCY FIREWALL SETUP
+    // ---------------------------------------------------------
+    // Generate the ID early so we don't accidentally block ourselves
+    // if the user double-clicks or retries a bypassed checkout
+    const bookingRequestId = body.booking_request_id || idempotencyKey || crypto.randomUUID()
 
     // Fetch simulator inventory from DB
     const { data: simulators, error: simError } = await supabase
@@ -200,7 +207,7 @@ export async function POST(request: NextRequest) {
     // still physically block slot inserts. We MUST fetch them to delete them.
     const { data: dailyBookings } = await supabaseAdmin
       .from("bookings")
-      .select("id, simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id, payment_status")
+      .select("id, simulator_id, slot_start, slot_end, status, created_at, yoco_payment_id, payment_status, booking_request_id")
       .eq("booking_date", booking_date)
 
     const takenBays = new Set<number>();
@@ -233,6 +240,14 @@ export async function POST(request: NextRequest) {
             deleteIds.push(b.id);
             return;
           }
+        }
+
+        // --- IDEMPOTENCY FIREWALL ---
+        // If this row belongs to our CURRENT booking request, it CANNOT block us.
+        // This solves the bug where a rapid double-click on a bypassed checkout
+        // causes the second click to think "all bays are full".
+        if (b.booking_request_id === bookingRequestId) {
+          return;
         }
 
         // This row is ACTIVE — check if it overlaps with the requested slot
@@ -310,7 +325,7 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------
     // 5. CREATE DB ROW (WITH IDEMPOTENCY)
     // ---------------------------------------------------------
-    const bookingRequestId = body.booking_request_id || idempotencyKey || crypto.randomUUID()
+    // (bookingRequestId was generated above during the Active Bays check)
 
     // A. IDEMPOTENCY CHECK
     const { data: existingBooking } = await supabase

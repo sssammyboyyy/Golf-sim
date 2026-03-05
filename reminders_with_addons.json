@@ -1,0 +1,392 @@
+{
+  "id": "wEmvM1M6u3kceErS",
+  "name": "24h/1h Reminders",
+  "active": true,
+  "isArchived": false,
+  "versionId": "95a27245-1ef4-4f2e-9f92-e0dadf5681d8",
+  "triggerCount": 1,
+  "createdAt": "2025-11-19T07:00:45.778Z",
+  "updatedAt": "2026-02-26T11:23:07.000Z",
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "Africa/Johannesburg",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "connections": {
+    "Run Every 30 Mins1": {
+      "main": [
+        [
+          {
+            "node": "Get 1h Reminders1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get 24h Reminders1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get 1h Reminders1": {
+      "main": [
+        [
+          {
+            "node": "Mark 1h Sent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get 24h Reminders1": {
+      "main": [
+        [
+          {
+            "node": "Mark 24h Sent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark 1h Sent1": {
+      "main": [
+        [
+          {
+            "node": "Send 1h Reminder (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark 24h Sent1": {
+      "main": [
+        [
+          {
+            "node": "Send 24h Reminder (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_bCTdp5JH_KGLzSyFzoiXJjjdihVkBLSd2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"The Mulligan <bookings@themulligan.org>\",\n  \"to\": [\"{{ $json.guest_email }}\"],\n  \"subject\": \"\u26f3 Tee Time in 1 Hour! | The Mulligan\",\n  \"html\": \"<div style=\\\"font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;\\\">\\n    <div style=\\\"background: linear-gradient(135deg, #166534 0%, #22c55e 100%); padding: 25px; text-align: center;\\\">\\n        <h1 style=\\\"color: white; margin: 0; font-size: 24px;\\\">\u26f3 You're Up Next!</h1>\\n        <p style=\\\"color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 15px;\\\">Your session starts in 1 hour</p>\\n    </div>\\n    <div style=\\\"padding: 25px;\\\">\\n        <p style=\\\"font-size: 16px; margin: 0 0 15px;\\\">Hi <strong>{{ $json.guest_name }}</strong>,</p>\\n        <p style=\\\"color: #6b7280; line-height: 1.6; margin: 0 0 20px;\\\">Get ready to tee off! We're prepping your bay and can't wait to see you.</p>\\n        <div style=\\\"background: #f0fdf4; border-left: 4px solid #22c55e; padding: 18px; border-radius: 8px; margin: 0 0 20px;\\\">\\n            <p style=\\\"margin: 0 0 8px; font-size: 26px; font-weight: bold; color: #166534;\\\">\ud83d\udd50 {{ $json.start_time }}</p>\\n            <p style=\\\"margin: 0; font-size: 16px; color: #6b7280;\\\">\ud83d\udccd Simulator {{ $json.simulator_id }}</p>\\n        </div>\\n        {{ ($json.addon_coaching || $json.addon_club_rental) ? `<div style=\"background:#f0fdf4;border:1px solid #d1fae5;border-radius:10px;padding:15px;margin:15px 0;\"><p style=\"margin:0 0 8px;font-weight:bold;color:#065f46;font-size:13px;\">\u2705 YOUR ADD-ONS</p><ul style=\"margin:0;padding-left:18px;color:#6b7280;font-size:14px;line-height:2;\">` + ($json.addon_coaching ? `<li>Coaching Session</li>` : '') + ($json.addon_club_rental ? `<li>Club Hire</li>` : '') + `</ul></div>` : '' }}<div style=\\\"background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 18px; margin: 0 0 20px;\\\">\\n            <p style=\\\"margin: 0 0 12px; font-weight: bold; color: #b45309; font-size: 14px;\\\">\ud83d\udccb QUICK HOUSE RULES</p>\\n            <ul style=\\\"margin: 0; padding-left: 18px; color: #6b7280; line-height: 1.9; font-size: 14px;\\\">\\n                <li><strong>Arrive 15 mins early</strong> \u2013 check in & warm up</li>\\n                <li><strong>Flat-soled shoes only</strong> \u2013 no heels or cleats</li>\\n                <li><strong>Food & drinks welcome</strong> \u2013 just no red wine!</li>\\n                <li><strong>Be gentle with the clubs</strong> \u2013 treat them like your own</li>\\n            </ul>\\n        </div>\\n        <p style=\\\"color: #dc2626; font-weight: bold; font-size: 14px; margin: 0 0 15px;\\\">\u26a0\ufe0f Running late? Just give us a call!</p>\\n        <p style=\\\"color: #6b7280; margin: 0;\\\">See you soon! \ud83c\udfcc\ufe0f</p>\\n    </div>\\n    <div style=\\\"text-align: center; padding: 18px; background: #f9fafb; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;\\\">The Mulligan | Vanderbijlpark</div>\\n</div>\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -80,
+        3840
+      ],
+      "id": "b27efedf-0b7f-43a6-bd9c-13880c082b32",
+      "name": "Send 1h Reminder (Resend)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_bCTdp5JH_KGLzSyFzoiXJjjdihVkBLSd2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"The Mulligan <bookings@themulligan.org>\",\n  \"to\": [\"{{ $json.guest_email }}\"],\n  \"subject\": \"\u26f3 See You Tomorrow! | Your Booking Reminder\",\n  \"html\": \"<div style=\\\"font-family: 'Segoe UI', Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #1f2937; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;\\\">\\n    <div style=\\\"background: linear-gradient(135deg, #166534 0%, #22c55e 100%); padding: 28px; text-align: center;\\\">\\n        <h1 style=\\\"color: white; margin: 0; font-size: 26px;\\\">\u26f3 See You Tomorrow!</h1>\\n        <p style=\\\"color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 15px;\\\">Your tee time is confirmed</p>\\n    </div>\\n\\n    <div style=\\\"padding: 25px;\\\">\\n        <p style=\\\"font-size: 16px; margin: 0 0 15px;\\\">Hi <strong>{{ $json.guest_name }}</strong>,</p>\\n        <p style=\\\"color: #6b7280; line-height: 1.6; margin: 0 0 20px;\\\">We're excited to have you at The Mulligan! Here's everything you need to know.</p>\\n        \\n        <div style=\\\"background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #22c55e; border-radius: 12px; padding: 20px; margin: 0 0 25px; text-align: center;\\\">\\n            <p style=\\\"margin: 0 0 8px; font-size: 22px; font-weight: bold; color: #166534;\\\">\ud83d\udcc5 {{ $json.booking_date }}</p>\\n            <p style=\\\"margin: 0 0 8px; font-size: 20px; color: #166534;\\\">\ud83d\udd50 {{ $json.start_time }}</p>\\n            <p style=\\\"margin: 0; font-size: 15px; color: #6b7280;\\\">\ud83d\udccd Simulator {{ $json.simulator_id }}</p>\\n        </div>\\n\\n        {{ ($json.addon_coaching || $json.addon_club_rental) ? `<div style=\"background:#f0fdf4;border:1px solid #d1fae5;border-radius:10px;padding:15px;margin:15px 0;\"><p style=\"margin:0 0 8px;font-weight:bold;color:#065f46;font-size:13px;\">\u2705 YOUR ADD-ONS</p><ul style=\"margin:0;padding-left:18px;color:#6b7280;font-size:14px;line-height:2;\">` + ($json.addon_coaching ? `<li>Coaching Session</li>` : '') + ($json.addon_club_rental ? `<li>Club Hire</li>` : '') + `</ul></div>` : '' }}<div style=\\\"background: #fffbeb; border: 1px solid #f59e0b; border-radius: 12px; padding: 20px; margin: 0 0 20px;\\\">\\n            <p style=\\\"margin: 0 0 15px; font-weight: bold; color: #b45309; font-size: 15px; text-align: center;\\\">\ud83d\udccb THE MULLIGAN'S BASICS</p>\\n            <ul style=\\\"margin: 0; padding-left: 20px; color: #4b5563; font-size: 14px; line-height: 1.9;\\\">\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Arrive 15 mins early</strong> for smooth check-in</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Bring your own clubs</strong> or rent with us</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>No spiked shoes, high heels</strong> \u2013 flat soles only</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Golf glove is compulsory</strong> (available for purchase)</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Clean balls & undamaged clubs only</strong> \u2013 protects our screens</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>\ud83d\udeab No Sharpie-marked balls</strong> \u2013 they permanently damage screens!</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Under 12s</strong> must be accompanied by an adult</li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>Keep food & drinks off the turf</strong></li>\\n                <li style=\\\"margin-bottom: 8px;\\\"><strong>No smoking/vaping indoors</strong></li>\\n            </ul>\\n            <p style=\\\"margin: 15px 0 0; padding-top: 12px; border-top: 1px solid #fcd34d; font-size: 12px; color: #92400e; text-align: center;\\\">\u26a0\ufe0f Staff reserves the right to stop play if rules aren't followed</p>\\n        </div>\\n\\n        <div style=\\\"text-align: center; margin: 0 0 20px;\\\">\\n            <a href=\\\"https://maps.google.com/?q=38A+Chopin+St+Vanderbijlpark\\\" style=\\\"display: inline-block; background: #166534; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;\\\">\ud83d\udccd Get Directions</a>\\n        </div>\\n\\n        <p style=\\\"color: #6b7280; margin: 0; text-align: center;\\\">See you on the tee! \ud83c\udfcc\ufe0f</p>\\n    </div>\\n    \\n    <div style=\\\"text-align: center; padding: 18px; background: #166534; color: rgba(255,255,255,0.9); font-size: 12px;\\\">\\n        38A Chopin St, Vanderbijlpark S.W. 5 | The Simulator Never Judges! \u26f3\\n    </div>\\n</div>\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -64,
+        4096
+      ],
+      "id": "54c3cc82-12c3-456c-be5e-6b0188a0a40a",
+      "name": "Send 24h Reminder (Resend)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -864,
+        3840
+      ],
+      "id": "9c2ab21f-e4e9-4142-8282-49687e1f186c",
+      "name": "Run Every 30 Mins1"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "bookings",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "pending"
+            },
+            {
+              "keyName": "created_at",
+              "condition": "lt",
+              "keyValue": "={{ new Date(Date.now() - 30 * 60000).toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        368,
+        3200
+      ],
+      "id": "b6978980-118d-4594-b908-55625f710878",
+      "name": "\ud83e\uddf9 Janitor (Delete Pending > 30m)1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GeCSBGdV5ds3IcZc",
+          "name": "Supabase Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "bookings",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "confirmed"
+            },
+            {
+              "keyName": "reminder_1h_sent",
+              "condition": "eq",
+              "keyValue": "={{ false }}"
+            },
+            {
+              "keyName": "slot_start",
+              "condition": "gt",
+              "keyValue": "={{ new Date(Date.now() + 55 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "keyName": "slot_start",
+              "condition": "lt",
+              "keyValue": "={{ new Date(Date.now() + 85 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "keyName": "booking_source",
+              "condition": "neq",
+              "keyValue": "walk_in"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        3840
+      ],
+      "id": "f75361b0-2805-46af-8144-64e53311c4ea",
+      "name": "Get 1h Reminders1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GeCSBGdV5ds3IcZc",
+          "name": "Supabase Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "bookings",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "confirmed"
+            },
+            {
+              "keyName": "reminder_24h_sent",
+              "condition": "eq",
+              "keyValue": "={{ false }}"
+            },
+            {
+              "keyName": "slot_start",
+              "condition": "gt",
+              "keyValue": "={{ new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "keyName": "slot_start",
+              "condition": "lt",
+              "keyValue": "={{ new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "keyName": "booking_source",
+              "condition": "neq",
+              "keyValue": "walk_in"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        4096
+      ],
+      "id": "1862b85d-8a23-4145-a835-765e23d8d6be",
+      "name": "Get 24h Reminders1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GeCSBGdV5ds3IcZc",
+          "name": "Supabase Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "bookings",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "reminder_1h_sent",
+              "fieldValue": "={{ true }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        3840
+      ],
+      "id": "b5020922-f221-4b91-871b-dbd0ab61f4c1",
+      "name": "Mark 1h Sent1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GeCSBGdV5ds3IcZc",
+          "name": "Supabase Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "bookings",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "reminder_24h_sent",
+              "fieldValue": "={{ true }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        4096
+      ],
+      "id": "5e3485f7-31fa-4b78-8508-dc5ac8ed6d46",
+      "name": "Mark 24h Sent1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GeCSBGdV5ds3IcZc",
+          "name": "Supabase Admin"
+        }
+      }
+    }
+  ],
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "parentFolderId": null,
+  "scopes": [
+    "workflow:create",
+    "workflow:delete",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:update"
+  ],
+  "canExecute": true
+}
