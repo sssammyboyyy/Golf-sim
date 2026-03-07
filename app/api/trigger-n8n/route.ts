@@ -88,9 +88,12 @@ export async function POST(request: NextRequest) {
 
         if (yocoRes.ok) {
           const yocoData = await yocoRes.json()
+          console.log(`[Yoco Check] Status: ${yocoData.status} for ${booking.yoco_payment_id}`);
 
-          // If Yoco says successful, we FORCE the update locally
-          if (yocoData.status === 'successful') {
+          // Terminal success states in Yoco: successful, captured, paid
+          const isSuccessful = ['successful', 'captured', 'paid'].includes(yocoData.status)
+
+          if (isSuccessful) {
             console.log("[Race Condition Resolved] Payment was successful. Updating payload.")
 
             // 1. Get actual paid amount from Yoco (amount is in cents)
@@ -103,28 +106,40 @@ export async function POST(request: NextRequest) {
             paymentStatus = "completed"
 
             // 2. Self-Heal the Database (Don't wait for webhook)
+            // We set status to 'confirmed' immediately so UI is happy
             await supabaseAdmin
               .from("bookings")
               .update({
                 amount_paid: dbPaid,
                 payment_status: paymentStatus,
-                status: "confirmed"
+                status: "confirmed",
+                updated_at: new Date().toISOString()
               })
               .eq("id", bookingId)
+          } else {
+            console.log(`[Yoco Check] Status ${yocoData.status} is not successful. Payload stays at R0.`);
           }
         }
       } catch (yocoError) {
         console.error("Yoco Verification Failed:", yocoError)
-        // Fallback: Proceed with existing DB values if Yoco check fails
       }
     }
     // ----------------------------------------------
 
     const outstanding = dbTotal - dbPaid
+    const isShortSession = (booking.duration_hours || 0) <= 1;
+
+    // Determine payment type intelligently
+    let paymentType = "manual";
+    if (dbPaid > 0) {
+      paymentType = outstanding > 0 ? "deposit" : "full";
+    } else if (booking.yoco_payment_id) {
+      paymentType = "online_pending"; // Should have been paid but system says 0
+    }
 
     // 4. Prepare Payload for n8n (ENHANCED for store clarity)
     const payload = {
-      secret: "mulligan-secure-8821",
+      secret: process.env.N8N_SECRET || "mulligan-secure-8821",
       bookingId: booking.id,
       yocoId: booking.yoco_payment_id || "manual",
       paymentStatus: paymentStatus,
@@ -147,6 +162,7 @@ export async function POST(request: NextRequest) {
       // Session Details
       player_count: booking.player_count || 1,
       duration_hours: booking.duration_hours || 1,
+      is_short_session: isShortSession,
       session_type: booking.session_type || "quick",
       session_type_label: booking.session_type === "famous-course" ? "Famous Course" : "Quick Play",
 
@@ -156,11 +172,13 @@ export async function POST(request: NextRequest) {
       amount_due: outstanding.toFixed(2),
 
       // Payment Clarity
-      payment_type: outstanding > 0 ? "deposit" : "full",
+      payment_type: paymentType,
       is_fully_paid: outstanding === 0,
-      payment_summary: outstanding > 0
-        ? `Deposit: R${dbPaid.toFixed(2)} | Balance Due: R${outstanding.toFixed(2)}`
-        : `Paid in Full: R${dbTotal.toFixed(2)}`,
+      payment_summary: dbPaid > 0
+        ? (outstanding > 0
+          ? `Deposit: R${dbPaid.toFixed(2)} | Balance Due: R${outstanding.toFixed(2)}`
+          : `Paid in Full: R${dbTotal.toFixed(2)}`)
+        : (booking.yoco_payment_id ? "Online Payment Pending/Failed" : "Manual Payment Expected"),
 
       // Add-ons (bookable via website UI)
       addon_coaching: booking.addon_coaching || false,
@@ -185,11 +203,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Send to n8n
-    const n8nUrlFromEnv = process.env.N8N_WEBHOOK_URL
-    if (!n8nUrlFromEnv) {
-      logEvent("n8n_url_fallback", { correlationId, message: "Using hardcoded fallback URL" }, "warn")
-    }
-    const n8nUrl = n8nUrlFromEnv || "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm"
+    const n8nUrl = process.env.N8N_WEBHOOK_URL || "https://n8n.srv1127912.hstgr.cloud/webhook/manual-confirm"
 
     let n8nStatus = "pending";
     let n8nText = "";
@@ -212,8 +226,8 @@ export async function POST(request: NextRequest) {
       n8nText = err.message;
     }
 
-    // CRITICAL FIX: Return actual success/failure status based on n8n response
-    const isSuccess = n8nStatus !== "error" && !n8nStatus.startsWith("5")
+    // CRITICAL FIX: Return actual success status based on n8n response (Must be 2xx)
+    const isSuccess = n8nStatus.startsWith("2")
 
     // --- 7. UPDATE N8N TRACKING IN DB ---
     // Update the booking row with the result of this attempt
