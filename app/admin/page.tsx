@@ -58,7 +58,7 @@ export default function AdminDashboard() {
   // --- STATE ---
   const [pin, setPin] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [activeTab, setActiveTab] = useState<"dashboard" | "calendar" | "walkin">("dashboard")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "calendar" | "walkin" | "health">("dashboard")
 
   // Data
   const [bookings, setBookings] = useState<any[]>([])
@@ -134,7 +134,10 @@ export default function AdminDashboard() {
 
       let query = supabase.from("booking_dashboard").select("*").order("start_time", { ascending: true })
 
-      if (activeTab !== 'calendar') {
+      if (activeTab === 'health') {
+        // Explicitly order by creation time to see newest first, disregard active date filters
+        query = supabase.from("booking_dashboard").select("*").order("created_at", { ascending: false }).limit(100)
+      } else if (activeTab !== 'calendar') {
         query = query.eq("booking_date", currentDate)
       } else {
         const start = weekStart.toISOString().split('T')[0]
@@ -420,6 +423,7 @@ export default function AdminDashboard() {
               <TabButton active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={<Target className="w-4 h-4" />} label="Live View" />
               <TabButton active={activeTab === "calendar"} onClick={() => setActiveTab("calendar")} icon={<CalendarIcon className="w-4 h-4" />} label="Schedule" />
               <TabButton active={activeTab === "walkin"} onClick={() => setActiveTab("walkin")} icon={<CreditCard className="w-4 h-4" />} label="Walk-in" />
+              <TabButton active={activeTab === "health"} onClick={() => setActiveTab("health")} icon={<AlertCircle className="w-4 h-4" />} label="Health" />
             </div>
             <button onClick={() => setIsAuthenticated(false)} className="p-3 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all">
               <LogOut className="w-5 h-5" />
@@ -958,6 +962,53 @@ export default function AdminDashboard() {
                   })}
                   {filteredBookings.length === 0 && (
                     <tr><td colSpan={7} className="text-center py-20 text-zinc-600 font-medium">No bookings found for this date.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* --- VIEW: SYSTEM HEALTH --- */}
+        {activeTab === 'health' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <AlertCircle className="w-6 h-6 text-red-400" /> System Health Monitor (Recent 100)
+            </h2>
+            <div className="bg-[#09090b] border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-zinc-900/50 text-[10px] uppercase text-zinc-500 font-bold border-b border-zinc-800 tracking-wider">
+                    <th className="px-6 py-5">Date</th>
+                    <th className="px-6 py-5">Guest</th>
+                    <th className="px-6 py-5">DB Amount Paid</th>
+                    <th className="px-6 py-5">Yoco ID</th>
+                    <th className="px-6 py-5">Automation Sent</th>
+                    <th className="px-6 py-5">Current Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {bookings.map(b => {
+                    const inLimbo = b.amount_paid === 0 && b.yoco_payment_id && b.status !== 'cancelled'
+                    return (
+                      <tr key={b.id} className={`${inLimbo ? 'bg-red-500/10 hover:bg-red-500/20' : 'hover:bg-zinc-900/80'} transition-colors`}>
+                        <td className="px-6 py-5 font-mono text-zinc-400 text-sm whitespace-nowrap">{b.booking_date}</td>
+                        <td className="px-6 py-5 text-white font-medium">{b.guest_name}</td>
+                        <td className={`px-6 py-5 font-mono ${inLimbo ? 'text-red-400 font-bold' : 'text-zinc-300'}`}>R{b.amount_paid || 0}</td>
+                        <td className="px-6 py-5 font-mono text-xs text-zinc-500">{b.yoco_payment_id || '—'}</td>
+                        <td className="px-6 py-5">
+                          {b.email_sent ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <AlertCircle className="w-4 h-4 text-zinc-600" />}
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider border ${b.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : b.status === 'cancelled' ? 'bg-zinc-800 text-zinc-500 border-zinc-700' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {bookings.length === 0 && (
+                    <tr><td colSpan={6} className="text-center py-20 text-zinc-600 font-medium">No bookings found.</td></tr>
                   )}
                 </tbody>
               </table>

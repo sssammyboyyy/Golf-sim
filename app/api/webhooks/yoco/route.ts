@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         }
 
         const payload = JSON.parse(rawBody);
-        console.log('Received Yoco Webhook:', payload);
+        console.log(`[VERIFY] Webhook payload valid. Event type: ${payload.type}. Initiating DB update...`);
 
         // 2. Process specific webhook events
         if (payload.type === 'payment.succeeded') {
