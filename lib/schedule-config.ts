@@ -9,7 +9,7 @@ import { format, getDay } from "date-fns"
 
 // Standard operating hours by day of week (0 = Sunday, 6 = Saturday)
 export const OPERATING_HOURS: Record<number, { open: number; close: number }> = {
-    0: { open: 10, close: 20 }, // Sunday (10:00-20:00)
+    0: { open: 10, close: 16 }, // Sunday (10:00-16:00)
     1: { open: 9, close: 20 },  // Monday (9:00-20:00)
     2: { open: 9, close: 20 },  // Tuesday (9:00-20:00)
     3: { open: 9, close: 20 },  // Wednesday (9:00-20:00)
