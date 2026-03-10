@@ -3,7 +3,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Search, XCircle, RefreshCw } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@/lib/supabase/client';
+
+const supabase = createBrowserClient();
 
 export default function BookingSuccessPage() {
   return (

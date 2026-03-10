@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // The webhook secret from Yoco Dashboard
@@ -17,11 +16,27 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Example of Yoco HMAC SHA256 Signature Validation (Update if Yoco uses different signing mechanic)
-        const expectedSignature = crypto
-            .createHmac('sha256', YOCO_WEBHOOK_SECRET)
-            .update(rawBody)
-            .digest('hex');
+        // Example of Yoco HMAC SHA256 Signature Validation with Web Crypto API (Edge-compatible)
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(YOCO_WEBHOOK_SECRET);
+
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+
+        const signatureBuffer = await crypto.subtle.sign(
+            'HMAC',
+            cryptoKey,
+            encoder.encode(rawBody)
+        );
+
+        const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
 
         if (signature !== expectedSignature) {
             console.error('Yoco Webhook signature mismatch');
