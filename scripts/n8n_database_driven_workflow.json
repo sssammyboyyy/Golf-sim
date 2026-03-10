@@ -1,0 +1,288 @@
+{
+    "name": "Database-Driven Booking Confirmed",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "booking-confirmed",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "id": "1",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                200,
+                300
+            ],
+            "webhookId": "booking-confirmed"
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "bookings",
+                "limit": 1,
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $json.body.booking_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "2",
+            "name": "Get Booking from Supabase",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                400,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.email_sent }}",
+                            "value2": false
+                        }
+                    ]
+                }
+            },
+            "id": "3",
+            "name": "If email_sent = false",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                600,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.resend.com/emails",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"from\": \"The Mulligan <reservations@themulligan.co.za>\",\n  \"to\": [\"{{ $node['Get Booking from Supabase'].json.email }}\"],\n  \"subject\": \"Booking Confirmed - The Mulligan\",\n  \"html\": \"<h1>Your booking is confirmed!</h1><p>Your reference is <strong>{{ $node['Get Booking from Supabase'].json.booking_request_id }}</strong></p>\"\n}"
+            },
+            "id": "4",
+            "name": "Send Confirmation Email (HTTP)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                800,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "bookings",
+                "matchColumns": "id",
+                "columns": "email_sent",
+                "updateData": {
+                    "id": "={{ $node['Get Booking from Supabase'].json.id }}",
+                    "email_sent": true
+                }
+            },
+            "id": "5",
+            "name": "Set email_sent = true",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1000,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "resume": "dateTime",
+                "dateTime": "={{ new Date(new Date($node['Get Booking from Supabase'].json.slot_start).getTime() - 24 * 60 * 60 * 1000) }}"
+            },
+            "id": "6",
+            "name": "Wait until 24h before",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.resend.com/emails",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"from\": \"The Mulligan <reservations@themulligan.co.za>\",\n  \"to\": [\"{{ $node['Get Booking from Supabase'].json.email }}\"],\n  \"subject\": \"Reminder: Your Golf Simulator Booking is Tomorrow\",\n  \"html\": \"<p>We look forward to seeing you tomorrow.</p>\"\n}"
+            },
+            "id": "7",
+            "name": "Send 24h Reminder (HTTP)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1400,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "resume": "dateTime",
+                "dateTime": "={{ new Date(new Date($node['Get Booking from Supabase'].json.slot_start).getTime() - 1 * 60 * 60 * 1000) }}"
+            },
+            "id": "8",
+            "name": "Wait until 1h before",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                1600,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.resend.com/emails",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"from\": \"The Mulligan <reservations@themulligan.co.za>\",\n  \"to\": [\"{{ $node['Get Booking from Supabase'].json.email }}\"],\n  \"subject\": \"Reminder: Your Golf Simulator Booking is in 1 Hour\",\n  \"html\": \"<p>Your bay will be ready in 1 hour.</p>\"\n}"
+            },
+            "id": "9",
+            "name": "Send 1h Reminder (HTTP)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1800,
+                180
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Get Booking from Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Booking from Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "If email_sent = false",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If email_sent = false": {
+            "main": [
+                [
+                    {
+                        "node": "Send Confirmation Email (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Confirmation Email (HTTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Set email_sent = true",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Set email_sent = true": {
+            "main": [
+                [
+                    {
+                        "node": "Wait until 24h before",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait until 24h before": {
+            "main": [
+                [
+                    {
+                        "node": "Send 24h Reminder (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send 24h Reminder (HTTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Wait until 1h before",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait until 1h before": {
+            "main": [
+                [
+                    {
+                        "node": "Send 1h Reminder (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
