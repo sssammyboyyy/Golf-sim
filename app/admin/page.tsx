@@ -342,7 +342,26 @@ export default function AdminDashboard() {
   }
 
   const handleDelete = async (id: string) => {
-    setBookings(prev => prev.filter(b => b.id !== id))
+    if (!confirm("Are you sure you want to delete this booking? This will cancel the booking and remove it from the dashboard.")) return
+
+    setIsActionLoading(true)
+    try {
+      const res = await fetch("/api/bookings/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, pin: "8821" })
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to delete booking")
+
+      setEditingBooking(null)
+      fetchBookings()
+    } catch (err: any) {
+      alert("Delete failed: " + err.message)
+    } finally {
+      setIsActionLoading(false)
+    }
   }
 
   const handleSyncPayment = async (id: string) => {
@@ -363,6 +382,10 @@ export default function AdminDashboard() {
   }
 
   const filteredBookings = bookings.filter(b => {
+    // 1. Hide deleted/cancelled bookings completely from the UI
+    if (b.status === 'cancelled' || b.cancelled_at !== null) return false;
+
+    // 2. Apply existing filters
     const searchMatch = (b.guest_name || "").toLowerCase().includes(searchTerm.toLowerCase())
     const statusMatch = statusFilter === 'all' ? true : b.status === statusFilter
     return searchMatch && statusMatch
@@ -547,9 +570,18 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex flex-col gap-3">
                   <button type="submit" disabled={isActionLoading} className="w-full bg-white text-black font-bold py-3.5 rounded-xl hover:bg-zinc-200 transition-colors shadow-lg">
                     {isActionLoading ? "Saving Changes..." : "Save Updates"}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => handleDelete(editingBooking.id)}
+                    className="w-full bg-transparent border border-red-500/20 text-red-500 font-bold py-3.5 rounded-xl hover:bg-red-500/10 hover:border-red-500/50 transition-colors shadow-none"
+                  >
+                    Delete Booking
                   </button>
                 </div>
               </form>

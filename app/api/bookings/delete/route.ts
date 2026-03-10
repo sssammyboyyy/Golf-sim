@@ -1,12 +1,13 @@
-import { createClient } from "@supabase/supabase-js"
-import { NextResponse } from "next/server"
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
-export const runtime = "edge"
+export const runtime = 'edge'
 
 export async function POST(req: Request) {
   try {
     const { id, pin } = await req.json()
 
+    // 1. Authorization Check
     if (pin !== "8821") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -15,27 +16,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing ID" }, { status: 400 })
     }
 
-    // 2. Initialize Admin Client (Bypasses RLS)
-    // This requires SUPABASE_SERVICE_ROLE_KEY in Cloudflare Dashboard
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // 3. Delete
+    // 2. Soft Delete via supabaseAdmin (bypasses RLS)
+    // We update the status to 'cancelled' and set the cancelled_at timestamp.
+    // NOTE: n8n triggers only fire on INSERT then UPDATE where OLD.status='pending' AND NEW.status='confirmed'.
+    // Moving to 'cancelled' will not trigger the confirmation workflow.
     const { error } = await supabaseAdmin
-      .from("bookings")
-      .delete()
-      .eq("id", id)
+      .from('bookings')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
 
     if (error) {
-        console.error("Delete Error:", error)
-        throw error
+      console.error("Soft delete failed:", error)
+      return NextResponse.json({ error: "Failed to delete booking" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error("Delete error:", error)
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
