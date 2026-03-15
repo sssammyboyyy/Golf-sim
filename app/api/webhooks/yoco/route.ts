@@ -91,14 +91,15 @@ export async function POST(req: Request) {
             // 4. Trigger n8n Automation (Explicitly close the loop)
             try {
                 const n8nUrl = process.env.N8N_WEBHOOK_URL;
-                if (n8nUrl) {
+                const n8nSecret = process.env.N8N_RECONCILE_SECRET; // Use the same secret as the reconcile worker
+                if (n8nUrl && n8nSecret) {
                     await fetch(n8nUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            booking_id: updatedBooking.id, 
-                            yoco_payment_id: paymentData.id,
-                            source: 'webhook'
+                        body: JSON.stringify({
+                            // Standardized Payload
+                            bookingId: updatedBooking.id,
+                            secret: n8nSecret
                         })
                     });
                     console.log(`[VERIFY] n8n automation dispatched for booking ${updatedBooking.id}`);

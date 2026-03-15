@@ -1,0 +1,472 @@
+{
+    "name": "Booking Confirmed V3 (Consolidated)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "manual-confirm",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "id": "b27af0e9-23e6-4e2d-9092-02f84317395d",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                4928,
+                3136
+            ],
+            "webhookId": "manual-confirm"
+        },
+        {
+            "parameters": {
+                "jsCode": "// This node validates the incoming webhook trigger and extracts the bookingId.\n\nconst input = items[0].json;\nconst data = input.body || input;\n\nconst ADMIN_SECRET = $env[\"N8N_ADMIN_SECRET\"];\nconst RECONCILE_SECRET = $env[\"N8N_RECONCILE_SECRET\"];\n\nif (!ADMIN_SECRET || !RECONCILE_SECRET) {\n  throw new Error('n8n environment variables N8N_ADMIN_SECRET or N8N_RECONCILE_SECRET are not set.');\n}\n\nconst bookingId = data.bookingId;\nconst receivedSecret = data.secret;\n\nif (!bookingId) {\n  throw new Error('CRITICAL: Webhook payload is missing bookingId.');\n}\n\nconst isValid = (receivedSecret === ADMIN_SECRET || receivedSecret === RECONCILE_SECRET);\n\nif (!isValid) {\n  // For security, we don't throw an error, just stop the workflow.\n  return { json: { valid: false, bookingId: bookingId } };\n}\n\n// Pass the validated bookingId to the next step.\nreturn { json: { valid: true, bookingId: bookingId } };"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                5120,
+                3136
+            ],
+            "id": "validate-and-extract",
+            "name": "Validate & Extract"
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "bookings",
+                "limit": 1,
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $('Validate & Extract').item.json.bookingId }}"
+                        }
+                    ]
+                }
+            },
+            "id": "1d5a4852-3170-4746-853e-1265c6a35284",
+            "name": "Get Booking",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                5568,
+                3136
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "GeCSBGdV5ds3IcZc",
+                    "name": "Supabase Admin"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $('Get Booking').item.json.email_sent }}",
+                            "operation": "isFalse"
+                        },
+                        {
+                            "value1": "={{ $('Validate & Extract').item.json.valid }}",
+                            "value2": true
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "2e62849e-4896-468f-a0fd-f9c4caa7b1a5",
+            "name": "Email Already Sent?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                5344,
+                3136
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const booking = $input.first().json;\n\nconst html = `\n<div style=\"font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1f2937;line-height:1.5;\">\n  <div style=\"background-color:#1a472a;background-image:linear-gradient(135deg,#1a472a 0%,#0d2a19 100%);padding:60px 40px;text-align:center;border-radius:12px 12px 0 0;\">\n    <div style=\"display:inline-block;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 16px;border-radius:100px;font-size:12px;font-weight:600;margin-bottom:20px;\">SESSION CONFIRMED</div>\n    <p style=\"color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:0 0 8px;\">The Mulligan</p>\n    <p style=\"color:#fbbf24;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:2px;margin:0 0 30px;opacity:0.9;\">The Simulator Never Judges</p>\n    <h1 style=\"color:#fff;font-size:32px;font-weight:700;margin:0;line-height:1.2;\">You're Teeing Off!</h1>\n    <p style=\"color:#a3d9a5;font-size:16px;margin:12px 0 0;opacity:0.8;\">See you on the green, ${booking.guest_name}.</p>\n  </div>\n  <div style=\"padding:40px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;background-color:#ffffff;\">\n    <p style=\"font-size:18px;color:#111827;font-weight:600;margin:0 0 16px;\">Exciting news, ${booking.guest_name}!</p>\n    <p style=\"font-size:15px;color:#4b5563;line-height:1.6;margin:0 0 32px;\">Your booking at The Mulligan is confirmed. We've reserved Bay ${booking.simulator_id} exclusively for your group.</p>\n    <div style=\"background-color:#f9fafb;border:1px solid #f3f4f6;border-radius:12px;padding:24px;margin-bottom:32px;\">\n      <span style=\"font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px;display:block;\">BOOKING DETAILS</span>\n      <table style=\"width:100%;border-collapse:collapse;\">\n        <tr><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#6b7280;\">Date</td><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#111827;font-weight:600;text-align:right;\">${booking.booking_date}</td></tr>\n        <tr><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#6b7280;\">Start Time</td><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#111827;font-weight:600;text-align:right;\">${booking.start_time}</td></tr>\n        <tr><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#6b7280;\">Duration</td><td style=\"padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px;color:#111827;font-weight:600;text-align:right;\">${booking.duration_hours} Hours</td></tr>\n        <tr><td style=\"padding:12px 0;font-size:14px;color:#6b7280;\">Players</td><td style=\"padding:12px 0;font-size:14px;color:#111827;font-weight:600;text-align:right;\">${booking.player_count || '-'} Players</td></tr>\n      </table>\n    </div>\n    <div style=\"background-color:#ecfdf5;border:1px solid #d1fae5;border-radius:12px;padding:24px;margin-bottom:32px;text-align:center;\">\n      <span style=\"font-size:13px;color:#065f46;opacity:0.7;margin-bottom:12px;display:block;font-weight:500;\">PAYMENT RECEIVED</span>\n      <p style=\"font-size:28px;font-weight:700;color:#065f46;margin:0;\">R${booking.amount_paid} Paid</p>\n      <div style=\"margin-top:16px;padding-top:16px;border-top:1px solid rgba(6,95,70,0.1);\">\n        <span style=\"font-size:14px;color:#065f46;font-weight:500;\">Balance Due at Venue: </span>\n        <span style=\"font-size:18px;font-weight:700;color:#92400e;\">R${(Number(booking.total_price) - Number(booking.amount_paid)).toFixed(0)}</span>\n      </div>\n    </div>\n    ${booking.addon_coaching ? '<div style=\"background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:14px;color:#92400e;\">✓ <strong>Pro Coaching</strong> included</div>' : ''}\n    ${booking.addon_club_rental ? '<div style=\"background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:14px;color:#92400e;\">✓ <strong>Club Rental</strong> included</div>' : ''}\n    <div style=\"margin-bottom:32px;\">\n      <h3 style=\"font-size:16px;font-weight:700;color:#1a472a;margin:0 0 16px;\">Session Prep</h3>\n      <div style=\"margin-bottom:12px;font-size:14px;color:#4b5563;line-height:1.5;\"><span style=\"color:#059669;font-weight:bold;margin-right:10px;\">✓</span><strong>Arrive 10 mins early</strong> — Grab a coffee and settle in.</div>\n      <div style=\"margin-bottom:12px;font-size:14px;color:#4b5563;line-height:1.5;\"><span style=\"color:#059669;font-weight:bold;margin-right:10px;\">✓</span><strong>The Gear</strong> — Club rentals available, or bring your own.</div>\n      <div style=\"margin-bottom:12px;font-size:14px;color:#4b5563;line-height:1.5;\"><span style=\"color:#059669;font-weight:bold;margin-right:10px;\">✓</span><strong>Clean Play</strong> — No sharpie-marked balls; they damage our screens.</div>\n    </div>\n    <div style=\"text-align:center;margin-top:40px;\"><a href=\\\"https://maps.google.com/?q=38A+Chopin+St+Vanderbijlpark\\\" style=\"display:inline-block;background-color:#1a472a;color:#ffffff;padding:18px 36px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;box-shadow:0 4px 12px rgba(26,71,42,0.2);\">Get Directions</a></div>\n  </div>\n  <div style=\"background-color:#f9fafb;padding:40px;text-align:center;border-top:1px solid #f3f4f6;\">\n    <div style=\"color:#1a472a;font-size:18px;font-weight:800;margin-bottom:12px;\">The Mulligan</div>\n    <div style=\"font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.5;\">38A Chopin St, Vanderbijlpark S.W. 5<br>Gauteng, South Africa</div>\n    <div style=\"font-size:11px;color:#9ca3af;\">&copy; 2026 The Mulligan Golf Lounge. All rights reserved.</div>\n  </div>\n</div>`;\n\nreturn [\n  {\n    json: {\n      from: 'The Mulligan <bookings@themulligan.org>',\n      to: [booking.guest_email],\n      subject: 'Booking Confirmed – The Mulligan',\n      html: html\n    }\n  }\n];"
+            },
+            "id": "c705b253-3f3e-4f15-8824-ec36506cdbbd",
+            "name": "Prepare Customer Email",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                5792,
+                3008
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.resend.com/emails",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ $json }}",
+                "options": {
+                    "batching": {
+                        "batch": {
+                            "batchSize": 1,
+                            "batchInterval": 1000
+                        }
+                    },
+                    "retry": {
+                        "maxTries": 3,
+                        "waitBetweenTries": 2000
+                    }
+                }
+            },
+            "id": "64ae3bc5-7d5e-4984-ad0e-1997d7f2fa8e",
+            "name": "Send Customer Email",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                6032,
+                2944
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "reNVZYZGV1bnXSzo",
+                    "name": "Header Auth account"
+                }
+            },
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "const booking = $input.first().json;\n\nconst html = `\n<div style=\"font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1f2937;line-height:1.5;\">\n  <div style=\"background-color:#1a472a;padding:30px;text-align:center;border-radius:12px 12px 0 0;\">\n    <h1 style=\"color:#ffffff;margin:0;font-size:24px;letter-spacing:1px;\">BOOKING ALERT</h1>\n    <p style=\"color:#a3d9a5;margin:5px 0 0 0;font-size:12px;text-transform:uppercase;\">Store Operations Notification</p>\n  </div>\n  <div style=\"padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;background-color:#ffffff;\">\n    <div style=\"margin-bottom:25px;\">\n      <h2 style=\"font-size:14px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:15px;border-bottom:1px solid #f3f4f6;padding-bottom:5px;\">👤 Guest Details</h2>\n      <table style=\"width:100%;border-collapse:collapse;\">\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Name</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.guest_name}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Phone</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.guest_phone || '-'}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Email</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.guest_email}</td></tr>\n      </table>\n    </div>\n    <div style=\"background-color:#f9fafb;border-radius:8px;padding:20px;margin-bottom:25px;\">\n      <h2 style=\"font-size:14px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:15px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;\">🕒 Session Info</h2>\n      <table style=\"width:100%;border-collapse:collapse;\">\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Date</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.booking_date}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Time</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.start_time}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Duration</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.duration_hours} Hours</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Bay</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#1a472a;\">Bay ${booking.simulator_id}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Players</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">${booking.player_count || '-'} Players</td></tr>\n      </table>\n    </div>\n    <div style=\"border:2px solid #e5e7eb;border-radius:8px;padding:20px;\">\n      <h2 style=\"font-size:14px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:15px;\">💰 Financial Summary</h2>\n      <table style=\"width:100%;border-collapse:collapse;\">\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Total Amount</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">R${booking.total_price}</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6b7280;\">Paid Online</td><td style=\"padding:8px 0;text-align:right;font-weight:700;color:#15803d;\">R${booking.amount_paid}</td></tr>\n        <tr style=\"font-size:18px;\"><td style=\"padding:15px 0 0 0;border-top:2px solid #e5e7eb;font-weight:800;color:#111827;\">BALANCE DUE</td><td style=\"padding:15px 0 0 0;border-top:2px solid #e5e7eb;text-align:right;font-weight:800;color:#b45309;\">R${(Number(booking.total_price) - Number(booking.amount_paid)).toFixed(0)}</td></tr>\n      </table>\n    </div>\n    <div style=\"margin-top:30px;text-align:center;\"><a href=\\\"https://themulligan.org/admin\\\" style=\"display:inline-block;background-color:#1a472a;color:#ffffff;padding:15px 30px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);\">OPEN ADMIN DASHBOARD</a></div>\n    <p style=\"margin-top:25px;font-size:12px;color:#9ca3af;text-align:center;\">This is an automated operational notification.<br>The Mulligan Golf Lounge</p>\n  </div>\n</div>`;\n\nreturn [\n  {\n    json: {\n      from: 'The Mulligan <alerts@themulligan.org>',\n      to: ['themulligan.store@gmail.com'],\n      subject: `BOOKING ALERT: ${booking.guest_name}`,\n      html: html\n    }\n  }\n];"
+            },
+            "id": "f8f5a548-86dc-4ab5-8656-fba22ceb8b48",
+            "name": "Prepare Store Email",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                5792,
+                3248
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.resend.com/emails",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ $json }}",
+                "options": {
+                    "batching": {
+                        "batch": {
+                            "batchSize": 1,
+                            "batchInterval": 1000
+                        }
+                    },
+                    "retry": {
+                        "maxTries": 3,
+                        "waitBetweenTries": 2000
+                    }
+                }
+            },
+            "id": "665010ae-e41a-4778-b4e3-99e48ecc27ba",
+            "name": "Send Store Alert",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                6032,
+                3248
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "reNVZYZGV1bnXSzo",
+                    "name": "Header Auth account"
+                }
+            },
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "mode": "combine",
+                "combineBy": "combineAll",
+                "options": {}
+            },
+            "id": "a1b2c3d4-merge-wait-node-001",
+            "name": "Wait For Both Emails",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 3,
+            "position": [
+                6272,
+                3104
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "bookings",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $node['Get Booking'].json.id }}"
+                        }
+                    ]
+                },
+                "columns": "email_sent,email_sent_at,n8n_status",
+                "dataToSend": "defineBelow",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldName": "email_sent",
+                            "fieldValue": "true"
+                        },
+                        {
+                            "fieldName": "email_sent_at",
+                            "fieldValue": "={{ new Date().toISOString() }}"
+                        },
+                        {
+                            "fieldName": "n8n_status",
+                            "fieldValue": "sent"
+                        }
+                    ]
+                }
+            },
+            "id": "504752cf-d6d5-46e5-a40f-af53f2d1e08e",
+            "name": "Set email_sent true",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                6512,
+                3104
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "GeCSBGdV5ds3IcZc",
+                    "name": "Supabase Admin"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "status",
+                            "value": "ok"
+                        },
+                        {
+                            "name": "message",
+                            "value": "Booking confirmed and emails sent."
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "resp-node-001",
+            "name": "Respond OK",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3,
+            "position": [
+                6752,
+                3104
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Validate & Extract",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate & Extract": {
+            "main": [
+                [
+                    {
+                        "node": "Email Already Sent?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Email Already Sent?": {
+            "main": [
+                [
+                    {
+                        "node": "Get Booking",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Booking": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Customer Email",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Prepare Store Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Customer Email": {
+            "main": [
+                [
+                    {
+                        "node": "Send Customer Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Store Email": {
+            "main": [
+                [
+                    {
+                        "node": "Send Store Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Customer Email": {
+            "main": [
+                [
+                    {
+                        "node": "Wait For Both Emails",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Store Alert": {
+            "main": [
+                [
+                    {
+                        "node": "Wait For Both Emails",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Wait For Both Emails": {
+            "main": [
+                [
+                    {
+                        "node": "Set email_sent true",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Set email_sent true": {
+            "main": [
+                [
+                    {
+                        "node": "Respond OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {
+        "Webhook": [
+            {
+                "body": {
+                    "booking_id": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        ],
+        "Get Booking": [
+            {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "slot_start": "2026-03-10 14:00:00+02",
+                "slot_end": "2026-03-10 15:00:00+02",
+                "simulator_id": 1,
+                "payment_type": null,
+                "deposit_amount": "0",
+                "amount_due": "0.0",
+                "coupon_code": null,
+                "status": "confirmed",
+                "confirmed_at": null,
+                "created_at": "2026-03-10 21:09:47.677455+02",
+                "updated_at": "2026-03-10 21:09:47.677455+02",
+                "cancelled_at": null,
+                "reminder_24h_sent": false,
+                "reminder_1h_sent": false,
+                "owner_id": null,
+                "accept_whatsapp": false,
+                "base_price": "0",
+                "yoco_payment_id": "ch_test_123456",
+                "booking_date": "2026-03-10",
+                "start_time": "14:00",
+                "guest_name": "Test User",
+                "session_type": null,
+                "duration_hours": "1.0",
+                "end_time": "15:00",
+                "guest_email": "samuelj121314@gmail.com",
+                "guest_phone": "0123456789",
+                "notes": null,
+                "enter_competition": false,
+                "famous_option": null,
+                "famous_course_option": null,
+                "payment_status": "completed",
+                "player_count": 2,
+                "total_price": "250.00",
+                "user_type": "guest",
+                "amount_paid": "250.00",
+                "booking_source": "online",
+                "booking_request_id": null,
+                "correlation_id": null,
+                "yoco_checkout_url": null,
+                "n8n_status": "pending",
+                "n8n_response": null,
+                "n8n_last_attempt_at": null,
+                "addon_coaching": false,
+                "addon_club_rental": false,
+                "addon_water_qty": 0,
+                "addon_water_price": "0",
+                "addon_gloves_qty": 0,
+                "addon_gloves_price": "0",
+                "addon_balls_qty": 0,
+                "addon_balls_price": "0",
+                "email_sent": false,
+                "email_sent_at": null,
+                "n8n_attempts": 0,
+                "n8n_last_error": null,
+                "payment_verified_at": null
+            }
+        ]
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "f1ed9e4669e54648854088f468fe6047c6adac42b3948f2218583bfcf0c4de88"
+    }
+}

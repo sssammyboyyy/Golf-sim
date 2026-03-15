@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npx @cloudflare/next-on-pages@1",
-    "preview": "npm run pages:build && wrangler pages dev .vercel/output/static",
-    "deploy": "npm run pages:build && wrangler pages deploy .vercel/output/static",
+    "pages:build": "npx opennextjs-cloudflare",
+    "preview": "npm run pages:build && wrangler pages dev .open-next",
+    "deploy": "npm run pages:build && wrangler pages deploy .open-next",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -62,7 +62,7 @@
     "zod": "latest"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.5",
+    "@opennextjs/cloudflare": "^2.5.0",
     "@cloudflare/workers-types": "^4.20241112.0",
     "@tailwindcss/postcss": "latest",
     "@types/node": "^22.5.0",
