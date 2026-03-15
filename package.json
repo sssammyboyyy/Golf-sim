@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npx opennextjs-cloudflare",
+    "pages:build": "npx @opennextjs/cloudflare",
     "preview": "npm run pages:build && wrangler pages dev .open-next",
     "deploy": "npm run pages:build && wrangler pages deploy .open-next",
     "lint": "eslint ."
@@ -62,7 +62,7 @@
     "zod": "latest"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^2.5.0",
+    "@opennextjs/cloudflare": "latest",
     "@cloudflare/workers-types": "^4.20241112.0",
     "@tailwindcss/postcss": "latest",
     "@types/node": "^22.5.0",
