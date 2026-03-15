@@ -1,4 +1,3 @@
-export const runtime = "edge"
 export const dynamic = "force-dynamic"
 
 import { NextResponse } from "next/server"
@@ -17,7 +16,7 @@ function calculateEndTimeText(start: string, duration: number): string {
   return date.toTimeString().slice(0, 5)
 }
 
-export const POST = async (request: Request) => {
+export async function POST(request: Request) {
   const correlationId = getCorrelationId(request)
   const idempotencyKey = (request as any).headers.get("x-idempotency-key")
 

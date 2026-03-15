@@ -1,10 +1,9 @@
-export const runtime = "edge"
 export const dynamic = "force-dynamic"
 
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-export const GET = async () => {
+export async function GET() {
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

@@ -3,7 +3,7 @@
 This document provides the "Genetic Code" for The Mulligan's booking engine. Use this as a RAG brain for all future tasks.
 
 ## 🏛️ Core Architecture: "The Direct Highway"
-- **Edge First**: All API routes (`/app/api`) MUST run on the Cloudflare Edge runtime (`export const runtime = 'edge'`). Verified 2026-03-15.
+- **Edge Native**: The application uses the OpenNext Cloudflare adapter. Do NOT use `export const runtime = 'edge'` in individual routes as it causes bundling conflicts; the adapter handles global Edge execution.
 - **Self-Healing Engine**: Do not trust local state for payments. The reconciliation worker (`/api/reconcile-payments`) verifies pending checkouts against Yoco's API.
 - **Atomic Guards**: Use `booking_request_id` (Unique) for creation and `email_sent` (Atomic Bool) for automation triggers.
 

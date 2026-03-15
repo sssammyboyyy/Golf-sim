@@ -1,11 +1,10 @@
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logEvent } from '@/lib/logger';
 
-export const POST = async (request: Request) => {
+export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { pin } = body;

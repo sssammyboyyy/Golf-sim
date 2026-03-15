@@ -1,10 +1,9 @@
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
-export const POST = async (request: Request) => {
+export async function POST(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
         const reconcileSecret = process.env.RECONCILE_SECRET;
