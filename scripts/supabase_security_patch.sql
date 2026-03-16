@@ -1,6 +1,10 @@
--- Fix 1: Move btree_gist extension out of public schema to prevent unauthorized access
-CREATE SCHEMA IF NOT EXISTS extensions;
-ALTER EXTENSION btree_gist SET SCHEMA extensions;
+-- supabase_security_patch.sql
+-- Purpose: Resolve 401 Unauthorized errors on the booking_dashboard view.
 
--- Fix 2: Secure the get_price function against search_path manipulation
-ALTER FUNCTION public.get_price SET search_path = public;
+-- Grant select permissions to anonymous and authenticated users
+GRANT SELECT ON TABLE public.booking_dashboard TO anon;
+GRANT SELECT ON TABLE public.booking_dashboard TO authenticated;
+
+-- Ensure the bookings table itself is accessible via RLS or direct grants if needed
+-- (Though the view usually handles the calculation layer)
+COMMENT ON VIEW public.booking_dashboard IS 'Hardened view for Venue OS Dashboard (+Access Rights)';

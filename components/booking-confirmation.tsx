@@ -127,17 +127,17 @@ export default function BookingConfirmation() {
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="guestName" className="text-xs font-bold uppercase text-muted-foreground">Full Name</label>
-                    <Input id="guestName" name="guestName" placeholder="e.g. Tiger Woods" value={guestName} onChange={e => setGuestName(e.target.value)} className="bg-muted/10 border-muted" />
+                    <label htmlFor="guest_name" className="text-xs font-bold uppercase text-muted-foreground">Full Name</label>
+                    <Input id="guest_name" name="guest_name" autoComplete="name" placeholder="e.g. Tiger Woods" value={guestName} onChange={e => setGuestName(e.target.value)} className="bg-muted/10 border-muted" />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="guestPhone" className="text-xs font-bold uppercase text-muted-foreground">Phone</label>
-                    <Input id="guestPhone" name="guestPhone" placeholder="e.g. 082 123 4567" type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="bg-muted/10 border-muted" />
+                    <label htmlFor="guest_phone" className="text-xs font-bold uppercase text-muted-foreground">Phone</label>
+                    <Input id="guest_phone" name="guest_phone" autoComplete="tel" placeholder="e.g. 082 123 4567" type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="bg-muted/10 border-muted" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="guestEmail" className="text-xs font-bold uppercase text-muted-foreground">Email Address</label>
-                  <Input id="guestEmail" name="guestEmail" placeholder="name@example.com" type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="bg-muted/10 border-muted" />
+                  <label htmlFor="guest_email" className="text-xs font-bold uppercase text-muted-foreground">Email Address</label>
+                  <Input id="guest_email" name="guest_email" autoComplete="email" placeholder="name@example.com" type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="bg-muted/10 border-muted" />
                 </div>
 
                 <div className="flex flex-col gap-3 pt-2">

@@ -187,12 +187,15 @@ function LoginScreen({ pin, setPin, handleLogin }: any) {
             <div className="relative">
                <Lock className="absolute left-4 top-4 w-5 h-5 text-zinc-500" />
                <input 
+                 id="admin_pin"
+                 name="admin_pin"
                  type="password" 
                  placeholder="Enter Security PIN" 
                  value={pin}
                  onChange={e => setPin(e.target.value)}
                  className="w-full bg-[#050505] border border-zinc-800 text-center text-xl tracking-[0.5em] text-white p-4 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-zinc-700 placeholder:tracking-normal placeholder:text-sm font-mono"
                  autoFocus
+                 autoComplete="current-password"
                />
             </div>
             
