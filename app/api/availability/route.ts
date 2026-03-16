@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { createSASTTimestamp } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
@@ -11,29 +12,30 @@ export async function GET(request: Request) {
             return Response.json({ error: "Date is required" }, { status: 400 })
         }
 
+        // Use Service Role for Availability to bypass RLS and see all bookings
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        // Fetch all bookings for the date
+        // Fetch all non-cancelled bookings for the date
         const { data: bookings, error } = await supabase
             .from("bookings")
-            .select("start_time, duration_hours, simulator_id")
+            .select("start_time, duration_hours, simulator_id, status")
             .eq("booking_date", date)
             .neq("status", "cancelled")
 
         if (error) throw error
 
         // Initialize time slots (06:00 to 22:00)
+        // Note: Venue closing hours logic is handled in initialization
         const timeSlots: any[] = []
-
-        for (let i = 6; i <= 22; i++) {
+        for (let i = 6; i <= 21; i++) { // Last 1-hour slot starts at 21:00
             const hour = i.toString().padStart(2, '0') + ":00"
             timeSlots.push({
                 time: hour,
                 bookings: 0,
-                capacity: 3,
+                capacity: 3, // 3 bays total
                 available: true
             })
         }
@@ -55,10 +57,15 @@ export async function GET(request: Request) {
             }
         })
 
-        return Response.json(timeSlots)
+        return Response.json(timeSlots, {
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-store, max-age=0"
+            }
+        })
 
     } catch (error: any) {
-        console.error("Availability API Error:", error)
+        console.error("[AVAILABILITY] Error:", error.message)
         return Response.json({ error: error.message }, { status: 500 })
     }
 }

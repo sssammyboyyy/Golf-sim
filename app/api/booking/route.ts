@@ -1,25 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-
-/**
- * Normalizes a date and time string to a SAST (UTC+02:00) ISO string.
- * Format: YYYY-MM-DDTHH:mm:SS+02:00
- */
-function createSASTTimestamp(dateStr: string, timeStr: string): string {
-  const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr
-  return `${dateStr}T${cleanTime}+02:00`
-}
-
-/**
- * Adds hours to a SAST timestamp and returns a new SAST-formatted string (+02:00).
- * Handles the UTC internal representation of Javascript Dates.
- */
-function addHoursToSAST(sastStr: string, hours: number): string {
-  const d = new Date(sastStr)
-  const endD = new Date(d.getTime() + (hours * 60 * 60 * 1000))
-  // To keep the offset consistent in the DB string (+02:00)
-  // We shift by 2 hours for string generation then slice to append the SAST label
-  return new Date(endD.getTime() + (2 * 60 * 60 * 1000)).toISOString().slice(0, 19) + "+02:00"
-}
+import { createSASTTimestamp, addHoursToSAST } from "@/lib/utils"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
