@@ -6,7 +6,8 @@
 set -e
 
 echo "🚀 Starting OpenNext Build..."
-npx @opennextjs/cloudflare
+# FIX: Added the mandatory 'build' subcommand
+npx @opennextjs/cloudflare build
 
 echo "📂 Hoisting static assets to deployment root..."
 if [ -d ".open-next/assets" ]; then
