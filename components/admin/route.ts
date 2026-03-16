@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logEvent } from '@/lib/utils';
 
-export const runtime = 'edge';
+
 
 /**
  * API route for securely fetching anomalous bookings for the admin "Health" tab.
