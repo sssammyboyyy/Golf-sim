@@ -6,9 +6,20 @@
 This document provides the "Genetic Code" for The Mulligan's booking engine. Use this as a RAG brain for all future tasks.
 
 ## 🏛️ Core Architecture: "The Direct Highway"
-- **Edge Native**: The application uses the OpenNext Cloudflare adapter. Do NOT use `export const runtime = 'edge'` in individual routes as it causes bundling conflicts; the adapter handles global Edge execution.
-- **Self-Healing Engine**: Do not trust local state for payments. The reconciliation worker (`/api/reconcile-payments`) verifies pending checkouts against Yoco's API.
+- **Edge Native**: The application uses the OpenNext Cloudflare adapter. Do NOT use `export const runtime = 'edge'` in individual routes; it MUST be standard Node runtime to prevent bundling conflicts.
+- **Self-Healing Engine**: Do not trust local state for payments. The reconciliation worker verifies pending checkouts against Yoco's API.
+- **Ghost Cleanup Protocol**: Hard-delete logic is implemented in `/api/bookings/admin-delete` to immediately release PostgreSQL `EXCLUDE USING gist` constraints.
 - **Atomic Guards**: Use `booking_request_id` (Unique) for creation and `email_sent` (Atomic Bool) for automation triggers.
+
+## ⚖️ POS Pricing Engine (Tiered Rates)
+- **1 Player**: R250/hr
+- **2 Players**: R360/hr
+- **3 Players**: R480/hr
+- **4 Players**: R600/hr
+- **Add-ons**: 
+  - Clubs (R100/hr)
+  - Coaching (R250 Flat)
+  - Retail: Support for manager price persistence via `addon_*_price` columns.
 
 ## 🛠️ Tech Stack & Rules
 1. **Frontend**: Next.js 15 (App Router).
