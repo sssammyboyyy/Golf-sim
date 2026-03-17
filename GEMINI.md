@@ -1,4 +1,7 @@
 # 🏌️ GEMINI.md — The Mulligan (Venue OS)
+"Execute tasks directly. Bypass long-winded planning walkthroughs unless a conflict is detected. Prioritize code changes over chat explanations."
+
+---
 
 This document provides the "Genetic Code" for The Mulligan's booking engine. Use this as a RAG brain for all future tasks.
 

@@ -18,7 +18,6 @@ export function LiveViewTab() {
 
   const fetchDashboardData = async () => {
     try {
-      // Will throw immediately if env vars are missing
       const supabase = createBrowserClient();
       const todaySAST = getSASTDate();
 
@@ -33,7 +32,6 @@ export function LiveViewTab() {
       setData(bookings || []);
     } catch (err: any) {
       console.error("Dashboard Fetch Error:", err);
-      // Handle the specific legacy key error or missing env var error
       if (err.message?.includes('Legacy API keys') || err.code === 'PGRST301') {
         setError("Database connection failed: 401 Unauthorized. Please update to modern publishable API keys.");
       } else {
@@ -50,7 +48,16 @@ export function LiveViewTab() {
 
   const handleOpenCreate = () => {
     setModalMode('create');
-    setSelectedBooking(null);
+    setSelectedBooking({
+      player_count: 1,
+      duration_hours: 1,
+      booking_date: getSASTDate(),
+      status: 'confirmed',
+      payment_type: 'cash',
+      addon_water_qty: 0,
+      addon_gloves_qty: 0,
+      addon_balls_qty: 0,
+    });
     setIsModalOpen(true);
   };
 
@@ -60,9 +67,47 @@ export function LiveViewTab() {
     setIsModalOpen(true);
   };
 
-  const handleSuccess = () => {
-    // Refresh data on success
-    fetchDashboardData();
+  const handleSave = async (formData: any) => {
+    try {
+      const pin = sessionStorage.getItem('admin-pin');
+      const isEdit = !!formData.id;
+      const endpoint = isEdit ? '/api/bookings/update' : '/api/bookings/admin-create';
+      
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, pin }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to save booking.");
+      }
+      
+      setIsModalOpen(false);
+      fetchDashboardData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch('/api/bookings/admin-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) throw new Error("Failed to execute Ghost Cleanup");
+      
+      setIsModalOpen(false);
+      fetchDashboardData();
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Deletion failed. Check console.");
+    }
   };
 
   if (isLoading) return <div className="p-8 text-center animate-pulse text-zinc-500 font-black uppercase tracking-widest">Loading live view...</div>;
@@ -80,7 +125,6 @@ export function LiveViewTab() {
         </button>
       </div>
 
-      {/* Fallback UI: Red Banner for Errors */}
       {error && (
         <div className="p-6 mb-8 text-white bg-red-600/10 border border-red-600/30 rounded-2xl shadow-xl backdrop-blur-md">
           <h3 className="font-black text-lg uppercase tracking-tight mb-2">System Configuration Error</h3>
@@ -91,7 +135,6 @@ export function LiveViewTab() {
         </div>
       )}
 
-      {/* Normal Dashboard Render */}
       {!error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.map((booking) => (
@@ -138,11 +181,12 @@ export function LiveViewTab() {
 
       <ManagerModal 
         isOpen={isModalOpen}
-        mode={modalMode}
-        initialData={selectedBooking}
+        booking={selectedBooking}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={handleSuccess}
+        onSave={handleSave}
+        onDelete={handleDelete}
       />
     </div>
   );
 }
+
