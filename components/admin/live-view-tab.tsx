@@ -58,6 +58,20 @@ export function LiveViewTab() {
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
+  const handleOpenCreate = () => {
+    setSelectedBooking({
+      guest_name: '', guest_email: '', guest_phone: '',
+      simulator_id: 1, player_count: 1, duration_hours: 1,
+      start_time: '12:00', booking_date: selectedDate,
+      status: 'confirmed', payment_type: 'cash', payment_status: 'paid_instore',
+      addon_water_qty: 0, addon_gloves_qty: 0, addon_balls_qty: 0,
+      addon_club_rental: false, addon_coaching: false,
+      addon_water_price: 20, addon_gloves_price: 220, addon_balls_price: 50,
+      notes: ''
+    });
+    setIsModalOpen(true);
+  };
+
   // ⚡ THE QUICK SETTLE ACTION (Stripped payload to only required fields)
   const handleQuickSettle = async (booking: any) => {
     try {
@@ -131,7 +145,7 @@ export function LiveViewTab() {
         <div className="flex flex-col items-end gap-4 w-full md:w-auto">
           <div className="flex gap-3 w-full md:w-auto">
             <Button
-              onClick={() => { setSelectedBooking(null); setIsModalOpen(true); }}
+              onClick={handleOpenCreate}
               className="flex-1 md:flex-none bg-white text-black hover:bg-primary hover:text-white font-black uppercase text-xs px-8 h-12 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Walk-in
