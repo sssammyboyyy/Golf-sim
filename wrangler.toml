@@ -1,4 +1,4 @@
-name = "bestmulligan"
+name = "themes-golf-sim"
 compatibility_date = "2025-11-25"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".open-next"
@@ -6,3 +6,8 @@ pages_build_output_dir = ".open-next"
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://twvysbtjimrqcgulaich.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3dnlzYnRqaW1ycWNndWxhaWNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzNTcyOTEsImV4cCI6MjA3ODkzMzI5MX0.BP2L6C13Uey5d3L6SlDUz73_e2UhmJ_N-Snvo9m1K94"
+ADMIN_PIN = "8821"
+NEXT_PUBLIC_SITE_URL = "https://themulligan.org"
+RECONCILE_SECRET = "mulligan_reconcile_secure_2026"
+# Secrets like YOCO_SECRET_KEY, AUTOMATION_WEBHOOK_URL, and N8N_WEBHOOK_SECRET
+# are injected via .env.production during the industrial build bridge.

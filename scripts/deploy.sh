@@ -1,18 +1,25 @@
 #!/bin/bash
 # scripts/deploy.sh
-# Deterministic build, Env Bridge, and asset hoisting for Cloudflare Pages (OpenNext)
+# Industrial-Grade Build & Deployment for Cloudflare Pages (OpenNext)
 
 set -e
 
 echo "🔐 Bridging Cloudflare Environment Variables to Next.js..."
-# This forces the Next.js compiler to bake the public keys into the static bundle
+# This ensures that both public and secret keys are available to the Next.js compiler/runtime
 cat << EOF > .env.production
-NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL}"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY}"
+NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY}"
+YOCO_SECRET_KEY="${YOCO_SECRET_KEY}"
+ADMIN_PIN="${ADMIN_PIN}"
+AUTOMATION_WEBHOOK_URL="${AUTOMATION_WEBHOOK_URL:-$N8N_WEBHOOK_URL}"
+N8N_WEBHOOK_SECRET="${N8N_WEBHOOK_SECRET}"
+RECONCILE_SECRET="${RECONCILE_SECRET}"
 EOF
 echo "✅ .env.production generated."
 
-echo "🚀 Starting OpenNext Build..."
+echo "🚀 Starting OpenNext Build via Cloudflare Adapter..."
 npx @opennextjs/cloudflare build
 
 echo "📂 Hoisting static assets to deployment root..."
@@ -47,4 +54,7 @@ EOF
 echo "📊 Deployment Bucket Hierarchy Preview:"
 ls -la .open-next | head -n 15
 
-echo "✨ Success! Final build structure prepared."
+echo "☁️ Triggering Cloudflare Pages Deployment..."
+npx wrangler pages deploy .open-next --project-name themes-golf-sim
+
+echo "✨ Success! Production Release Complete."
