@@ -3,7 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getSASTDate } from '@/lib/utils';
 import { ManagerModal } from './manager-modal';
-import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target } from 'lucide-react';
+
+// 🏗️ PHYSICAL BAY MAPPING
+const BAY_NAMES: Record<number, string> = { 1: 'LOUNGE BAY', 2: 'MIDDLE BAY', 3: 'WINDOW BAY' };
+const getBayName = (id: number) => BAY_NAMES[id] || `BAY ${id}`;
 import { Button } from "@/components/ui/button";
 
 export function LiveViewTab() {
@@ -52,23 +56,10 @@ export function LiveViewTab() {
     fetchDashboardData();
   }, [selectedDate]);
 
-  // 📊 REAL-TIME ANALYTICS ENGINE
-  const analytics = useMemo(() => {
-    let grossRevenue = 0;
-    let totalSessions = 0;
-    let walkIns = 0;
-    let totalPlayers = 0;
-
-    data.forEach(b => {
-      if (b.status === 'cancelled') return;
-      grossRevenue += Number(b.total_price || 0);
-      totalSessions += 1;
-      totalPlayers += Number(b.player_count || 0);
-      if (b.booking_source === 'walk_in') walkIns += 1;
-    });
-
-    return { grossRevenue, totalSessions, walkIns, totalPlayers };
-  }, [data]);
+  // 📊 REAL-TIME DERIVED STATS (synced to selectedDate via data)
+  const totalRevenue = useMemo(() => data.reduce((s, b) => s + Number(b.total_price || 0), 0), [data]);
+  const totalPlayers = useMemo(() => data.reduce((s, b) => s + Number(b.player_count || 0), 0), [data]);
+  const totalBookings = data.length;
 
   const shiftDate = (days: number) => {
     const d = new Date(selectedDate);
@@ -193,15 +184,14 @@ export function LiveViewTab() {
         </div>
       </div>
 
-      {/* 📊 REAL-TIME ANALYTICS STRIP */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 📊 STATS FOR THIS CYCLE */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'GROSS REVENUE', value: `R ${analytics.grossRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-          { label: 'ACTIVE SESSIONS', value: analytics.totalSessions, icon: Activity, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
-          { label: 'WALK-INS', value: analytics.walkIns, icon: TrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-          { label: 'TOTAL PLAYERS', value: analytics.totalPlayers, icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+          { label: 'REVENUE', value: `R ${totalRevenue.toLocaleString()}`, icon: Banknote, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+          { label: 'TOTAL PLAYERS', value: totalPlayers, icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+          { label: 'BOOKINGS', value: totalBookings, icon: Target, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
         ].map((metric) => (
-          <div key={metric.label} className={`relative overflow-hidden ${metric.bg} ${metric.border} border rounded-2xl p-5 transition-all hover:scale-[1.02]`}>
+          <div key={metric.label} className={`relative overflow-hidden bg-[#0a0a0a] ${metric.border} border border-zinc-800 rounded-2xl p-5 transition-all hover:scale-[1.02]`}>
             <div className="absolute top-[-8px] right-[-8px] opacity-[0.07]">
               <metric.icon size={80} />
             </div>
@@ -248,7 +238,7 @@ export function LiveViewTab() {
                   <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-2">Cycle Start</span>
                 </div>
                 <div className="grid">
-                  <span className="text-xl font-black text-white uppercase italic tracking-tighter">Bay {booking.simulator_id}</span>
+                  <span className="text-xl font-black text-white uppercase italic tracking-tighter">{getBayName(booking.simulator_id)}</span>
                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
                     {booking.player_count} Players // {booking.duration_hours}H
                   </span>
