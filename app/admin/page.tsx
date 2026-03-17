@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trophy, Lock, MapPin, DollarSign, AlertCircle, Calendar as CalendarIcon, Users, LayoutDashboard, Calendar, Heart } from 'lucide-react';
+import { Trophy, Lock, MapPin, LayoutDashboard, Calendar, Heart } from 'lucide-react';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { getSASTDate } from '@/lib/utils';
 import { LiveViewTab } from '@/components/admin/live-view-tab';
 import { HealthTab } from '@/components/admin/health-tab';
 import { WeeklyScheduleTab } from '@/components/admin/weekly-schedule-tab';
@@ -21,7 +20,6 @@ export default function AdminDashboardPage() {
   const [pin, setPin] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<"live" | "weekly" | "health">("live");
-  const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // --- AUTH ---
@@ -43,57 +41,11 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- DATA FETCHING (For Stats) ---
-  const [statsError, setStatsError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchStatsData = async () => {
-      try {
-        const pin = sessionStorage.getItem('admin-pin');
-        const today = getSASTDate();
-        
-        const res = await fetch('/api/bookings/admin-dashboard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin, startDate: today }),
-        });
-
-        if (res.status === 401) {
-          sessionStorage.removeItem('admin-pin');
-          window.location.reload();
-          return;
-        }
-
-        if (!res.ok) throw new Error("Stats Sync Failed");
-        const data = await res.json();
-        
-        // Filter for confirmed bookings only for stats
-        setBookings(data.filter((b: any) => b.status === 'confirmed') || []);
-        setStatsError(null);
-      } catch (err: any) {
-        console.error("Stats Fetch Error:", err);
-        setStatsError(err.message || "Failed to load stats.");
-      }
-    };
-
-    fetchStatsData();
-    // Refresh stats every 60 seconds manually or on interval if needed
-    const interval = setInterval(fetchStatsData, 60000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
   if (isLoading) return null;
 
   if (!isAuthenticated) {
     return <LoginScreen pin={pin} setPin={setPin} handleLogin={handleLogin} />;
   }
-
-  // --- STATS CALCULATIONS ---
-  const totalRev = bookings.reduce((acc, b) => acc + (Number(b.amount_paid) || 0), 0);
-  const outstanding = bookings.reduce((acc, b) => acc + (Number(b.total_price) - (Number(b.amount_paid) || 0)), 0);
-  const occupancy = Math.round((bookings.reduce((acc, b) => acc + Number(b.duration_hours), 0) / 36) * 100);
 
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-emerald-500/30">
@@ -135,21 +87,6 @@ export default function AdminDashboardPage() {
       </header>
 
       <main className="max-w-[1600px] mx-auto px-8 py-10">
-        {statsError && (
-          <div className="p-4 mb-6 text-white bg-red-600/10 border border-red-600/30 rounded-xl">
-            <p className="text-xs font-black uppercase tracking-widest">Stats Error: {statsError}</p>
-          </div>
-        )}
-        {/* Stats Grid */}
-        {activeTab !== 'health' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <StatCard label="Banked Revenue" value={`R${totalRev.toLocaleString()}`} icon={<DollarSign className="text-emerald-400" />} sub="Paid In-Store & Online" color="emerald" />
-            <StatCard label="Outstanding" value={`R${outstanding.toLocaleString()}`} icon={<AlertCircle className="text-amber-400" />} sub="Pending Collection" color="amber" />
-            <StatCard label="Total Bookings" value={bookings.length} icon={<CalendarIcon className="text-blue-400" />} sub="Slots Filled Today" color="blue" />
-            <StatCard label="Bay Occupancy" value={`${occupancy}%`} icon={<Users className="text-purple-400" />} sub="Utilization" color="purple" />
-          </div>
-        )}
-
         <div className="animate-in fade-in duration-500">
           {activeTab === 'live' && <LiveViewTab />}
           {activeTab === 'weekly' && <WeeklyScheduleTab />}
@@ -170,28 +107,6 @@ function TabButton({ active, onClick, icon, label }: any) {
   );
 }
 
-function StatCard({ label, value, icon, sub, color }: any) {
-  const borderStyles = {
-    emerald: "border-emerald-500/10 hover:border-emerald-500/20 shadow-emerald-950/20",
-    amber: "border-amber-500/10 hover:border-amber-500/20 shadow-amber-950/20",
-    blue: "border-blue-500/10 hover:border-blue-500/20 shadow-blue-950/20",
-    purple: "border-purple-500/10 hover:border-purple-500/20 shadow-purple-950/20"
-  };
-
-  return (
-    <div className={`bg-[#09090b] border ${borderStyles[color as keyof typeof borderStyles]} p-6 rounded-2xl transition-all duration-300 group hover:translate-y-[-2px] hover:shadow-2xl`}>
-       <div className="flex justify-between items-start mb-4">
-          <div className="p-3 bg-[#050505] border border-zinc-800 rounded-xl group-hover:scale-110 transition-transform duration-300">{icon}</div>
-          <span className="text-[10px] font-bold bg-[#050505] text-zinc-500 px-2.5 py-1 rounded-full border border-zinc-800 tracking-wider">LIVE</span>
-       </div>
-       <div>
-          <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">{label}</div>
-          <div className="text-3xl font-bold text-white tracking-tight">{value}</div>
-          <div className="text-xs text-zinc-500 font-medium mt-2 group-hover:text-zinc-400 transition-colors uppercase tracking-tight">{sub}</div>
-       </div>
-    </div>
-  );
-}
 
 function LoginScreen({ pin, setPin, handleLogin }: any) {
   return (
