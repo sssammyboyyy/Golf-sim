@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client'
+import { createSASTTimestamp } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +19,13 @@ export async function POST(req: Request) {
     const supabaseAdmin = getSupabaseAdmin()
 
     // 2. Soft Delete via supabaseAdmin (bypasses RLS)
+    const nowSAST = new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T') + '+02:00'
     const { error } = await supabaseAdmin
       .from('bookings')
       .update({
         status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        cancelled_at: nowSAST,
+        updated_at: nowSAST
       })
       .eq('id', id)
 

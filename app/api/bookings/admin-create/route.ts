@@ -74,7 +74,43 @@ export async function POST(req: Request) {
       .insert([finalPayload])
       .select().single()
 
-    if (error) throw error;
+    if (error) {
+      // 23P01 = EXCLUSION_VIOLATION — Mulligan Protocol: purge → wait 200ms → retry → 409
+      if (error.code === '23P01' || error.message?.includes('exclusion constraint')) {
+        console.warn(`[23P01] Admin-create race on Bay ${body.simulator_id}. Purging ghosts...`);
+
+        // Step 1: Purge non-confirmed rows for this bay on this date
+        await supabaseAdmin
+          .from("bookings")
+          .delete()
+          .eq("booking_date", body.booking_date)
+          .eq("simulator_id", Number(body.simulator_id))
+          .neq("status", "confirmed")
+
+        // Step 2: Wait 200ms
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Step 3: Retry once
+        const { data: retryData, error: retryError } = await supabaseAdmin
+          .from("bookings")
+          .insert([finalPayload])
+          .select().single()
+
+        if (retryData && !retryError) {
+          console.log(`[23P01] Admin retry SUCCESS for Bay ${body.simulator_id}`);
+          return new Response(JSON.stringify({ success: true, booking: retryData }), {
+            status: 201, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+          })
+        }
+
+        // Step 4: Final failure
+        return new Response(JSON.stringify({ error: "Slot unavailable after retry.", error_code: "SLOT_RACE_CONDITION" }), {
+          status: 409, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        })
+      }
+
+      throw error;
+    }
 
     return new Response(JSON.stringify({ success: true, booking: data }), {
       status: 201, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }

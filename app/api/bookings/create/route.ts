@@ -1,18 +1,9 @@
 import { NextResponse, NextRequest } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase/client"
 import { getOperatingHours, isClosedDay } from "@/lib/schedule-config"
+import { createSASTTimestamp, addHoursToSAST } from "@/lib/utils"
 
-// --- HELPERS ---
-function createSASTTimestamp(dateStr: string, timeStr: string): string {
-  const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr
-  return `${dateStr}T${cleanTime}+02:00`
-}
-
-function addHoursToTimestamp(timestamp: string, hours: number): string {
-  const date = new Date(timestamp)
-  date.setHours(date.getHours() + hours)
-  return date.toISOString()
-}
+// addHoursToTimestamp replaced by addHoursToSAST from @/lib/utils
 
 function calculateEndTimeText(start: string, duration: number): string {
   const [hours, minutes] = start.split(":").map(Number)
@@ -60,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // 2. CALCULATE TIMES
     const slotStartISO = createSASTTimestamp(booking_date, start_time)
-    const slotEndISO = addHoursToTimestamp(slotStartISO, duration_hours)
+    const slotEndISO = addHoursToSAST(slotStartISO, duration_hours)
     const endTimeText = calculateEndTimeText(start_time, duration_hours)
 
     // Convert requested times to Milliseconds for safe comparison
@@ -137,19 +128,69 @@ export async function POST(request: NextRequest) {
         session_type: bookingData.session_type || "quick",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        // SAST timestamps are enforced via slot_start/slot_end above
       })
       .select()
       .single()
 
     if (insertError) {
       // 23P01 = EXCLUSION_VIOLATION (Double booking race condition)
-      if (insertError.code === '23P01') {
-        console.warn(`[CONCURRENCY] Race condition detected for Bay ${assignedSimulatorId} at ${start_time}`);
+      // MULLIGAN PROTOCOL: purge ghosts → wait 200ms → retry once → 409
+      if (insertError.code === '23P01' || insertError.message?.includes('exclusion constraint')) {
+        console.warn(`[23P01] Race condition on Bay ${assignedSimulatorId} at ${start_time}. Purging ghosts...`);
+
+        // Step 1: Purge ghost rows for this bay
+        const { error: purgeError } = await supabase
+          .from("bookings")
+          .delete()
+          .eq("booking_date", booking_date)
+          .eq("simulator_id", assignedSimulatorId)
+          .neq("status", "confirmed")
+
+        if (purgeError) {
+          console.error(`[23P01] Ghost purge failed:`, purgeError.message);
+          return NextResponse.json(
+            { error: "Slot unavailable. Please select another time.", error_code: "SLOT_RACE_CONDITION" },
+            { status: 409 }
+          );
+        }
+
+        // Step 2: Wait 200ms for constraint release
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Step 3: Retry insert once
+        const { data: retryBooking, error: retryError } = await supabase
+          .from("bookings")
+          .insert({
+            booking_date,
+            start_time,
+            end_time: endTimeText,
+            slot_start: slotStartISO,
+            slot_end: slotEndISO,
+            duration_hours,
+            simulator_id: assignedSimulatorId,
+            user_type: "walk_in",
+            guest_name: guest_name || "Walk-In Guest",
+            guest_email,
+            guest_phone,
+            total_price,
+            status: bookingData.booking_source === "walk_in" ? "confirmed" : (payment_status === "completed" ? "confirmed" : "pending"),
+            payment_status: payment_status === "completed" ? "paid_instore" : "pending",
+            booking_source: bookingData.booking_source || "walk_in",
+            player_count: bookingData.players || 1,
+            session_type: bookingData.session_type || "quick",
+          })
+          .select()
+          .single()
+
+        if (retryBooking && !retryError) {
+          console.log(`[23P01] Retry SUCCESS for Bay ${assignedSimulatorId}`);
+          return NextResponse.json({ success: true, booking_id: retryBooking.id, assigned_bay: assignedSimulatorId })
+        }
+
+        // Step 4: Final failure → 409
         return NextResponse.json(
-          {
-            error: "Slot Unavailable",
-            message: "This simulator bay was just booked by another user. Please select another time."
-          },
+          { error: "Slot unavailable after retry. Please select another time.", error_code: "SLOT_RACE_CONDITION" },
           { status: 409 }
         );
       }
