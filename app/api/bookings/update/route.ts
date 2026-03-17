@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Standardized SAST Math Engine
@@ -52,7 +52,12 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    // Explicit Service Role Client for RLS Bypass
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     let finalUpdates = { ...updates };
 
     // 2. Dynamic Math Engines

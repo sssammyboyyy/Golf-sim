@@ -165,53 +165,53 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Guest Credentials</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Full Name</label>
+                  <label htmlFor="guest_name" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Full Name</label>
                   <input id="guest_name" name="guest_name" type="text" value={formData.guest_name || ''} onChange={handleChange} required className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">WhatsApp / Cell</label>
+                  <label htmlFor="guest_phone" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">WhatsApp / Cell</label>
                   <input id="guest_phone" name="guest_phone" type="text" value={formData.guest_phone || ''} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Email (Optional)</label>
+                  <label htmlFor="guest_email" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Email (Optional)</label>
                   <input id="guest_email" name="guest_email" type="email" value={formData.guest_email || ''} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
                 </div>
               </div>
             </div>
 
-            {/* Section: Logistical Grid */}
-            <div className="bg-zinc-950 p-8 rounded-[2rem] text-white">
+            {/* Section: Logistical Grid (High Contrast Light Mode Patch) */}
+            <div className="bg-zinc-50 p-8 rounded-[2rem] border border-zinc-200 text-zinc-900">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-6">Bay & Schedule Parameters</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Simulator Bay</label>
-                  <select id="simulator_id" name="simulator_id" value={formData.simulator_id || 1} onChange={handleChange} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white transition-all text-zinc-900 placeholder:text-zinc-400">
+                  <label htmlFor="simulator_id" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Simulator Bay</label>
+                  <select id="simulator_id" name="simulator_id" value={formData.simulator_id || 1} onChange={handleChange} className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all">
                     <option value={1}>BAY 1</option><option value={2}>BAY 2</option><option value={3}>BAY 3</option><option value={4}>BAY 4</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Players</label>
-                  <input id="player_count" name="player_count" type="number" min="1" max="4" value={formData.player_count || 1} onChange={handleChange} required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all text-zinc-900 placeholder:text-zinc-400" />
+                  <label htmlFor="player_count" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Players</label>
+                  <input id="player_count" name="player_count" type="number" min="1" max="4" value={formData.player_count || 1} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Booking Status</label>
-                  <select id="status" name="status" value={formData.status || 'confirmed'} onChange={handleChange} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white transition-all text-zinc-900 placeholder:text-zinc-400">
+                  <label htmlFor="status" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Booking Status</label>
+                  <select id="status" name="status" value={formData.status || 'confirmed'} onChange={handleChange} className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all">
                     <option value="pending">PENDING</option>
                     <option value="confirmed">CONFIRMED</option>
                     <option value="cancelled">CANCELLED</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Booking Date</label>
-                  <input id="booking_date" name="booking_date" type="date" value={formData.booking_date || ''} onChange={handleChange} required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all text-zinc-900 placeholder:text-zinc-400" />
+                  <label htmlFor="booking_date" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Booking Date</label>
+                  <input id="booking_date" name="booking_date" type="date" value={formData.booking_date || ''} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Arrival Time</label>
-                  <input id="start_time" name="start_time" type="time" value={formData.start_time || ''} onChange={handleChange} required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all text-zinc-900 placeholder:text-zinc-400" />
+                  <label htmlFor="start_time" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Arrival Time</label>
+                  <input id="start_time" name="start_time" type="time" value={formData.start_time || ''} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Duration (Hours)</label>
-                  <input id="duration_hours" name="duration_hours" type="number" step="0.5" min="0.5" value={formData.duration_hours || 1} onChange={handleChange} required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all text-zinc-900 placeholder:text-zinc-400" />
+                  <label htmlFor="duration_hours" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Duration (Hours)</label>
+                  <input id="duration_hours" name="duration_hours" type="number" step="0.5" min="0.5" value={formData.duration_hours || 1} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
                 </div>
               </div>
             </div>
@@ -227,7 +227,7 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
                       <p className="text-sm font-black text-black">Spring Water</p>
                       <input id="addon_water_price" name="addon_water_price" type="number" value={formData.addon_water_price || 20} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
                     </div>
-                    <input id="addon_water_qty" name="addon_water_qty" type="number" min="0" value={formData.addon_water_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" />
+                    <input id="addon_water_qty" name="addon_water_qty" type="number" min="0" value={formData.addon_water_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
                   </div>
                   {/* Gloves */}
                   <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
@@ -235,7 +235,7 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
                       <p className="text-sm font-black text-black">Golf Gloves</p>
                       <input id="addon_gloves_price" name="addon_gloves_price" type="number" value={formData.addon_gloves_price || 0} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
                     </div>
-                    <input id="addon_gloves_qty" name="addon_gloves_qty" type="number" min="0" value={formData.addon_gloves_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" />
+                    <input id="addon_gloves_qty" name="addon_gloves_qty" type="number" min="0" value={formData.addon_gloves_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
                   </div>
                   {/* Balls */}
                   <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
@@ -243,7 +243,7 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
                       <p className="text-sm font-black text-black">Flighted Balls (Sleeve)</p>
                       <input id="addon_balls_price" name="addon_balls_price" type="number" value={formData.addon_balls_price || 0} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
                     </div>
-                    <input id="addon_balls_qty" name="addon_balls_qty" type="number" min="0" value={formData.addon_balls_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" />
+                    <input id="addon_balls_qty" name="addon_balls_qty" type="number" min="0" value={formData.addon_balls_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
                   </div>
                 </div>
               </div>
@@ -253,11 +253,11 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Base Bay Price</label>
+                      <label htmlFor="base_price" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Base Bay Price</label>
                       <input id="base_price" name="base_price" type="number" value={formData.base_price || 0} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Total Amount Paid</label>
+                      <label htmlFor="amount_paid" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Total Amount Paid</label>
                       <input id="amount_paid" name="amount_paid" type="number" value={formData.amount_paid || 0} onChange={handleChange} className="w-full bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-sm font-black text-emerald-700 text-zinc-900 placeholder:text-zinc-400" />
                     </div>
                   </div>
@@ -275,7 +275,7 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
             <div className="pt-8 border-t border-zinc-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-2">Manager Authorization PIN</label>
+                  <label htmlFor="pin" className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-2">Manager Authorization PIN</label>
                   <input 
                     id="pin" name="pin" type="password" 
                     value={pin} onChange={(e) => setPin(e.target.value)} 
