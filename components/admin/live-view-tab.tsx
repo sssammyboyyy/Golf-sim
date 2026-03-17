@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getSASTDate } from '@/lib/utils';
 import { ManagerModal } from './manager-modal';
-import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, DollarSign, Users, TrendingUp } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export function LiveViewTab() {
@@ -51,6 +51,24 @@ export function LiveViewTab() {
   useEffect(() => {
     fetchDashboardData();
   }, [selectedDate]);
+
+  // 📊 REAL-TIME ANALYTICS ENGINE
+  const analytics = useMemo(() => {
+    let grossRevenue = 0;
+    let totalSessions = 0;
+    let walkIns = 0;
+    let totalPlayers = 0;
+
+    data.forEach(b => {
+      if (b.status === 'cancelled') return;
+      grossRevenue += Number(b.total_price || 0);
+      totalSessions += 1;
+      totalPlayers += Number(b.player_count || 0);
+      if (b.booking_source === 'walk_in') walkIns += 1;
+    });
+
+    return { grossRevenue, totalSessions, walkIns, totalPlayers };
+  }, [data]);
 
   const shiftDate = (days: number) => {
     const d = new Date(selectedDate);
@@ -173,6 +191,27 @@ export function LiveViewTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* 📊 REAL-TIME ANALYTICS STRIP */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'GROSS REVENUE', value: `R ${analytics.grossRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+          { label: 'ACTIVE SESSIONS', value: analytics.totalSessions, icon: Activity, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
+          { label: 'WALK-INS', value: analytics.walkIns, icon: TrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+          { label: 'TOTAL PLAYERS', value: analytics.totalPlayers, icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+        ].map((metric) => (
+          <div key={metric.label} className={`relative overflow-hidden ${metric.bg} ${metric.border} border rounded-2xl p-5 transition-all hover:scale-[1.02]`}>
+            <div className="absolute top-[-8px] right-[-8px] opacity-[0.07]">
+              <metric.icon size={80} />
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <metric.icon size={14} className={metric.color} />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-500">{metric.label}</span>
+            </div>
+            <span className={`text-3xl font-black tabular-nums tracking-tighter ${metric.color}`}>{metric.value}</span>
+          </div>
+        ))}
       </div>
 
       {error && (
