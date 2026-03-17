@@ -49,38 +49,39 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    let channel: any;
-
     const fetchStatsData = async () => {
       try {
-        const supabase = createBrowserClient();
+        const pin = sessionStorage.getItem('admin-pin');
         const today = getSASTDate();
-        const { data, error } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('booking_date', today)
-          .eq('status', 'confirmed');
         
-        if (error) throw error;
-        setBookings(data || []);
-        setStatsError(null);
+        const res = await fetch('/api/bookings/admin-dashboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin, startDate: today }),
+        });
 
-        if (!channel) {
-          channel = supabase.channel('stats-sync').on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, fetchStatsData).subscribe();
+        if (res.status === 401) {
+          sessionStorage.removeItem('admin-pin');
+          window.location.reload();
+          return;
         }
+
+        if (!res.ok) throw new Error("Stats Sync Failed");
+        const data = await res.json();
+        
+        // Filter for confirmed bookings only for stats
+        setBookings(data.filter((b: any) => b.status === 'confirmed') || []);
+        setStatsError(null);
       } catch (err: any) {
         console.error("Stats Fetch Error:", err);
-        setStatsError(err.message || "Failed to load stats. check configuration.");
+        setStatsError(err.message || "Failed to load stats.");
       }
     };
 
     fetchStatsData();
-    return () => { 
-      if (channel) {
-        const supabase = createBrowserClient();
-        supabase.removeChannel(channel); 
-      }
-    };
+    // Refresh stats every 60 seconds manually or on interval if needed
+    const interval = setInterval(fetchStatsData, 60000);
+    return () => clearInterval(interval);
   }, [isAuthenticated]);
 
   if (isLoading) return null;
