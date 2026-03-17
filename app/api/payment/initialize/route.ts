@@ -506,6 +506,17 @@ export async function POST(request: Request) {
     logEvent("booking_created", { correlationId, bookingId: booking.id, simulatorId: assignedSimulatorId })
 
     if (skipYoco) {
+      if (process.env.N8N_WEBHOOK_URL) {
+        fetch(process.env.N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            secret: process.env.N8N_WEBHOOK_SECRET || process.env.ADMIN_PIN
+          })
+        }).catch(err => console.error("n8n Trigger Failed:", err));
+      }
+
       return Response.json({
         free_booking: true,
         booking_id: booking.id,
