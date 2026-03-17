@@ -1,33 +1,30 @@
 #!/bin/bash
-# scripts/deploy.sh
 set -e
 
-# Debug: Print which variables are missing (don't print values for security)
-echo "🔍 Checking build environment..."
-[ -z "$NEXT_PUBLIC_SUPABASE_URL" ] && echo "⚠️ NEXT_PUBLIC_SUPABASE_URL is missing"
-[ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && echo "⚠️ NEXT_PUBLIC_SUPABASE_ANON_KEY is missing"
+export NEXT_PUBLIC_SUPABASE_URL="https://twvysbtjimrqcgulaich.supabase.co"
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3dnlzYnRqaW1ycWNndWxhaWNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzNTcyOTEsImV4cCI6MjA3ODkzMzI5MX0.BP2L6C13Uey5d3L6SlDUz73_e2UhmJ_N-Snvo9m1K94"
+export YOCO_SECRET_KEY="placeholder_until_approval"
 
-# 1. Generate .env.production
 cat << EOF > .env.production
 NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 YOCO_SECRET_KEY=$YOCO_SECRET_KEY
 ADMIN_PIN=$ADMIN_PIN
-RECONCILE_SECRET=$RECONCILE_SECRET
 EOF
 
-echo "✅ .env.production generated."
-
-# 2. Build
 npx --yes @opennextjs/cloudflare build
 
-# 3. Hoist & Clean
-[ -d ".open-next/assets" ] && cp -a .open-next/assets/. .open-next/ && rm -rf .open-next/assets
-[ -f ".open-next/worker.js" ] && mv .open-next/worker.js .open-next/_worker.js
+if [ -d ".open-next/assets" ]; then
+    cp -a .open-next/assets/. .open-next/
+    rm -rf .open-next/assets
+fi
 
-# 4. Routes
+if [ -f ".open-next/worker.js" ]; then
+    mv .open-next/worker.js .open-next/_worker.js
+elif [ ! -f ".open-next/_worker.js" ]; then
+    exit 1
+fi
+
 cat << 'EOF' > .open-next/_routes.json
 {
   "version": 1,
