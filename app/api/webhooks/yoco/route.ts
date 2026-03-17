@@ -1,86 +1,139 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { getSASTDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs'; // Using nodejs for maximum reliability with DB updates
+export const runtime = 'nodejs';
 
+/**
+ * app/api/webhooks/yoco/route.ts
+ * 
+ * Hardened Webhook Handler: Two-Phase Commit & Spoofing Prevention.
+ */
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        console.log('[YOCO WEBHOOK] Received payload:', JSON.stringify(body, null, 2));
-
         const { type, payload } = body;
 
-        // 1. Validate Webhook Type
+        // 1. Basic Event Filter
         if (type !== 'checkout.successful') {
-            console.log(`[YOCO WEBHOOK] Ignoring non-successful event: ${type}`);
-            return NextResponse.json({ received: true });
+            console.log(`[YOCO WEBHOOK] Ignoring event: ${type}`);
+            return NextResponse.json({ received: true }, { status: 200 });
         }
 
         const checkoutId = payload.id;
-        const amount = payload.amount / 100;
-        const currency = payload.currency;
         const bookingId = payload.metadata?.bookingId;
 
-        console.log(`[YOCO WEBHOOK] Processing successful payment for Checkout: ${checkoutId}, Booking: ${bookingId}, Amount: ${amount} ${currency}`);
+        if (!bookingId || !checkoutId) {
+            console.error('[YOCO WEBHOOK] Critical Error: Missing identifiers.');
+            return NextResponse.json({ error: 'Missing identifiers' }, { status: 400 });
+        }
 
-        if (!bookingId) {
-            console.error('[YOCO WEBHOOK] Critical Error: No bookingId found in Yoco metadata!');
-            return NextResponse.json({ error: 'Missing bookingId in metadata' }, { status: 400 });
+        // 2. Security: Webhook Spoofing Prevention
+        // Verify the checkout status directly with Yoco API to bypass payload tampering.
+        const yocoSecret = process.env.YOCO_SECRET_KEY;
+        const yocoVerifyUrl = `https://live.yoco.com/v1/checkouts/${checkoutId}`;
+        
+        const yocoResponse = await fetch(yocoVerifyUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${yocoSecret}`
+            }
+        });
+
+        if (!yocoResponse.ok) {
+            console.error('[YOCO WEBHOOK] Security Alert: Could not verify checkout with Yoco.');
+            return NextResponse.json({ error: 'Verification failed' }, { status: 400 });
+        }
+
+        const yocoData = await yocoResponse.json();
+        const validStatus = ['paid', 'successful'].includes(yocoData.status);
+
+        if (!validStatus) {
+            console.error(`[YOCO WEBHOOK] Security Warning: Malicious/Unpaid checkout attempt. ID: ${checkoutId}, Status: ${yocoData.status}`);
+            return NextResponse.json({ error: 'Invalid checkout status' }, { status: 400 });
         }
 
         const supabase = getSupabaseAdmin();
 
-        // 2. Fetch Booking & Idempotency Check
+        // 3. The Idempotency Gate (Corrected)
+        // Check ONLY for the primary financial lock: payment_status
         const { data: booking, error: fetchError } = await supabase
             .from('bookings')
-            .select('*')
+            .select('id, payment_status')
             .eq('id', bookingId)
             .single();
 
         if (fetchError || !booking) {
-            console.error(`[YOCO WEBHOOK] DB Error: Could not find booking ${bookingId}`);
-            return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+            console.error(`[YOCO WEBHOOK] DB Error: Booking ${bookingId} not found.`);
+            return NextResponse.json({ error: 'Booking missing' }, { status: 404 });
         }
 
-        // 3. Prevent Duplicate Processing (Strict Idempotency Drop)
-        // If the booking is already confirmed or the email has been sent, drop the replay
-        if (booking.status === 'confirmed' || booking.email_sent === true) {
-            console.log(`[Idempotency] Webhook replay detected for payment ${checkoutId} (Booking: ${bookingId}). Safely ignoring.`);
-            return NextResponse.json({ 
-                received: true, 
-                message: 'Idempotent replay ignored' 
-            }, { status: 200 });
+        if (booking.payment_status === 'paid') {
+            console.log(`[Webhook Idempotency] Checkout ${checkoutId} already processed (Status: paid). Safely absorbing.`);
+            return NextResponse.json({ received: true }, { status: 200 });
         }
 
-        // 4. Atomic Fulfillment Update (Code-Native)
-        // We perform the state changes directly in the route, eliminating reliance on external n8n triggers for core state.
-        const { error: updateError } = await supabase
+        // 4. Database Fulfillment (Phase 1: Record & Queue)
+        // Atomically lock the record and prepare for automation.
+        const { error: phase1Error } = await supabase
             .from('bookings')
             .update({
                 status: 'confirmed',
-                payment_status: 'paid_online',
-                amount_paid: amount,
+                payment_status: 'paid',
                 yoco_payment_id: checkoutId,
-                email_sent: true, // Flag as sent to prevent duplicate automation if n8n is ever re-enabled
-                updated_at: new Date().toISOString()
+                n8n_status: 'queued',
+                updated_at: getSASTDate() // Using local SAST helper
             })
             .eq('id', bookingId);
 
-        if (updateError) {
-            console.error(`[YOCO WEBHOOK] DB Update Error for booking ${bookingId}:`, updateError.message);
-            return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 });
+        if (phase1Error) {
+            console.error(`[YOCO WEBHOOK] DB Phase 1 Update Failed for ${bookingId}:`, phase1Error.message);
+            return NextResponse.json({ error: 'Fulfillment error' }, { status: 500 });
         }
 
-        console.log(`[YOCO WEBHOOK] Successfully confirmed booking ${bookingId} and updated state in-house.`);
+        console.log(`[YOCO WEBHOOK] Phase 1 Success: Booking ${bookingId} marked as confirmed/paid.`);
 
-        // 5. Automation Layer (OPTIONAL/DEPRECATED - Removed n8n trigger for Core Logic)
-        // Core fulfillment is now 100% code-native. Any secondary flows (SMS, etc) should also be moved here.
+        // 5. The Automation Bridge (Phase 2: Dispatch)
+        // High-reliability dispatch to n8n with strict payload contract.
+        try {
+            const automationUrl = process.env.AUTOMATION_WEBHOOK_URL;
+            if (!automationUrl) throw new Error("AUTOMATION_WEBHOOK_URL missing");
 
-        return NextResponse.json({ success: true, bookingId });
+            const n8nResponse = await fetch(automationUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    valid: true,
+                    bookingId: bookingId,
+                    secret: process.env.N8N_WEBHOOK_SECRET,
+                    correlation_id: checkoutId
+                })
+            });
+
+            if (!n8nResponse.ok) throw new Error(`n8n responded with ${n8nResponse.status}`);
+
+            console.log(`[Automation Bridge] Phase 2 Dispatch success for ${bookingId}`);
+
+        } catch (autoError: any) {
+            // 6. Failure State Recovery
+            // Flag the automation failure in the base but KEEP the payment 200 OK.
+            console.error(`[Automation Bridge] Phase 2 Failure for ${bookingId}: ${autoError.message}`);
+            
+            await supabase
+                .from('bookings')
+                .update({
+                    n8n_status: 'failed',
+                    n8n_last_error: autoError.message
+                })
+                .eq('id', bookingId);
+        }
+
+        // Always finalize with Yoco to stop retries
+        return NextResponse.json({ received: true }, { status: 200 });
 
     } catch (error: any) {
-        console.error('[YOCO WEBHOOK] Payload Error:', error.message);
-        return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        console.error('[YOCO WEBHOOK] Fatal Handler Crash:', error.message);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
