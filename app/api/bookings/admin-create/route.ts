@@ -1,126 +1,88 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js"
+import { createSASTTimestamp, addHoursToSAST } from "@/lib/utils"
 
-/**
- * Standardized SAST Math Engine
- * Guarantees +02:00 offsets and consistent timestamp derivation.
- */
-const calculateSASTTimestamps = (date: string, time: string, duration: number) => {
-  const slotStartStr = `${date}T${time}:00+02:00`;
-  const slotStart = new Date(slotStartStr);
-  const slotEnd = new Date(slotStart.getTime() + duration * 60 * 60 * 1000);
-  
-  return {
-    slot_start: slotStart.toISOString(),
-    slot_end: slotEnd.toISOString(),
-    end_time: slotEnd.toLocaleTimeString('en-ZA', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      timeZone: 'Africa/Johannesburg', 
-      hour12: false 
-    })
-  };
-};
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
 
-/**
- * Standardized Financial Engine
- * Recalculates totals and due amounts live on the backend.
- */
-const calculateFinancials = (payload: any) => {
-  const base = Number(payload.base_price || 0);
-  const water = Number(payload.addon_water_qty || 0) * Number(payload.addon_water_price || 20);
-  const gloves = Number(payload.addon_gloves_qty || 0) * Number(payload.addon_gloves_price || 0);
-  const balls = Number(payload.addon_balls_qty || 0) * Number(payload.addon_balls_price || 0);
-  
-  const total_price = base + water + gloves + balls;
-  const amount_paid = Number(payload.amount_paid || 0);
-  const amount_due = Math.max(0, total_price - amount_paid);
-  
-  return { total_price, amount_due };
-};
+export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS })
+}
+
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { pin, ...payload } = body;
-
-    // 1. Security Gate
-    if (pin !== process.env.ADMIN_PIN && pin !== '8821') {
-      return NextResponse.json({ 
-        error: "Forbidden", 
-        message: "Invalid Manager PIN. Authorization failed." 
-      }, { status: 403 });
-    }
-
-    // Explicit Service Role Client for RLS Bypass
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    )
 
-    const timestamps = calculateSASTTimestamps(
-      payload.booking_date, 
-      payload.start_time, 
-      Number(payload.duration_hours)
-    );
-    const financials = calculateFinancials(payload);
+    const body = await req.json()
+    
+    // Data Sanitization
+    const players = Math.min(Math.max(Number(body.player_count || 1), 1), 4);
+    const duration = Number(body.duration_hours || 1);
+    const slotStart = createSASTTimestamp(body.booking_date, body.start_time);
+    const slotEnd = addHoursToSAST(slotStart, duration);
+
+    // Pricing Math with Manager Overrides
+    const rates = { 1: 250, 2: 360, 3: 480, 4: 600 };
+    const baseTotal = (rates[players as keyof typeof rates] || 250) * duration;
+    
+    const clubs = body.addon_club_rental ? (100 * duration) : 0;
+    const coaching = body.addon_coaching ? 250 : 0;
+    
+    // Manager persistence logic: qty * (override_price ?? standard_price)
+    const water = (body.addon_water_qty || 0) * (body.addon_water_price ?? 20);
+    const gloves = (body.addon_gloves_qty || 0) * (body.addon_gloves_price ?? 220);
+    const balls = (body.addon_balls_qty || 0) * (body.addon_balls_price ?? 50);
+
+    const calculatedTotal = baseTotal + clubs + coaching + water + gloves + balls;
 
     const finalPayload = {
-      ...payload,
-      ...timestamps,
-      ...financials,
+      guest_name: body.guest_name || 'Walk-in Guest',
+      guest_phone: body.guest_phone || '0000000000',
+      guest_email: body.guest_email || 'walkin@venue-os.com',
+      simulator_id: Number(body.simulator_id), 
+      booking_date: body.booking_date,
+      start_time: body.start_time,
+      slot_start: slotStart,
+      slot_end: slotEnd,
+      duration_hours: duration,
+      player_count: players,
+      total_price: calculatedTotal,
+      notes: body.notes || "",
+      payment_type: body.payment_type || 'cash', 
       booking_source: 'walk_in',
-      payment_type: 'walk_in',
-      payment_status: financials.amount_due === 0 ? 'paid' : 'partial',
-      status: 'confirmed',
-    };
-
-    // 2. Initial Insert Attempt
-    const { data, error } = await supabaseAdmin
-      .from('bookings')
-      .insert(finalPayload)
-      .select()
-      .single();
-
-    // 3. Self-Healing Concurrency Guard (Ghost Cleanup Sequence)
-    if (error && error.code === '23P01') {
-      console.warn(`[Concurrency] 23P01 Conflict on Bay ${payload.simulator_id}. Triggering Self-Healing Cleanup...`);
-      
-      // Execute Ghost Cleanup RPC
-      await supabaseAdmin.rpc('purge_ghost_bookings', { 
-        target_bay: Number(payload.simulator_id) 
-      });
-      
-      // Defensive 200ms Backoff
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Final Retry Attempt
-      const { data: retryData, error: retryError } = await supabaseAdmin
-        .from('bookings')
-        .insert(finalPayload)
-        .select()
-        .single();
-
-      if (retryError && retryError.code === '23P01') {
-        return NextResponse.json({ 
-          error: "Conflict", 
-          message: "Slot Unavailable: This bay is already booked at this time." 
-        }, { status: 409 });
-      } else if (retryError) {
-        throw retryError;
-      }
-      return NextResponse.json({ status: 'success', data: retryData });
-    } else if (error) {
-      throw error;
+      user_type: 'walk_in',
+      // Persist the specific prices typed by the manager
+      addon_water_qty: Number(body.addon_water_qty || 0),
+      addon_water_price: Number(body.addon_water_price ?? 20),
+      addon_gloves_qty: Number(body.addon_gloves_qty || 0),
+      addon_gloves_price: Number(body.addon_gloves_price ?? 220),
+      addon_balls_qty: Number(body.addon_balls_qty || 0),
+      addon_balls_price: Number(body.addon_balls_price ?? 50),
+      addon_club_rental: Boolean(body.addon_club_rental),
+      addon_coaching: Boolean(body.addon_coaching)
     }
 
-    return NextResponse.json({ status: 'success', data });
+    const { data, error } = await supabaseAdmin
+      .from("bookings")
+      .insert([finalPayload])
+      .select().single()
 
-  } catch (error: any) {
-    console.error("Admin Create API Error:", error);
-    return NextResponse.json({ 
-      error: "Server Error", 
-      message: error.message 
-    }, { status: 500 });
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ success: true, booking: data }), {
+      status: 201, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    })
+  } catch (err: any) {
+    console.error("[ADMIN-CREATE-ERROR]", err)
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    })
   }
 }

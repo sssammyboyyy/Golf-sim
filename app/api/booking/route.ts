@@ -7,103 +7,74 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
-export const runtime = "edge"; // High-leverage Cloudflare performance
+// FIX: Remove edge runtime to satisfy OpenNext bundling
 export const dynamic = "force-dynamic";
 
 export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: CORS_HEADERS,
-  })
+  return new Response(null, { status: 204, headers: CORS_HEADERS })
 }
 
-/**
- * Admin Walk-In Creation Route
- * Bypasses RLS via Service Role & Normalizes Check Constraints
- */
 export async function POST(req: Request) {
   try {
-    // 1. Initialize with Service Role to ensure admin authority
-    // Note: Ensure SUPABASE_SERVICE_ROLE_KEY is set in Cloudflare Dashboard
-    const supabaseAdmin = createClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
     const body = await req.json()
-    const {
-      full_name,
-      phone,
-      email,
-      bay_id,
-      booking_date,
-      start_time,
-      duration_hours,
-      players,
-      amount_total,
-      status // Expected "CONFIRMED" from your UI
+    const { 
+      booking_request_id, booking_date, start_time, 
+      duration_hours, player_count, simulator_id,
+      guest_name, guest_email, guest_phone
     } = body
 
-    // 2. Industrial Timestamp Normalization (SAST)
-    const slot_start = createSASTTimestamp(booking_date, start_time)
-    const slot_end = addHoursToSAST(slot_start, Number(duration_hours))
-
-    // 3. Construct Payload with Check-Constraint Fixes
-    const finalPayload = {
-      full_name,
-      phone,
-      email: email || null,
-      bay_id,
-      booking_date,
-      start_time,
-      slot_start,
-      slot_end,
-      duration_hours: Number(duration_hours),
-      players: Number(players),
-      total_price: amount_total || 0,
-      status: (status || 'confirmed').toLowerCase(),
-      payment_status: 'paid',
-      // FIX: Database check constraint 'bookings_payment_type_check' 
-      // likely expects 'cash', 'card', or 'eft'. 'walk_in' is usually rejected.
-      payment_type: 'cash',
-      booking_source: 'walk_in',
-      user_type: 'guest'
-    }
-
-    // 4. Atomic Insert
-    const { data, error } = await supabaseAdmin
-      .from("bookings")
-      .insert([finalPayload])
-      .select()
-      .single()
-
-    if (error) {
-      console.error("[DB-ERROR]", error)
-      return new Response(JSON.stringify({
-        error: error.message,
-        hint: "Check if payment_type 'cash' is allowed in your Postgres constraint."
-      }), {
-        status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    if (!booking_request_id || !booking_date || !start_time || !simulator_id) {
+      return new Response(JSON.stringify({ error: "Missing parameters" }), {
+        status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       })
     }
 
-    return new Response(JSON.stringify({ success: true, booking: data }), {
-      status: 201,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    })
+    // Industrial SAST Normalization
+    const slot_start = createSASTTimestamp(booking_date, start_time)
+    const slot_end = addHoursToSAST(slot_start, Number(duration_hours))
 
+    // Tiered Pricing Rule (Online Gate)
+    const players = Math.min(Math.max(Number(player_count || 1), 1), 4);
+    const duration = Number(duration_hours || 1);
+    const rates = { 1: 250, 2: 360, 3: 480, 4: 600 };
+    const totalPrice = (rates[players as keyof typeof rates] || 250) * duration;
+
+    const { data: booking, error } = await supabase
+      .from("bookings")
+      .insert({
+        booking_request_id, booking_date, start_time,
+        slot_start, slot_end, simulator_id,
+        guest_name, guest_email, guest_phone,
+        duration_hours: duration,
+        player_count: players,
+        total_price: totalPrice,
+        status: "pending",
+        user_type: "guest",
+        booking_source: "online"
+      })
+      .select().single()
+
+    if (error) {
+      if (error.code === "23P01" || error.code === "23505") {
+        return new Response(JSON.stringify({ error: "Conflict", code: error.code }), {
+          status: 409, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        })
+      }
+      throw error
+    }
+
+    return new Response(JSON.stringify({ success: true, booking }), {
+      status: 201, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    })
   } catch (err: any) {
-    console.error("[FATAL-ERROR]", err)
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    console.error("[BOOKING-POST-ERROR]", err)
+    return new Response(JSON.stringify({ error: "Internal Error" }), {
+      status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
     })
   }
 }
