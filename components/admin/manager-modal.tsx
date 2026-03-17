@@ -258,14 +258,21 @@ export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: 
                     </div>
                     <div>
                       <label htmlFor="amount_paid" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Total Amount Paid</label>
-                      <input id="amount_paid" name="amount_paid" type="number" value={formData.amount_paid || 0} onChange={handleChange} className="w-full bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-sm font-black text-emerald-700 text-zinc-900 placeholder:text-zinc-400" />
+                      <input 
+                        id="amount_paid" 
+                        name="amount_paid" 
+                        type="number" 
+                        value={formData.amount_paid || 0} 
+                        onChange={handleChange} 
+                        className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm font-black text-emerald-900 placeholder:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                      />
                     </div>
                   </div>
 
                   <div className="bg-black p-6 rounded-[2rem] flex flex-col items-center justify-center text-center shadow-inner">
                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Total Outstanding</p>
                     <p className={`text-4xl font-black ${calcDue > 0 ? 'text-red-500' : 'text-emerald-500'} tracking-tighter`}>R {calcDue}</p>
-                    <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-2">Calculated vs R {calcTotal} total</p>
+                    <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest mt-2">Calculated vs R {calcTotal} total</p>
                   </div>
                 </div>
               </div>
