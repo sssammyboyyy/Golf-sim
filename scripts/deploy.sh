@@ -1,41 +1,32 @@
 #!/bin/bash
-# scripts/deploy.sh
-# Deterministic build, Env Bridge, and asset hoisting for Cloudflare Pages (OpenNext)
-
+# Industrial OpenNext Asset Hoisting Protocol
 set -e
 
-echo "🔐 Bridging Cloudflare Environment Variables to Next.js..."
-# This forces the Next.js compiler to bake the public keys into the static bundle
-cat << EOF > .env.production
-NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-EOF
-echo "✅ .env.production generated."
-
-echo "🚀 Starting OpenNext Build..."
-npx @opennextjs/cloudflare build
-
-echo "📂 Hoisting static assets to deployment root..."
+# DO NOT include rm -rf here; cleanup happens in npm run clean.
+echo "--- ⛵ Hoisting Assets for Cloudflare Pages ---"
 if [ -d ".open-next/assets" ]; then
+    echo "Transferring nested assets to root outdir..."
+    # Copy _next and other static folders to the root of .open-next
     cp -a .open-next/assets/. .open-next/
-    echo "✅ Assets hoisted successfully."
+    # Cleanup only the nested source folder to prevent duplication
     rm -rf .open-next/assets
+    echo "✅ Hoisting Complete."
 else
-    echo "⚠️  Warning: .open-next/assets directory not found."
+    echo "⚠️ Warning: .open-next/assets not found. Checking root for _next..."
 fi
 
-echo "🔍 Enforcing 'The Underscore Rule' for Cloudflare routing..."
-if [ ! -f ".open-next/_worker.js" ]; then
-    if [ -f ".open-next/worker.js" ]; then
-        echo "🔄 Renaming worker.js to _worker.js..."
-        mv .open-next/worker.js .open-next/_worker.js
-    else
-        echo "❌ CRITICAL ERROR: _worker.js not found in .open-next/ root."
-        exit 1
-    fi
+echo "--- 🔧 Finalizing Worker Structure ---"
+if [ -f ".open-next/worker.js" ]; then
+    mv .open-next/worker.js .open-next/_worker.js
+    echo "✅ worker.js -> _worker.js"
+elif [ -f ".open-next/_worker.js" ]; then
+    echo "✅ _worker.js already in place."
+else
+    echo "❌ ERROR: No worker bundle detected."
+    exit 1
 fi
 
-echo "🛡️ Generating _routes.json to prevent Asset 404s..."
+echo "--- 🌐 Writing Route Manifest ---"
 cat << 'EOF' > .open-next/_routes.json
 {
   "version": 1,
@@ -43,8 +34,4 @@ cat << 'EOF' > .open-next/_routes.json
   "exclude": ["/_next/static/*", "/images/*", "/favicon.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.css", "/*.js"]
 }
 EOF
-
-echo "📊 Deployment Bucket Hierarchy Preview:"
-ls -la .open-next | head -n 15
-
-echo "✨ Success! Final build structure prepared."
+echo "✅ _routes.json Generated."

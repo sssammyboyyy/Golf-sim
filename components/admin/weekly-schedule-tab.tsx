@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserClient } from '@/lib/supabase/client';
 import { getSASTDate } from '@/lib/utils';
 import { format, startOfWeek, addDays, endOfWeek, isSameDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, RefreshCw, Smartphone, Globe } from 'lucide-react';
@@ -13,7 +12,6 @@ const BAY_NAMES: Record<number, string> = {
 };
 
 export function WeeklyScheduleTab() {
-    const supabase = createBrowserClient();
     const [weekStart, setWeekStart] = useState(startOfWeek(new Date(getSASTDate()), { weekStartsOn: 1 }));
     const [bookings, setBookings] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -21,18 +19,31 @@ export function WeeklyScheduleTab() {
     const fetchBookings = async () => {
         setIsLoading(true);
         try {
-            const start = format(weekStart, "yyyy-MM-dd");
-            const end = format(endOfWeek(weekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
+            const pin = sessionStorage.getItem('admin-pin');
+            const startStr = format(weekStart, "yyyy-MM-dd");
+            const endStr = format(endOfWeek(weekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
             
-            const { data, error } = await supabase
-                .from("bookings")
-                .select("*")
-                .gte("booking_date", start)
-                .lte("booking_date", end)
-                .neq("status", "cancelled");
+            const res = await fetch('/api/bookings/admin-dashboard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    pin, 
+                    startDate: startStr, 
+                    endDate: endStr 
+                }),
+            });
 
-            if (error) throw error;
-            setBookings(data || []);
+            if (res.status === 401) {
+                sessionStorage.removeItem('admin-pin');
+                window.location.reload();
+                return;
+            }
+
+            if (!res.ok) throw new Error("Calendar sync failed.");
+            
+            const data = await res.json();
+            // Filter out cancelled bookings manually if the API doesn't
+            setBookings(data.filter((b: any) => b.status !== 'cancelled') || []);
         } catch (err) {
             console.error("Error fetching weekly bookings:", err);
         } finally {
@@ -104,7 +115,6 @@ export function WeeklyScheduleTab() {
                                             : 'bg-emerald-600/5 border-emerald-500/20 text-emerald-200 hover:bg-emerald-600/10 hover:border-emerald-500/40'
                                     }`}
                                 >
-                                    {/* Ambient Glow on hover */}
                                     <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isWalkIn(b) ? 'bg-purple-500/5' : 'bg-emerald-500/5'}`} />
                                     
                                     <div className="font-bold flex justify-between items-center mb-1.5 relative z-10">

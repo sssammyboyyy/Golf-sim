@@ -1,307 +1,338 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { getSASTDate } from '@/lib/utils';
+import { useState, useEffect, useMemo } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import { Trash2, User, Flag, ShoppingBag, CreditCard, Calendar, Info, RotateCcw, Clock, MapPin } from "lucide-react"
 
-type ManagerModalProps = {
-  isOpen: boolean;
-  mode: 'create' | 'edit';
-  initialData?: any;
-  onClose: () => void;
-  onSuccess: (data: any) => void;
+// 🛡️ MODULAR BUSINESS RULES
+const GET_BASE_HOURLY_RATE = (players: number) => {
+  if (players >= 4) return 600; // R150pp
+  if (players === 3) return 480; // R160pp
+  if (players === 2) return 360; // R180pp
+  return 250; // R250pp
 };
 
-export function ManagerModal({ isOpen, mode, initialData, onClose, onSuccess }: ManagerModalProps) {
-  const [formData, setFormData] = useState<any>({});
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const CLUB_RENTAL_HOURLY = 100;
+const COACHING_FLAT_FEE = 250; // Flat R250 for 30 min
 
-  // Reactive Total Calculation States
-  const [calcTotal, setCalcTotal] = useState(0);
-  const [calcDue, setCalcDue] = useState(0);
+// 🏗️ BAY CONFIGURATION
+const BAY_OPTIONS = [
+  { id: '1', label: 'Lounge Bay', color: 'text-indigo-400' },
+  { id: '2', label: 'Middle Bay', color: 'text-amber-400' },
+  { id: '3', label: 'Window Bay', color: 'text-emerald-400' },
+];
 
-  /**
-   * SAST Midnight Patch
-   * Ensures 'create' mode defaults to the current SAST date, preventing UTC drift bugs.
-   */
+export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any) {
+  const [formData, setFormData] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isManualPrice, setIsManualPrice] = useState(false);
+
   useEffect(() => {
-    if (isOpen) {
-      if (mode === 'create') {
-        setFormData({
-          guest_name: '',
-          guest_phone: '',
-          guest_email: '',
-          booking_date: getSASTDate(), // SAST Midnight Patch Applied
-          start_time: '12:00',
-          duration_hours: 1,
-          simulator_id: 1,
-          status: 'confirmed',
-          base_price: 350, // Default bay price
-          amount_paid: 0,
-          addon_water_qty: 0,
-          addon_water_price: 20,
-          addon_gloves_qty: 0,
-          addon_gloves_price: 150,
-          addon_balls_qty: 0,
-          addon_balls_price: 80
-        });
-      } else {
-        // Legacy Data Mapping Patch
-        // Resolves incorrect outstanding balances for older records
-        const dbTotal = Number(initialData.total_price || 0);
-        const dbBase = Number(initialData.base_price || 0);
-        const resolvedBase = dbBase > 0 ? dbBase : dbTotal;
-
-        let resolvedPaid = Number(initialData.amount_paid || 0);
-        const isPaid = initialData.payment_status === 'paid' || initialData.payment_status === 'completed';
-
-        // If DB says it's paid but amount_paid is 0, auto-fill it so the outstanding balance is 0
-        if (resolvedPaid === 0 && isPaid) {
-          resolvedPaid = resolvedBase;
-        }
-
-        setFormData({
-          ...initialData,
-          base_price: resolvedBase,
-          amount_paid: resolvedPaid,
-          addon_water_qty: Number(initialData.addon_water_qty || 0),
-          addon_gloves_qty: Number(initialData.addon_gloves_qty || 0),
-          addon_balls_qty: Number(initialData.addon_balls_qty || 0)
-        });
-      }
-      setPin('');
-      setError(null);
+    if (booking) {
+      setFormData({ ...booking });
+      setIsDeleting(false);
+      setIsManualPrice(false);
     }
-  }, [isOpen, mode, initialData]);
+  }, [booking]);
 
-  /**
-   * Real-Time Financial Engine
-   * Dynamically tracks totals and balances as quantities change.
-   */
-  useEffect(() => {
-    const base = Number(formData.base_price || 0);
-    const water = Number(formData.addon_water_qty || 0) * Number(formData.addon_water_price || 20);
-    const gloves = Number(formData.addon_gloves_qty || 0) * Number(formData.addon_gloves_price || 0);
-    const balls = Number(formData.addon_balls_qty || 0) * Number(formData.addon_balls_price || 0);
-    
-    const total = base + water + gloves + balls;
-    const paid = Number(formData.amount_paid || 0);
-    
-    setCalcTotal(total);
-    setCalcDue(Math.max(0, total - paid));
+  // 🧠 REACTIVE POS LEDGER
+  const totals = useMemo(() => {
+    if (!formData) return { base: 0, extras: 0, total: 0 };
+
+    const baseTotal = GET_BASE_HOURLY_RATE(formData.player_count) * formData.duration_hours;
+    const clubs = formData.addon_club_rental ? (CLUB_RENTAL_HOURLY * formData.duration_hours) : 0;
+    const coaching = formData.addon_coaching ? COACHING_FLAT_FEE : 0;
+
+    const water = (formData.addon_water_qty || 0) * (formData.addon_water_price ?? 20);
+    const gloves = (formData.addon_gloves_qty || 0) * (formData.addon_gloves_price ?? 220);
+    const balls = (formData.addon_balls_qty || 0) * (formData.addon_balls_price ?? 50);
+
+    return {
+      base: baseTotal,
+      extras: clubs + coaching + water + gloves + balls,
+      total: baseTotal + clubs + coaching + water + gloves + balls
+    };
   }, [formData]);
 
-  if (!isOpen) return null;
+  // 🔗 SYNC TOTAL — only if NOT manually overridden
+  useEffect(() => {
+    if (formData && !isManualPrice && formData.total_price !== totals.total) {
+      setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
+    }
+  }, [totals.total, isManualPrice]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+  if (!formData) return null;
+
+  const update = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const handleManualPriceChange = (value: string) => {
+    setIsManualPrice(true);
+    update("total_price", Number(value));
+  };
 
-    const endpoint = mode === 'create' ? '/api/bookings/admin-create' : '/api/bookings/update';
-    
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, pin })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || 'Request failed');
-      }
-
-      onSuccess(result.data);
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const handleResetPrice = () => {
+    setIsManualPrice(false);
+    setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[100] p-4">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-zinc-200">
-        
-        {/* Header */}
-        <div className="p-8 pb-4 flex justify-between items-center border-b border-zinc-100">
-          <div>
-            <h2 className="text-3xl font-black text-black tracking-tighter uppercase">
-              {mode === 'create' ? 'Register Walk-in' : 'Modify Booking'}
-            </h2>
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Management Portal v1.2</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors font-black text-2xl text-zinc-300 hover:text-black">&times;</button>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[650px] max-h-[95vh] overflow-y-auto border-t-8 border-t-primary p-0">
+        <div className="sticky top-0 bg-background/80 backdrop-blur-md z-10 px-6 py-4 border-b">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between text-2xl font-black">
+              <span className="flex items-center gap-2">
+                <Flag className="text-primary" /> {formData.guest_name ? `EDIT: ${formData.guest_name}` : "NEW WALK-IN"}
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+                ID: {formData.id?.slice(0, 8) || "DRAFT"}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="sr-only">
+            Edit or review booking details, adjust player counts, durations, and manage POS add-ons.
+          </DialogDescription>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 pt-6">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-600 font-bold text-sm">
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              {error}
+        <div className="space-y-6 p-6">
+
+          {/* CARD 1: GUEST IDENTITY */}
+          <section className="bg-muted/30 p-6 rounded-2xl border space-y-4">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
+              <User size={14} /> Guest Identity
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Context Badges */}
-            {mode === 'edit' && (
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-zinc-100 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-500 border border-zinc-200">Source: {formData.booking_source}</span>
-                <span className="px-3 py-1 bg-zinc-100 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-500 border border-zinc-200">Payment: {formData.payment_status}</span>
+            <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70">FULL NAME</Label>
+                <Input id="guest_name" name="guest_name" placeholder="John Doe" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} />
               </div>
-            )}
-
-            {/* Section: Guest Details */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Guest Credentials</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label htmlFor="guest_name" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Full Name</label>
-                  <input id="guest_name" name="guest_name" type="text" value={formData.guest_name || ''} onChange={handleChange} required className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70">PHONE NUMBER</Label>
+                  <Input id="guest_phone" name="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} />
                 </div>
-                <div>
-                  <label htmlFor="guest_phone" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">WhatsApp / Cell</label>
-                  <input id="guest_phone" name="guest_phone" type="text" value={formData.guest_phone || ''} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
-                </div>
-                <div>
-                  <label htmlFor="guest_email" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Email (Optional)</label>
-                  <input id="guest_email" name="guest_email" type="email" value={formData.guest_email || ''} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all text-zinc-900 placeholder:text-zinc-400" />
+                <div className="grid gap-1.5">
+                  <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70">EMAIL ADDRESS</Label>
+                  <Input id="guest_email" name="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} />
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Section: Logistical Grid (High Contrast Light Mode Patch) */}
-            <div className="bg-zinc-50 p-8 rounded-[2rem] border border-zinc-200 text-zinc-900">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-6">Bay & Schedule Parameters</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div>
-                  <label htmlFor="simulator_id" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Simulator Bay</label>
-                  <select id="simulator_id" name="simulator_id" value={formData.simulator_id || 1} onChange={handleChange} className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all">
-                    <option value={1}>BAY 1</option><option value={2}>BAY 2</option><option value={3}>BAY 3</option><option value={4}>BAY 4</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="player_count" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Players</label>
-                  <input id="player_count" name="player_count" type="number" min="1" max="4" value={formData.player_count || 1} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
-                </div>
-                <div>
-                  <label htmlFor="status" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Booking Status</label>
-                  <select id="status" name="status" value={formData.status || 'confirmed'} onChange={handleChange} className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all">
-                    <option value="pending">PENDING</option>
-                    <option value="confirmed">CONFIRMED</option>
-                    <option value="cancelled">CANCELLED</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="booking_date" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Booking Date</label>
-                  <input id="booking_date" name="booking_date" type="date" value={formData.booking_date || ''} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
-                </div>
-                <div>
-                  <label htmlFor="start_time" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Arrival Time</label>
-                  <input id="start_time" name="start_time" type="time" value={formData.start_time || ''} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
-                </div>
-                <div>
-                  <label htmlFor="duration_hours" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Duration (Hours)</label>
-                  <input id="duration_hours" name="duration_hours" type="number" step="0.5" min="0.5" value={formData.duration_hours || 1} onChange={handleChange} required className="w-full bg-white border border-zinc-300 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black transition-all" />
-                </div>
+          {/* CARD 2: SESSION SETUP (Now with Time & Bay) */}
+          <section className="bg-muted/30 p-6 rounded-2xl border space-y-4">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
+              <Calendar size={14} /> Session Setup
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="player_count" className="text-[10px] font-bold">PLAYERS (1-4)</Label>
+                <Input id="player_count" name="player_count" type="number" min="1" max="4" value={formData.player_count} onChange={(e) => update("player_count", Number(e.target.value))} />
+                <p className="text-[10px] text-muted-foreground font-medium">Rate: R{GET_BASE_HOURLY_RATE(formData.player_count)}/hr</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="duration_hours" className="text-[10px] font-bold">DURATION (HRS)</Label>
+                <Input id="duration_hours" name="duration_hours" type="number" step="0.5" min="0.5" value={formData.duration_hours} onChange={(e) => update("duration_hours", Number(e.target.value))} />
               </div>
             </div>
 
-            {/* Section: POS & Financials */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Point of Sale (Add-ons)</h3>
-                <div className="space-y-4">
-                  {/* Water */}
-                  <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                    <div className="flex-1">
-                      <p className="text-sm font-black text-black">Spring Water</p>
-                      <input id="addon_water_price" name="addon_water_price" type="number" value={formData.addon_water_price || 20} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
-                    </div>
-                    <input id="addon_water_qty" name="addon_water_qty" type="number" min="0" value={formData.addon_water_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
-                  </div>
-                  {/* Gloves */}
-                  <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                    <div className="flex-1">
-                      <p className="text-sm font-black text-black">Golf Gloves</p>
-                      <input id="addon_gloves_price" name="addon_gloves_price" type="number" value={formData.addon_gloves_price || 0} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
-                    </div>
-                    <input id="addon_gloves_qty" name="addon_gloves_qty" type="number" min="0" value={formData.addon_gloves_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
-                  </div>
-                  {/* Balls */}
-                  <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                    <div className="flex-1">
-                      <p className="text-sm font-black text-black">Flighted Balls (Sleeve)</p>
-                      <input id="addon_balls_price" name="addon_balls_price" type="number" value={formData.addon_balls_price || 0} onChange={handleChange} className="text-[10px] font-bold text-zinc-400 bg-transparent text-zinc-900 placeholder:text-zinc-400" placeholder="Price Ea." />
-                    </div>
-                    <input id="addon_balls_qty" name="addon_balls_qty" type="number" min="0" value={formData.addon_balls_qty || 0} onChange={handleChange} className="w-20 bg-white border border-zinc-200 rounded-lg px-2 py-2 text-center font-black text-zinc-900 placeholder:text-zinc-400" title="Quantity" />
-                  </div>
+            {/* 🕐 TIME & BAY SELECTORS */}
+            <div className="grid grid-cols-2 gap-6 pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="start_time" className="text-[10px] font-bold flex items-center gap-1.5">
+                  <Clock size={12} className="text-primary" /> START TIME
+                </Label>
+                <Input
+                  id="start_time"
+                  name="start_time"
+                  type="time"
+                  value={formData.start_time || '12:00'}
+                  onChange={(e) => update("start_time", e.target.value)}
+                  className="font-mono font-bold text-lg tracking-tight"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="simulator_id" className="text-[10px] font-bold flex items-center gap-1.5">
+                  <MapPin size={12} className="text-primary" /> BAY ASSIGNMENT
+                </Label>
+                <Select
+                  name="simulator_id"
+                  value={String(formData.simulator_id)}
+                  onValueChange={(v) => update("simulator_id", Number(v))}
+                >
+                  <SelectTrigger id="simulator_id" className="bg-background border-2 font-bold">
+                    <SelectValue placeholder="Select Bay" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BAY_OPTIONS.map((bay) => (
+                      <SelectItem key={bay.id} value={bay.id}>
+                        <span className={`font-bold ${bay.color}`}>{bay.label}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-[10px] font-bold">MANAGER & KITCHEN NOTES</Label>
+              <textarea
+                id="notes"
+                name="notes"
+                className="w-full min-h-[100px] p-4 text-sm rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                placeholder="Horse and River order # or specific requests..."
+                value={formData.notes || ""}
+                onChange={(e) => update("notes", e.target.value)}
+              />
+            </div>
+          </section>
+
+          {/* CARD 3: PREMIUM SERVICES & RETAIL */}
+          <section className="bg-muted/30 p-6 rounded-2xl border space-y-6">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
+              <ShoppingBag size={14} /> Services & Inventory
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-4 bg-background border rounded-xl shadow-sm">
+                <div className="grid">
+                  <Label htmlFor="addon_club_rental" className="font-bold text-sm cursor-pointer">Club Rentals</Label>
+                  <span className="text-[10px] text-muted-foreground">R100/hr</span>
                 </div>
+                <Switch id="addon_club_rental" name="addon_club_rental" checked={formData.addon_club_rental} onCheckedChange={(v) => update("addon_club_rental", v)} />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-background border rounded-xl shadow-sm">
+                <div className="grid">
+                  <Label htmlFor="addon_coaching" className="font-bold text-sm cursor-pointer">Coaching (Armand)</Label>
+                  <span className="text-[10px] text-muted-foreground">Flat R250</span>
+                </div>
+                <Switch id="addon_coaching" name="addon_coaching" checked={formData.addon_coaching} onCheckedChange={(v) => update("addon_coaching", v)} />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <Label className="text-[10px] font-bold opacity-70">RETAIL INVENTORY (QTY | @PRICE)</Label>
+              <div className="space-y-3">
+                {[
+                  { label: "Water", qty: "addon_water_qty", price: "addon_water_price", def: 20 },
+                  { label: "Gloves", qty: "addon_gloves_qty", price: "addon_gloves_price", def: 220 },
+                  { label: "Balls", qty: "addon_balls_qty", price: "addon_balls_price", def: 50 },
+                ].map((item) => (
+                  <div key={item.label} className="grid grid-cols-12 gap-3 items-center bg-background p-2 pr-4 rounded-xl border border-dashed">
+                    <Label htmlFor={item.qty} className="col-span-4 text-xs font-bold pl-2">{item.label}</Label>
+                    <Input id={item.qty} name={item.qty} className="col-span-3 h-8 text-center bg-muted/20 border-none font-bold" type="number" min="0" value={formData[item.qty] || 0} onChange={(e) => update(item.qty, Number(e.target.value))} />
+                    <span className="col-span-1 text-center text-muted-foreground font-mono text-xs">@</span>
+                    <div className="col-span-4 flex items-center bg-muted/10 rounded-md px-2 border">
+                      <span className="text-[10px] font-bold opacity-50 mr-1">R</span>
+                      <Input id={item.price} name={item.price} aria-label={`${item.label} Price`} className="h-8 text-right border-none bg-transparent font-mono focus-visible:ring-0 p-0" type="number" value={formData[item.price] ?? item.def} onChange={(e) => update(item.price, Number(e.target.value))} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* CARD 4: SETTLEMENT CARD (with Manual Price Override) */}
+          <section className="bg-primary/5 p-6 rounded-2xl border border-primary/20 space-y-4">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
+              <CreditCard size={14} /> Settlement
+            </div>
+
+            <div className="grid gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="payment_type" className="text-[10px] font-bold">PAYMENT METHOD</Label>
+                <Select name="payment_type" value={formData.payment_type} onValueChange={(v) => update("payment_type", v)}>
+                  <SelectTrigger id="payment_type" className="bg-background border-2"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Physical Cash</SelectItem>
+                    <SelectItem value="card">Card Machine (In-store)</SelectItem>
+                    <SelectItem value="eft">EFT / Proof of Payment</SelectItem>
+                    <SelectItem value="yoco">Yoco Online</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Ledger Reconcilliation</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="base_price" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Base Bay Price</label>
-                      <input id="base_price" name="base_price" type="number" value={formData.base_price || 0} onChange={handleChange} className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400" />
-                    </div>
-                    <div>
-                      <label htmlFor="amount_paid" className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Total Amount Paid</label>
-                      <input 
-                        id="amount_paid" 
-                        name="amount_paid" 
-                        type="number" 
-                        value={formData.amount_paid || 0} 
-                        onChange={handleChange} 
-                        className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm font-black text-emerald-900 placeholder:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+              <div className="p-6 bg-primary text-primary-foreground rounded-2xl shadow-xl space-y-2 relative overflow-hidden">
+                <div className="absolute top-[-10px] right-[-10px] opacity-10">
+                  <CreditCard size={120} />
+                </div>
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-80">
+                  <span>Session: R{totals.base}</span>
+                  <span>Addons: R{totals.extras}</span>
+                </div>
+                <Separator className="bg-primary-foreground/20" />
+
+                {/* 🎯 MANUAL PRICE OVERRIDE */}
+                <div className="flex justify-between items-end pt-2">
+                  <div className="grid gap-1">
+                    <span className="text-[10px] font-bold opacity-70 flex items-center gap-2">
+                      TOTAL BALANCE
+                      {isManualPrice && (
+                        <span className="px-1.5 py-0.5 text-[8px] font-black uppercase bg-amber-500/20 text-amber-300 rounded border border-amber-500/30">
+                          OVERRIDE
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-black">R</span>
+                      <Input
+                        type="number"
+                        value={formData.total_price ?? totals.total}
+                        onChange={(e) => handleManualPriceChange(e.target.value)}
+                        className="text-3xl font-black tabular-nums bg-transparent border-none text-primary-foreground p-0 h-auto focus-visible:ring-0 w-[120px]"
                       />
+                      {isManualPrice && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                          onClick={handleResetPrice}
+                          title="Reset to calculated price"
+                        >
+                          <RotateCcw size={14} />
+                        </Button>
+                      )}
                     </div>
                   </div>
-
-                  <div className="bg-black p-6 rounded-[2rem] flex flex-col items-center justify-center text-center shadow-inner">
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Total Outstanding</p>
-                    <p className={`text-4xl font-black ${calcDue > 0 ? 'text-red-500' : 'text-emerald-500'} tracking-tighter`}>R {calcDue}</p>
-                    <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest mt-2">Calculated vs R {calcTotal} total</p>
-                  </div>
+                  <Button variant="secondary" size="sm" className="font-black text-[10px] uppercase shadow-lg" onClick={() => onSave(formData)}>
+                    Charge R{formData.total_price ?? totals.total}
+                  </Button>
                 </div>
               </div>
             </div>
-
-            {/* Footer Authorization */}
-            <div className="pt-8 border-t border-zinc-100 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div>
-                  <label htmlFor="pin" className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-2">Manager Authorization PIN</label>
-                  <input 
-                    id="pin" name="pin" type="password" 
-                    value={pin} onChange={(e) => setPin(e.target.value)} 
-                    required placeholder="****" 
-                    className="w-32 bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xl font-black text-center tracking-[0.5em] focus:ring-2 focus:ring-red-500 outline-none text-red-900 placeholder:text-zinc-400" 
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 w-full md:w-auto">
-                <button type="button" onClick={onClose} className="flex-1 md:flex-none px-8 py-4 text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-black transition-colors">Cancel</button>
-                <button type="submit" disabled={loading} className="flex-1 md:flex-none px-12 py-4 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100">
-                  {loading ? 'Processing...' : 'Commit to Database'}
-                </button>
-              </div>
-            </div>
-          </form>
+          </section>
         </div>
-      </div>
-    </div>
-  );
+
+        <DialogFooter className="sticky bottom-0 bg-background border-t p-6 flex flex-col sm:flex-row gap-4 justify-between items-center sm:gap-0">
+          <div className="w-full sm:w-auto">
+            {isDeleting ? (
+              <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-200 bg-destructive/10 p-2 rounded-lg border border-destructive/20">
+                <Info size={14} className="text-destructive font-bold" />
+                <span className="text-[10px] font-black text-destructive uppercase">Ghost Cleanup?</span>
+                <Button variant="destructive" size="sm" className="h-7 text-[10px] font-black uppercase" onClick={() => onDelete(formData.id)}>Yes, Destroy</Button>
+                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={() => setIsDeleting(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-destructive/50 hover:text-destructive hover:bg-destructive/10 font-bold text-[10px] uppercase" onClick={() => setIsDeleting(true)}>
+                <Trash2 size={14} className="mr-2" /> Delete Booking
+              </Button>
+            )}
+          </div>
+
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none font-bold text-xs uppercase" onClick={onClose}>Discard</Button>
+            <Button className="flex-1 sm:flex-none px-10 font-black text-xs uppercase shadow-md hover:shadow-xl transition-all" onClick={() => onSave(formData)}>Apply Changes</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
