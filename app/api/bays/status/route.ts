@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const endOfDay = new Date(now).setHours(23,59,59,999);
 
     const { data: activeBookings, error } = await supabaseAdmin
-      .from("bookings")
+      .from("bookings_test")
       .select("simulator_id, slot_start, slot_end, status")
       .neq("status", "cancelled") 
       .gte("slot_end", new Date(startOfDay).toISOString())

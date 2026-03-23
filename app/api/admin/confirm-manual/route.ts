@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
         // 3. Update Booking
         const { data: updatedBooking, error: updateError } = await supabase
-            .from('bookings')
+            .from('bookings_test')
             .update({
                 status: 'confirmed',
                 payment_status: paymentMethod,
@@ -71,4 +71,4 @@ export async function POST(request: Request) {
         logEvent('manual_confirm_error', { bookingId, error: error.message }, 'error');
         return Response.json({ error: error.message }, { status: 500 });
     }
-};
+};

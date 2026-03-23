@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
     // 3. Database Execution with Atomics
     const { data: booking, error } = await supabase
-      .from("bookings")
+      .from("bookings_test")
       .insert({
         booking_request_id, // Idempotency Guard (Unique UUID)
         booking_date,

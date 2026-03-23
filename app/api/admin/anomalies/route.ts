@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         const threeDaysAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
         const { data: anomalies, error } = await supabase
-            .from('bookings')
+            .from('bookings_test')
             .select('id, guest_name, guest_email, yoco_payment_id, created_at, total_price')
             .not('yoco_payment_id', 'is', null)
             .eq('status', 'pending')
@@ -42,4 +42,4 @@ export async function POST(request: Request) {
         logEvent('anomalies_fetch_error', { error: error.message }, 'error');
         return Response.json({ error: error.message }, { status: 500 });
     }
-}
+}

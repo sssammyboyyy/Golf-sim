@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Update Database
     const { data, error } = await supabaseAdmin
-      .from('bookings')
+      .from('bookings_test')
       .update(finalUpdates)
       .eq('id', id)
       .select()

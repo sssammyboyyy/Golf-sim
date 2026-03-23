@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
         // Verify it's still pending before cancelling
         const { data: booking, error: fetchError } = await supabase
-            .from("bookings")
+            .from("bookings_test")
             .select("status, payment_status")
             .eq("id", reference)
             .single()
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
         // Hard delete to free the slot entirely from the unique constraint
         const { error: deleteError } = await supabase
-            .from("bookings")
+            .from("bookings_test")
             .delete()
             .eq("id", reference)
 

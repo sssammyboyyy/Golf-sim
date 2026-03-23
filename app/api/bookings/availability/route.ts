@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   // 1. Fetch ALL bookings (We need created_at to filter stale ones)
   // Also fetch simulator_id to track per-bay availability
   const { data: bookings, error } = await supabase
-    .from("bookings")
+    .from("bookings_test")
     .select("slot_start, slot_end, status, created_at, simulator_id")
     .eq("booking_date", date)
     .neq("status", "cancelled")

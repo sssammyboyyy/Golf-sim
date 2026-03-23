@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
         // SAST-aware query: fetch bookings using explicit +02:00 range
         const { data: bookings, error } = await supabase
-            .from("bookings")
+            .from("bookings_test")
             .select("start_time, duration_hours, simulator_id, status")
             .eq("booking_date", date)
             .neq("status", "cancelled")

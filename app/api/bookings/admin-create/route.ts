@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Initial Insert Attempt
     const { data, error } = await supabaseAdmin
-      .from('bookings')
+      .from('bookings_test')
       .insert(finalPayload)
       .select()
       .single();
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
       // Final Retry Attempt
       const { data: retryData, error: retryError } = await supabaseAdmin
-        .from('bookings')
+        .from('bookings_test')
         .insert(finalPayload)
         .select()
         .single();

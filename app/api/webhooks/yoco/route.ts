@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         // 3. The Idempotency Gate (Corrected)
         // Check ONLY for the primary financial lock: payment_status
         const { data: booking, error: fetchError } = await supabase
-            .from('bookings')
+            .from('bookings_test')
             .select('id, payment_status')
             .eq('id', bookingId)
             .single();
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         // 4. Database Fulfillment (Phase 1: Record & Queue)
         // Atomically lock the record and prepare for automation.
         const { error: phase1Error } = await supabase
-            .from('bookings')
+            .from('bookings_test')
             .update({
                 status: 'confirmed',
                 payment_status: 'paid',
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             console.error(`[Automation Bridge] Phase 2 Failure for ${bookingId}: ${autoError.message}`);
             
             await supabase
-                .from('bookings')
+                .from('bookings_test')
                 .update({
                     n8n_status: 'failed',
                     n8n_last_error: autoError.message

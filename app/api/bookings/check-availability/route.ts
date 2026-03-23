@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     // 2. Fetch Active Bookings for that day
     const { data: bookings, error } = await supabase
-      .from("bookings")
+      .from("bookings_test")
       .select("slot_start, slot_end") // Only fetch what we need
       .eq("booking_date", booking_date)
       .neq("status", "cancelled")

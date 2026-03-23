@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         const supabase = getSupabaseAdmin();
 
         let query = supabase
-            .from('bookings')
+            .from('bookings_test')
             .select('id, amount_paid, yoco_payment_id, status, email_sent')
             .not('yoco_payment_id', 'is', null) // Must have attempted payment
             .lt('amount_paid', 0.01);         // Hasn't been marked as paid
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
                 console.log(`[VERIFY] Healing database. Updating booking ${booking.id} to amount_paid: ${actualPaid}`);
 
                 await supabase
-                    .from('bookings')
+                    .from('bookings_test')
                     .update({
                         amount_paid: actualPaid,
                         status: 'confirmed',
