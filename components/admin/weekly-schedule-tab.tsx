@@ -25,7 +25,7 @@ export function WeeklyScheduleTab() {
             const end = format(endOfWeek(weekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
             
             const { data, error } = await supabase
-                .from("bookings_test")
+                .from("bookings")
                 .select("*")
                 .gte("booking_date", start)
                 .lte("booking_date", end)

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     const totalPrice = (rates[players as keyof typeof rates] || 250) * duration;
 
     const { data: booking, error } = await supabase
-      .from("bookings_test")
+      .from("bookings")
       .insert({
         booking_request_id, booking_date, start_time,
         slot_start, slot_end, simulator_id,

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
         // 3. Update Booking
         const { data: updatedBooking, error: updateError } = await supabase
-            .from('bookings_test')
+            .from('bookings')
             .update({
                 status: 'confirmed',
                 payment_status: paymentMethod,

@@ -9,7 +9,7 @@ export async function GET() {
     )
 
     const { data: sample, error: sampleError } = await supabase
-        .from("bookings_test")
+        .from("bookings")
         .select("*")
         .limit(1)
 

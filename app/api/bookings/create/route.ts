@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // 3. CHECK AVAILABILITY (MULTI-BAY LOGIC)
     const { data: dailyBookings } = await supabase
-      .from("bookings_test")
+      .from("bookings")
       .select("simulator_id, slot_start, slot_end")
       .eq("booking_date", booking_date)
       .neq("status", "cancelled")
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // 5. INSERT BOOKING
     const { data: booking, error: insertError } = await supabase
-      .from("bookings_test")
+      .from("bookings")
       .insert({
         booking_date,
         start_time,

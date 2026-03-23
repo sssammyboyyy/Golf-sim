@@ -221,7 +221,7 @@ export async function POST(request: Request) {
     // The PostgreSQL exclusion constraint has no WHERE clause, so cancelled rows
     // still physically block slot inserts. We MUST fetch them to delete them.
     const { data: dailyBookings } = await supabaseAdmin
-      .from("bookings_test")
+      .from("bookings")
       .select("id, simulator_id, start_time, slot_start, slot_end, status, created_at, yoco_payment_id, booking_request_id, guest_email")
       .eq("booking_date", booking_date)
 
@@ -283,7 +283,7 @@ export async function POST(request: Request) {
         count: ghostDeleteIds.length
       })
       const { error: deleteError, count: deleteCount } = await supabaseAdmin
-        .from("bookings_test")
+        .from("bookings")
         .delete({ count: 'exact' })
         .in("id", ghostDeleteIds)
 
@@ -340,7 +340,7 @@ export async function POST(request: Request) {
 
     // A. IDEMPOTENCY CHECK
     const { data: existingBooking } = await supabase
-      .from("bookings_test")
+      .from("bookings")
       .select("*")
       .eq("booking_request_id", bookingRequestId)
       .maybeSingle()
@@ -350,7 +350,7 @@ export async function POST(request: Request) {
     // B. CREATE NEW BOOKING (only if not already existing)
     if (!booking) {
       const { data: newBooking, error: bookingError } = await supabase
-        .from("bookings_test")
+        .from("bookings")
         .insert({
           booking_request_id: bookingRequestId,
           booking_date,
@@ -409,7 +409,7 @@ export async function POST(request: Request) {
           logEvent("exclusion_constraint_retry", { correlationId, assignedSimulatorId }, "warn")
 
           const { error: forceDeleteError } = await supabaseAdmin
-            .from("bookings_test")
+            .from("bookings")
             .delete()
             .eq("booking_date", booking_date)
             .eq("simulator_id", assignedSimulatorId)
@@ -418,7 +418,7 @@ export async function POST(request: Request) {
           if (!forceDeleteError) {
             // Retry the insert after force cleanup
             const { data: retryBooking, error: retryError } = await supabase
-              .from("bookings_test")
+              .from("bookings")
               .insert({
                 booking_request_id: bookingRequestId,
                 booking_date,
@@ -476,7 +476,7 @@ export async function POST(request: Request) {
         // Handle unique constraint on booking_request_id (concurrent duplicate)
         if (!booking && bookingError.code === '23505' && bookingError.message?.includes('booking_request_id')) {
           const { data: retryBooking } = await supabase
-            .from("bookings_test")
+            .from("bookings")
             .select("*")
             .eq("booking_request_id", bookingRequestId)
             .single()
@@ -544,7 +544,7 @@ export async function POST(request: Request) {
 
     if (yocoData.id) {
       await supabase
-        .from("bookings_test")
+        .from("bookings")
         .update({ yoco_payment_id: yocoData.id })
         .eq("id", booking.id)
     }
