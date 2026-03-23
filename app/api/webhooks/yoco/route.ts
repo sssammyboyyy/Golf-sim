@@ -6,14 +6,14 @@ import { Resend } from 'resend';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 /**
  * app/api/webhooks/yoco/route.ts
  * 
  * Hardened Webhook Handler: Two-Phase Commit & Spoofing Prevention.
  */
 export async function POST(request: NextRequest) {
+    const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
+
     try {
         const body = await request.json();
         const { type, payload } = body;
