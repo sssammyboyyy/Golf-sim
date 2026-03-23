@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
 
                 // 5a. Customer Dispatch
                 const { error: customerEmailError } = await resend.emails.send({
-                    from: "bookings@themulligan.org",
+                    from: "The Mulligan <bookings@themulligan.org>",
                     to: booking.guest_email,
                     subject: "Booking Confirmed - The Mulligan",
                     html: `
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
                 // 5b. Store Alert Dispatch
                 const { error: storeEmailError } = await resend.emails.send({
-                    from: "bookings@themulligan.org",
+                    from: "The Mulligan <alerts@themulligan.org>",
                     to: "mulligan.store@gmail.com",
                     subject: `BOOKING ALERT: ${guestName}`,
                     html: `
