@@ -349,7 +349,7 @@ export async function POST(request: Request) {
 
     // B. CREATE NEW BOOKING (only if not already existing)
     if (!booking) {
-      const { data: newBooking, error: bookingError } = await supabase
+      const { data: newBooking, error: bookingError } = await supabaseAdmin
         .from("bookings")
         .insert({
           booking_request_id: bookingRequestId,
@@ -417,7 +417,7 @@ export async function POST(request: Request) {
 
           if (!forceDeleteError) {
             // Retry the insert after force cleanup
-            const { data: retryBooking, error: retryError } = await supabase
+            const { data: retryBooking, error: retryError } = await supabaseAdmin
               .from("bookings")
               .insert({
                 booking_request_id: bookingRequestId,
@@ -543,7 +543,7 @@ export async function POST(request: Request) {
     const yocoData = await yocoResponse.json()
 
     if (yocoData.id) {
-      await supabase
+      await supabaseAdmin
         .from("bookings")
         .update({ yoco_payment_id: yocoData.id })
         .eq("id", booking.id)
