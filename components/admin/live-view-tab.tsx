@@ -314,24 +314,24 @@ export function LiveViewTab() {
                     {paid ? (
                       <Button
                         size="sm"
-                        className="bg-red-600/80 hover:bg-red-500 text-white font-black text-[9px] md:text-[10px] uppercase h-10 md:h-12 px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform"
+                        className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black text-[9px] md:text-[10px] uppercase h-10 md:h-12 px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleQuickSettle(booking, 'unsettle');
                         }}
                       >
-                        <XCircle className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-2" /> <span className="hidden md:inline">Unsettle</span>
+                        <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-2" /> <span className="hidden md:inline">Paid</span><span className="md:hidden ml-1">Paid</span>
                       </Button>
                     ) : (
                       <Button
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[9px] md:text-[10px] uppercase h-10 md:h-12 px-4 md:px-5 shadow-lg group-hover:scale-105 transition-transform"
+                        className="bg-red-600 hover:bg-red-500 text-white font-black text-[9px] md:text-[10px] uppercase h-10 md:h-12 px-4 md:px-5 shadow-lg group-hover:scale-105 transition-transform"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleQuickSettle(booking, 'settle');
                         }}
                       >
-                        <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-2" /> <span className="hidden md:inline">Settle Now</span><span className="md:hidden ml-1">Settle</span>
+                        <XCircle className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-2" /> <span className="hidden md:inline">Settle Now</span><span className="md:hidden ml-1">Settle</span>
                       </Button>
                     )}
 
