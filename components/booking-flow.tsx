@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeft, ArrowRight, Users, Calendar as CalendarIcon,
@@ -11,8 +12,6 @@ import {
 } from "lucide-react"
 import { format, startOfToday, isToday } from "date-fns"
 import { getOperatingHours, isClosedDay } from "@/lib/schedule-config"
-
-// Operating hours are now managed in lib/schedule-config.ts
 
 export default function BookingFlow() {
   const topRef = useRef<HTMLDivElement>(null)
@@ -30,11 +29,19 @@ export default function BookingFlow() {
   const [golfClubRental, setGolfClubRental] = useState(false)
   const [coachingSession, setCoachingSession] = useState(false)
 
+  // Coupons
+  const [couponCode, setCouponCode] = useState("")
+  const [discountApplied, setDiscountApplied] = useState(0)
+  const [couponError, setCouponError] = useState("")
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
+
   // Async Data
   const [bookedSlots, setBookedSlots] = useState<string[]>([])
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
   const [serverPrice, setServerPrice] = useState<number>(0)
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false)
+
+  const finalPrice = Math.max(0, serverPrice - discountApplied);
 
   // --- SCROLL BEHAVIOR ---
   useEffect(() => {
@@ -47,9 +54,6 @@ export default function BookingFlow() {
     }
   }, [date])
 
-  // --- REAP ABANDONED BOOKINGS ---
-  // If the user cancelled checkout on Yoco, they'll land here with ?cancelled=true&reference=xyz
-  // We want to immediately free up that slot in the DB so they can re-book.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const searchParams = new URLSearchParams(window.location.search);
@@ -64,7 +68,6 @@ export default function BookingFlow() {
         body: JSON.stringify({ reference: ref })
       }).catch(err => console.error("Failed to reap booking:", err));
 
-      // Clean URL without reloading page
       const url = new URL(window.location.href);
       url.searchParams.delete("cancelled");
       url.searchParams.delete("reference");
@@ -72,7 +75,6 @@ export default function BookingFlow() {
     }
   }, []);
 
-  // --- HANDLERS ---
   const handleSessionSelect = (type: "4ball" | "3ball" | "quick") => {
     setSessionType(type)
     if (type === "4ball") {
@@ -115,9 +117,44 @@ export default function BookingFlow() {
     return () => clearTimeout(timeout)
   }, [sessionType, players, duration, golfClubRental, coachingSession])
 
+  // --- COUPON EFFECT Guard ---
+  useEffect(() => {
+    if (discountApplied > 0) {
+        setDiscountApplied(0);
+        setCouponCode("");
+        setCouponError("Cart modified. Please re-apply your code.");
+    }
+  }, [serverPrice]);
+
+  const handleApplyCoupon = async () => {
+      setIsApplyingCoupon(true);
+      setCouponError("");
+      try {
+          const res = await fetch("/api/coupons/validate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: couponCode })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Invalid coupon.");
+          
+          let discount = 0;
+          if (data.discount_percentage && data.discount_percentage > 0) {
+              discount = serverPrice * (data.discount_percentage / 100);
+          } else if (data.discount_amount && data.discount_amount > 0) {
+              discount = data.discount_amount;
+          }
+
+          setDiscountApplied(discount);
+      } catch (err: any) {
+          setDiscountApplied(0);
+          setCouponError(err.message);
+      } finally {
+          setIsApplyingCoupon(false);
+      }
+  };
 
   // --- AVAILABILITY ---
-  // Calculate available slots based on operating hours and duration
   const availableSlots = useMemo(() => {
     const hours = date ? getOperatingHours(date) : null
     if (!hours) return []
@@ -128,15 +165,12 @@ export default function BookingFlow() {
       slots.push(`${h.toString().padStart(2, '0')}:30`)
     }
 
-    // Filter slots based on duration and hard close
     return slots.filter(slot => {
       const [slotH, slotM] = slot.split(':').map(Number)
       const startDecimal = slotH + (slotM / 60)
       const endDecimal = startDecimal + duration
 
-      // If the session would end after closing time, hide the slot entirely
       if (endDecimal > hours.close) return false
-
       return true
     })
   }, [date, duration])
@@ -160,22 +194,18 @@ export default function BookingFlow() {
   }, [date])
 
   const isSlotBooked = (slot: string) => {
-    // A. Operational Hours / Hard Close Check
     const hours = date ? getOperatingHours(date) : null
     if (hours) {
       const [startH, startM] = slot.split(':').map(Number)
       const startDecimal = startH + (startM / 60)
       const endDecimal = startDecimal + duration
 
-      if (endDecimal > hours.close) return true // Session exceeds closing time
+      if (endDecimal > hours.close) return true 
     }
 
-    // B. Real-Time Occupancy Check (Duration Aware)
-    // A slot is "booked" if ANY 30-minute interval within its duration is fully occupied (>= 3 bays)
     const [h, m] = slot.split(':').map(Number)
     const slotStartDecimal = h + (m / 60)
 
-    // Check every 30m window within the requested duration
     for (let intervalOffset = 0; intervalOffset < duration; intervalOffset += 0.5) {
       const intervalDecimal = slotStartDecimal + intervalOffset
       const iH = Math.floor(intervalDecimal)
@@ -185,7 +215,6 @@ export default function BookingFlow() {
       if (bookedSlots.includes(intervalKey)) return true
     }
 
-    // C. Past Time Check (for Today)
     if (date && isToday(date)) {
       const now = new Date()
       const [hoursSlot, minutesSlot] = slot.split(':').map(Number)
@@ -196,7 +225,6 @@ export default function BookingFlow() {
     return false
   }
 
-  // --- NAVIGATION ---
   const canProceed = () => {
     switch (step) {
       case 1: return sessionType !== ""
@@ -215,7 +243,7 @@ export default function BookingFlow() {
         duration: duration.toString(),
         golfClubRental: golfClubRental.toString(),
         coachingSession: coachingSession.toString(),
-        totalPrice: serverPrice.toString()
+        totalPrice: finalPrice.toString()
       })
       window.location.href = `/booking/confirm?${params.toString()}`
     } else if (step < 2) {
@@ -226,8 +254,7 @@ export default function BookingFlow() {
   const durationOptions = [1, 1.5, 2, 2.5, 3, 3.5, 4]
 
   return (
-    <div className="min-h-screen bg-muted/10 pb-32" ref={topRef}>
-      {/* Progress Bar */}
+    <div className="min-h-[100dvh] bg-muted/10 pb-32" ref={topRef}>
       <div className="w-full h-2 bg-muted sticky top-0 z-50">
         <div
           className="h-full bg-primary transition-all duration-500 ease-out"
@@ -236,8 +263,6 @@ export default function BookingFlow() {
       </div>
 
       <div className="w-full max-w-2xl mx-auto px-4 py-8">
-
-        {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider mb-4 border border-secondary/20">
             <Sparkles className="w-4 h-4" />
@@ -251,11 +276,8 @@ export default function BookingFlow() {
           </p>
         </div>
 
-        {/* STEP 1: SESSION TYPE */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-            {/* 4-BALL SPECIAL (HERO CARD) */}
             <div
               onClick={() => handleSessionSelect("4ball")}
               className={cn(
@@ -270,9 +292,9 @@ export default function BookingFlow() {
                   SELECTED
                 </div>
               )}
-              <div className="p-6 md:p-8 flex items-start gap-6">
+              <div className="p-6 md:p-8 flex items-start gap-6 flex-col md:flex-row">
                 <div className={cn(
-                  "p-4 rounded-2xl flex items-center justify-center transition-colors",
+                  "p-4 rounded-2xl flex items-center justify-center transition-colors shrink-0",
                   sessionType === "4ball" ? "bg-secondary text-white" : "bg-secondary/10 text-secondary"
                 )}>
                   <Trophy className="w-8 h-8" />
@@ -302,9 +324,7 @@ export default function BookingFlow() {
               </div>
             </div>
 
-            {/* GRID FOR OTHER OPTIONS */}
             <div className="grid md:grid-cols-2 gap-4">
-              {/* 3-BALL */}
               <div
                 onClick={() => handleSessionSelect("3ball")}
                 className={cn(
@@ -330,7 +350,6 @@ export default function BookingFlow() {
                 </div>
               </div>
 
-              {/* QUICK PLAY */}
               <div
                 onClick={() => handleSessionSelect("quick")}
                 className={cn(
@@ -357,11 +376,10 @@ export default function BookingFlow() {
               </div>
             </div>
 
-            {/* EXPANDABLE QUICK PLAY CONFIG */}
             {sessionType === "quick" && (
               <Card className="animate-in slide-in-from-top-2 border-dashed border-2 bg-muted/30">
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <label className="text-xs font-bold uppercase text-muted-foreground mb-3 block">Number of Players</label>
                       <div className="grid grid-cols-2 gap-2">
@@ -370,7 +388,7 @@ export default function BookingFlow() {
                             key={n}
                             onClick={() => setPlayers(n)}
                             className={cn(
-                              "py-2.5 rounded-lg text-sm font-bold transition-all",
+                              "py-3 md:py-2.5 rounded-lg text-sm font-bold transition-all",
                               players === n
                                 ? "bg-primary text-white shadow-lg shadow-primary/30"
                                 : "bg-white border hover:border-primary/50"
@@ -389,7 +407,7 @@ export default function BookingFlow() {
                             key={d}
                             onClick={() => setDuration(d)}
                             className={cn(
-                              "py-2.5 rounded-lg text-sm font-bold transition-all",
+                              "py-3 md:py-2.5 rounded-lg text-sm font-bold transition-all",
                               duration === d
                                 ? "bg-primary text-white shadow-lg shadow-primary/30"
                                 : "bg-white border hover:border-primary/50"
@@ -407,17 +425,16 @@ export default function BookingFlow() {
           </div>
         )}
 
-        {/* STEP 2: DATE & TIME */}
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="border-0 shadow-lg overflow-hidden h-fit">
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-lg overflow-hidden h-fit flex-1">
                 <div className="bg-primary px-6 py-4 flex items-center justify-between">
                   <h3 className="text-white font-bold flex items-center gap-2">
                     <CalendarIcon className="w-5 h-5" /> Select Date
                   </h3>
                 </div>
-                <div className="p-4 flex justify-center bg-white">
+                <div className="p-4 flex justify-center bg-white overflow-x-auto">
                   <Calendar
                     mode="single"
                     selected={date}
@@ -428,11 +445,11 @@ export default function BookingFlow() {
                 </div>
               </Card>
 
-              <div className="space-y-4">
+              <div className="space-y-4 flex-1">
                 <Card className="border-0 shadow-lg h-full">
                   <div className="bg-muted px-6 py-4 border-b">
-                    <h3 className="font-bold text-foreground flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-primary" />
+                     <h3 className="font-bold text-foreground flex items-center gap-2 text-sm md:text-base">
+                      <Clock className="w-5 h-5 text-primary shrink-0" />
                       {date ? format(date, "EEEE, MMM do") : "Choose a Date"}
                     </h3>
                   </div>
@@ -448,7 +465,7 @@ export default function BookingFlow() {
                             <Loader2 className="w-8 h-8 text-primary animate-spin" />
                           </div>
                         ) : (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                          <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                             {availableSlots.map((slot: string) => {
                               const booked = isSlotBooked(slot)
                               return (
@@ -457,7 +474,7 @@ export default function BookingFlow() {
                                   disabled={booked}
                                   onClick={() => setTimeSlot(slot)}
                                   className={cn(
-                                    "py-2.5 rounded-lg text-sm font-medium transition-all border",
+                                    "py-3 md:py-2.5 rounded-xl text-xs md:text-sm font-bold md:font-medium transition-all border",
                                     booked
                                       ? "bg-muted/50 text-muted-foreground line-through decoration-destructive/50 opacity-60 cursor-not-allowed border-transparent"
                                       : timeSlot === slot
@@ -478,65 +495,86 @@ export default function BookingFlow() {
               </div>
             </div>
 
-            {/* Extras */}
-            <div className="bg-white p-6 rounded-2xl border shadow-sm">
-              <h3 className="font-bold text-lg mb-4">Enhance Your Session</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col gap-4">
+              <h3 className="font-bold text-lg mb-2 text-center md:text-left">Enhance Your Session</h3>
+              <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
                 <div
                   onClick={() => setGolfClubRental(!golfClubRental)}
                   className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/30",
+                    "flex items-center justify-between p-5 md:p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/30",
                     golfClubRental ? "border-primary bg-primary/5" : "border-border"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", golfClubRental ? "bg-primary border-primary" : "border-muted-foreground")}>
-                      {golfClubRental && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                    <div className={cn("w-6 h-6 md:w-5 md:h-5 rounded-full border flex items-center justify-center shrink-0", golfClubRental ? "bg-primary border-primary" : "border-muted-foreground")}>
+                      {golfClubRental && <CheckCircle2 className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" />}
                     </div>
-                    <span className="font-medium">Rent Full Club Set</span>
+                    <span className="font-bold md:font-medium">Rent Full Club Set</span>
                   </div>
-                  <span className="font-bold text-primary">+R100</span>
+                  <span className="font-black text-primary text-lg md:text-base">+R100</span>
                 </div>
 
                 <div
                   onClick={() => setCoachingSession(!coachingSession)}
                   className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/30",
+                    "flex items-center justify-between p-5 md:p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/30",
                     coachingSession ? "border-primary bg-primary/5" : "border-border"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", coachingSession ? "bg-primary border-primary" : "border-muted-foreground")}>
-                      {coachingSession && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                    <div className={cn("w-6 h-6 md:w-5 md:h-5 rounded-full border flex items-center justify-center shrink-0", coachingSession ? "bg-primary border-primary" : "border-muted-foreground")}>
+                      {coachingSession && <CheckCircle2 className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" />}
                     </div>
-                    <span className="font-medium">Pro Coaching (30m)</span>
+                    <span className="font-bold md:font-medium">Pro Coaching (30m)</span>
                   </div>
-                  <span className="font-bold text-primary">+R250</span>
+                  <span className="font-black text-primary text-lg md:text-base">+R250</span>
                 </div>
               </div>
             </div>
+
+            <div className="bg-white p-6 rounded-2xl border shadow-sm">
+              <h3 className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-600 mb-4 inline-block">Have a promo code?</h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input 
+                   placeholder="Enter VIP or Coupon Code" 
+                   value={couponCode} 
+                   onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }} 
+                   className="h-14 md:h-12 border-2 uppercase font-mono font-black text-center md:text-left text-lg md:text-base tracking-widest bg-muted/20"
+                />
+                <Button 
+                   onClick={handleApplyCoupon} 
+                   disabled={isApplyingCoupon || !couponCode}
+                   className="h-14 md:h-12 px-8 font-black uppercase tracking-wider bg-black hover:bg-zinc-800 text-white w-full sm:w-auto shrink-0"
+                >
+                   {isApplyingCoupon ? <Loader2 className="w-5 h-5 animate-spin" /> : "Apply Code"}
+                </Button>
+              </div>
+              {couponError && <p className="text-red-500 text-xs font-bold mt-3 bg-red-500/10 p-2 rounded-lg border border-red-500/20 text-center md:text-left">{couponError}</p>}
+              {discountApplied > 0 && <p className="text-emerald-500 text-xs font-bold mt-3 flex items-center justify-center md:justify-start gap-1.5 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20"><CheckCircle2 className="w-4 h-4"/> Discount Activated: -R{discountApplied.toFixed(2)}</p>}
+            </div>
           </div>
         )}
-
       </div>
 
-      {/* STICKY FOOTER */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-40 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-6">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 sm:p-5 z-40 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4 md:gap-6">
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Estimate</span>
-            <div className="flex items-end gap-1">
+            <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Due</span>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-1 md:gap-2">
               {isCalculatingPrice ? (
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary mt-1" />
               ) : (
-                <span className="text-3xl font-serif font-bold text-primary">R{serverPrice}</span>
+                 <div className="flex flex-col">
+                  {discountApplied > 0 && <span className="text-sm md:text-base font-serif font-black text-muted-foreground line-through opacity-70">R{serverPrice}</span>}
+                  <span className={cn("text-3xl md:text-4xl font-serif font-black", discountApplied > 0 ? "text-emerald-500" : "text-primary")}>R{finalPrice}</span>
+                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 w-[60%] sm:w-auto">
             {step > 1 && (
-              <Button variant="outline" size="lg" onClick={() => setStep(step - 1)} className="px-6 rounded-xl border-2">
+              <Button variant="outline" size="lg" onClick={() => setStep(step - 1)} className="px-4 sm:px-6 rounded-xl border-2 h-14 shrink-0">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             )}
@@ -544,9 +582,11 @@ export default function BookingFlow() {
               size="lg"
               onClick={handleNext}
               disabled={!canProceed() || isCalculatingPrice}
-              className="px-10 rounded-xl font-bold text-lg bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
+              className="px-4 sm:px-10 rounded-xl font-black text-base md:text-lg bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 w-full sm:w-auto h-14"
             >
-              {step === 2 ? "Checkout" : "Next"} <ArrowRight className="w-5 h-5 ml-2" />
+              <span className="hidden sm:inline">{step === 2 ? "SECURE CHECKOUT" : "NEXT"}</span>
+              <span className="sm:hidden">{step === 2 ? "PAY NOW" : "NEXT"}</span> 
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
         </div>
