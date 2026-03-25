@@ -4,7 +4,16 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getSASTDate } from '@/lib/utils';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { ManagerModal } from './manager-modal';
-import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target, XCircle, AlertTriangle, Globe, Smartphone } from 'lucide-react';
+import { toast } from 'sonner';
+import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target, XCircle, AlertTriangle, Globe, Smartphone, Clock } from 'lucide-react';
+
+/** POS Tiered Pricing — mirrors GEMINI.md */
+const GET_BASE_HOURLY_RATE = (players: number): number => {
+  if (players >= 4) return 600;
+  if (players === 3) return 480;
+  if (players === 2) return 360;
+  return 250;
+};
 
 const BAY_CONFIG: Record<number, { name: string; text: string; glow: string; border: string }> = {
   1: { name: 'LOUNGE BAY', text: 'text-indigo-400', glow: 'bg-indigo-500', border: 'border-indigo-500/30' },
@@ -97,11 +106,25 @@ export function LiveViewTab() {
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
-  const handleOpenCreate = (prefillBayId: number = 1) => {
+  /** Human-readable date label: "Tue, 25 Mar" */
+  const formattedDateLabel = useMemo(() => {
+    try {
+      const d = new Date(selectedDate + 'T00:00:00+02:00');
+      return new Intl.DateTimeFormat('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+    } catch { return selectedDate; }
+  }, [selectedDate]);
+
+  /** Context-aware modal open — pre-fills bay + time from the clicked slot */
+  const handleOpenCreate = (prefillBayId: number = 1, prefillTime?: string) => {
+    const now = new Date();
+    const defaultTime = prefillTime || now.toLocaleTimeString('en-ZA', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg', hour12: false
+    });
+
     setSelectedBooking({
       guest_name: '', guest_email: '', guest_phone: '',
       simulator_id: prefillBayId, player_count: 1, duration_hours: 1,
-      start_time: '12:00', booking_date: selectedDate,
+      start_time: defaultTime, booking_date: selectedDate,
       status: 'confirmed', payment_type: 'pending', payment_status: 'pending',
       addon_water_qty: 0, addon_gloves_qty: 0, addon_balls_qty: 0,
       addon_club_rental: false, addon_coaching: false,
@@ -109,6 +132,54 @@ export function LiveViewTab() {
       notes: ''
     });
     setIsModalOpen(true);
+  };
+
+  /** TRUE OPTIMISTIC Quick Extend (+1h) with rollback on 409 */
+  const handleQuickExtend = (booking: any) => {
+    // 1. Snapshot current state for rollback
+    const snapshot = [...data];
+    const hourlyRate = GET_BASE_HOURLY_RATE(Number(booking.player_count || 1));
+
+    // 2. Optimistically update local state IMMEDIATELY
+    setData(prev => prev.map(b => {
+      if (b.id !== booking.id) return b;
+      return {
+        ...b,
+        duration_hours: Number(b.duration_hours) + 1,
+        total_price: Number(b.total_price) + hourlyRate,
+        amount_due: Number(b.amount_due || 0) + hourlyRate,
+      };
+    }));
+    toast.success(`+1H Extended — R${hourlyRate} added`, { duration: 2000 });
+
+    // 3. Fire background API call AFTER state update
+    const pin = sessionStorage.getItem('admin-pin');
+    const newEnd = new Date(new Date(booking.slot_end).getTime() + 60 * 60 * 1000).toISOString();
+
+    fetch('/api/bookings/admin-extend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: booking.id, pin, xmin: booking.xmin,
+        new_slot_end: newEnd, duration_hours_added: 1,
+        player_count: booking.player_count
+      })
+    }).then(async (res) => {
+      if (!res.ok) {
+        // 4. ROLLBACK on failure
+        setData(snapshot);
+        if (res.status === 409) {
+          toast.error('Bay occupied! Cannot extend. Refreshing...', { duration: 3000 });
+        } else {
+          toast.error('Extension failed. State rolled back.', { duration: 3000 });
+        }
+        fetchDashboardData();
+      }
+      // On success: Realtime subscription will sync the authoritative state
+    }).catch(() => {
+      setData(snapshot);
+      toast.error('Network error. Extension rolled back.', { duration: 3000 });
+    });
   };
 
   const handleQuickSettle = async (booking: any, action: 'settle' | 'unsettle') => {
@@ -138,7 +209,7 @@ export function LiveViewTab() {
       fetchDashboardData();
     } catch (err) {
       console.error("Settle/Unsettle Error:", err);
-      alert(`Could not ${action} record. System offline.`);
+      toast.error(`Could not ${action} record. System offline.`);
     }
   };
 
@@ -156,12 +227,13 @@ export function LiveViewTab() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Save operation failed.");
+        throw new Error(errData.message || errData.error || "Save operation failed.");
       }
       setIsModalOpen(false);
+      toast.success(isEdit ? 'Booking updated.' : 'Walk-in created.');
       fetchDashboardData();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -174,9 +246,10 @@ export function LiveViewTab() {
       });
       if (!res.ok) throw new Error("Delete failed");
       setIsModalOpen(false);
+      toast.success('Record destroyed.');
       fetchDashboardData();
     } catch (err) {
-      alert("System could not destroy record. Ghost cleanup failed.");
+      toast.error("System could not destroy record. Ghost cleanup failed.");
     }
   };
 
@@ -192,15 +265,29 @@ export function LiveViewTab() {
             <Activity size={14} className="animate-pulse" /> Live Activity Portal
           </div>
           <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white">The Ledger</h2>
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{formattedDateLabel}</span>
         </div>
 
         <div className="flex flex-col items-stretch gap-4 w-full md:w-auto">
+          {/* Bay-specific Walk-In Buttons */}
           <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
             <Button
               onClick={() => handleOpenCreate(1)}
-              className="flex-1 md:flex-none bg-white text-black hover:bg-primary hover:text-white font-black uppercase text-xs h-14 md:h-12 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all"
+              className="flex-1 md:flex-none bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white font-black uppercase text-xs h-12 border border-indigo-500/30 transition-all"
             >
-              <Plus className="mr-2 h-4 w-4" /> Add Walk-in
+              <Plus className="mr-1 h-3 w-3" /> Lounge
+            </Button>
+            <Button
+              onClick={() => handleOpenCreate(2)}
+              className="flex-1 md:flex-none bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white font-black uppercase text-xs h-12 border border-amber-500/30 transition-all"
+            >
+              <Plus className="mr-1 h-3 w-3" /> Middle
+            </Button>
+            <Button
+              onClick={() => handleOpenCreate(3)}
+              className="flex-1 md:flex-none bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white font-black uppercase text-xs h-12 border border-emerald-500/30 transition-all"
+            >
+              <Plus className="mr-1 h-3 w-3" /> Window
             </Button>
           </div>
 
@@ -282,7 +369,7 @@ export function LiveViewTab() {
                 <div className={`absolute left-0 top-0 bottom-0 w-1.5 md:w-2 ${bay.glow} ${!paid ? 'animate-pulse' : ''} shadow-[0_0_15px_currentColor]`} />
 
                 <div className="flex flex-row items-center gap-4 md:gap-8 w-full md:w-auto pl-2 mb-4 md:mb-0">
-                  <div className="flex flex-col items-center justify-center min-w-[70px] md:minw-[90px] border-r border-zinc-800/50 pr-4 md:pr-8">
+                  <div className="flex flex-col items-center justify-center min-w-[70px] md:min-w-[90px] border-r border-zinc-800/50 pr-4 md:pr-8">
                     <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">{booking.start_time}</span>
                     <span className="text-[8px] md:text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-1 md:mt-2">Start</span>
                   </div>
@@ -296,12 +383,12 @@ export function LiveViewTab() {
 
                 <div className="flex flex-col px-2 md:px-10 py-2 md:py-0 w-full md:flex-1 md:border-l border-zinc-800/30 mb-4 md:mb-0">
                   <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                    <span className="text-xl md:text-2xl font-black text-zinc-100 tracking-tight truncate max-w-[150px] md:max-w-none">{booking.guest_name || 'WALK-IN'}</span>
+                    <span className="text-xl md:text-2xl font-black text-zinc-100 tracking-tight truncate max-w-[120px] md:max-w-[220px]">{booking.guest_name || 'WALK-IN'}</span>
                     <div className="flex items-center gap-2">
                         {online ? (
-                          <span className="flex items-center gap-1 px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20"><Globe size={10} /> Online Booking</span>
+                          <span className="flex items-center gap-1 px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20"><Globe size={10} /> Online</span>
                         ) : (
-                          <span className="flex items-center gap-1 px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20"><Smartphone size={10} /> POS Walk-in</span>
+                          <span className="flex items-center gap-1 px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20"><Smartphone size={10} /> POS</span>
                         )}
                     </div>
                   </div>
@@ -320,32 +407,17 @@ export function LiveViewTab() {
                        <span className="text-[9px] font-bold text-zinc-500 uppercase md:hidden tracking-wider">Amount</span>
                        <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">R {booking.total_price}</span>
                     </div>
-                    {/* Quick Extend Action */}
+                    {/* Quick Extend — TRUE OPTIMISTIC */}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        // This uses the optimistic logic inside ManagerModal's method context
-                        // But here we'll trigger a direct extension for speed
-                        const extendHour = async () => {
-                          const pin = sessionStorage.getItem('admin-pin');
-                          const newEnd = new Date(new Date(booking.slot_end).getTime() + 60 * 60 * 1000).toISOString();
-                          await fetch('/api/bookings/admin-extend', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              id: booking.id, pin, xmin: booking.xmin,
-                              new_slot_end: newEnd, duration_hours_added: 1,
-                              player_count: booking.player_count
-                            })
-                          }).then(r => { if (r.ok) fetchDashboardData(); });
-                        };
-                        extendHour();
+                        handleQuickExtend(booking);
                       }}
-                      className="mt-2 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 px-2 py-0.5 rounded"
+                      className="mt-2 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 px-2 py-1 rounded"
                     >
-                      +1H Extension
+                      <Clock size={10} /> +1H
                     </button>
-                    <div className="flex items-center gap-1.5 opacity-60 mt-2">
+                    <div className="flex items-center gap-1.5 opacity-60 mt-1">
                       <CreditCard size={10} className="md:w-3 md:h-3" />
                       <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">{booking.payment_type || 'PENDING'}</span>
                     </div>

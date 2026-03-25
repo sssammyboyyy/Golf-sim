@@ -38,9 +38,9 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
   useEffect(() => {
     if (booking) {
-      setFormData({ ...booking, manual_price_override: !!booking.manual_price_override });
+      setFormData({ ...booking });
       setIsDeleting(false);
-      setIsManualPrice(!!booking.manual_price_override);
+      setIsManualPrice(false);
       // Auto-detect walk-in mode for new bookings (no id) or existing walk-ins
       setIsWalkIn(!booking.id || booking.user_type === 'walk_in' || booking.guest_email === 'walkin@venue-os.com');
       setIsExtending(false);
@@ -69,7 +69,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   // 🔗 SYNC TOTAL — only if NOT manually overridden
   useEffect(() => {
     if (formData && !isManualPrice && formData.total_price !== totals.total) {
-      setFormData((prev: any) => ({ ...prev, total_price: totals.total, manual_price_override: false }));
+      setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
     }
   }, [totals.total, isManualPrice]);
 
@@ -82,14 +82,12 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   const handleManualPriceChange = (value: string) => {
     setIsManualPrice(true);
     update("total_price", Number(value));
-    update("manual_price_override", true);
-    update("payment_status", "pending"); // Revert badge to Red explicitly if they are changing price
+    update("payment_status", "pending");
   };
 
   const handleResetPrice = () => {
     setIsManualPrice(false);
-    update("manual_price_override", false);
-    setFormData((prev: any) => ({ ...prev, total_price: totals.total, manual_price_override: false }));
+    setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
   };
 
   const extendTime = async (hours: number) => {
@@ -183,6 +181,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 <Flag className="text-primary" /> {formData.guest_name ? `EDIT: ${formData.guest_name}` : "NEW WALK-IN"}
               </span>
             </DialogTitle>
+            <DialogDescription className="sr-only">Booking Management</DialogDescription>
           </DialogHeader>
         </div>
 
