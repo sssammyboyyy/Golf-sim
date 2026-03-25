@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
                 status: 'confirmed',
                 payment_status: 'paid',
                 yoco_payment_id: checkoutId,
-                email_status: 'pending',
-                updated_at: getSASTDate() // Using local SAST helper
+                n8n_status: 'email_pending',
+                updated_at: getSASTDate()
             })
             .eq('id', bookingId);
 
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
 
                 await supabase
                     .from('bookings')
-                    .update({ email_status: 'sent' })
+                    .update({ n8n_status: 'email_sent' })
                     .eq('id', bookingId);
 
                 console.log(`[Native Email] Success. Dual-dispatch complete for ${bookingId}`);
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
             await supabase
                 .from('bookings')
                 .update({
-                    email_status: 'failed'
+                    n8n_status: 'email_failed'
                 })
                 .eq('id', bookingId);
         }

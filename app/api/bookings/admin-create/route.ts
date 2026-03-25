@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Explicit Service Role Client for RLS Bypass
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -65,14 +64,20 @@ export async function POST(request: NextRequest) {
     );
     const financials = calculateFinancials(payload);
 
+    // Detect walk-in mode: no guest_email or explicit walk-in marker
+    const isWalkIn = !payload.guest_email || payload.guest_email === '' || payload.user_type === 'walk_in';
+
     const finalPayload = {
       ...payload,
       ...timestamps,
       ...financials,
+      guest_email: isWalkIn ? 'walkin@venue-os.com' : payload.guest_email,
+      user_type: isWalkIn ? 'walk_in' : (payload.user_type || 'guest'),
       booking_source: 'walk_in',
-      payment_type: 'walk_in',
-      payment_status: financials.amount_due === 0 ? 'paid' : 'partial',
+      payment_type: isWalkIn ? 'walk_in' : (payload.payment_type || 'walk_in'),
+      payment_status: financials.amount_due === 0 ? 'paid_instore' : (payload.payment_status || 'pending'),
       status: 'confirmed',
+      n8n_status: isWalkIn ? 'bypassed' : 'pending',
     };
 
     // 2. Initial Insert Attempt
@@ -82,19 +87,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    // 3. Self-Healing Concurrency Guard (Ghost Cleanup Sequence)
+    // 3. Self-Healing Concurrency Guard (Synchronous Retry — No setTimeout)
     if (error && error.code === '23P01') {
-      console.warn(`[Concurrency] 23P01 Conflict on Bay ${payload.simulator_id}. Triggering Self-Healing Cleanup...`);
+      console.warn(`[Concurrency] 23P01 Conflict on Bay ${payload.simulator_id}. Triggering Synchronous Purge...`);
       
-      // Execute Ghost Cleanup RPC
-      await supabaseAdmin.rpc('purge_ghost_bookings', { 
-        target_bay: Number(payload.simulator_id) 
-      });
-      
-      // Defensive 200ms Backoff
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Synchronous RPC call — no backoff needed since purge is atomic
+      await supabaseAdmin.rpc('purge_ghost_bookings');
 
-      // Final Retry Attempt
+      // Immediate synchronous retry
       const { data: retryData, error: retryError } = await supabaseAdmin
         .from('bookings')
         .insert(finalPayload)

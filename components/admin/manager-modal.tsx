@@ -33,12 +33,17 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   const [isDeleting, setIsDeleting] = useState(false);
   const [isManualPrice, setIsManualPrice] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isWalkIn, setIsWalkIn] = useState(false);
+  const [isExtending, setIsExtending] = useState(false);
 
   useEffect(() => {
     if (booking) {
       setFormData({ ...booking, manual_price_override: !!booking.manual_price_override });
       setIsDeleting(false);
       setIsManualPrice(!!booking.manual_price_override);
+      // Auto-detect walk-in mode for new bookings (no id) or existing walk-ins
+      setIsWalkIn(!booking.id || booking.user_type === 'walk_in' || booking.guest_email === 'walkin@venue-os.com');
+      setIsExtending(false);
     }
   }, [booking]);
 
@@ -87,10 +92,55 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     setFormData((prev: any) => ({ ...prev, total_price: totals.total, manual_price_override: false }));
   };
 
-  const extendTime = (hours: number) => {
-    update("duration_hours", formData.duration_hours + hours);
-    update("payment_status", "pending"); // instantly revert payment badge to Settle (Red)
-    update("payment_type", "pending");
+  const extendTime = async (hours: number) => {
+    // For existing bookings, use the admin-extend API with OCC
+    if (formData.id && formData.slot_end) {
+      setIsExtending(true);
+      try {
+        const currentEnd = new Date(formData.slot_end);
+        const newEnd = new Date(currentEnd.getTime() + hours * 60 * 60 * 1000);
+        const pin = sessionStorage.getItem('admin-pin');
+
+        const res = await fetch('/api/bookings/admin-extend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: formData.id,
+            pin,
+            xmin: String(formData.xmin || ''),
+            new_slot_end: newEnd.toISOString(),
+            duration_hours_added: hours,
+            player_count: formData.player_count
+          })
+        });
+
+        if (res.status === 409) {
+          alert('Conflict: State changed by another user or bay occupied. Refresh the ledger.');
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || 'Extension failed');
+        }
+
+        const result = await res.json();
+        // Update local form with the returned data
+        if (result.data) {
+          setFormData((prev: any) => ({ ...prev, ...result.data }));
+        }
+        onClose();
+        // The realtime subscription will auto-refresh the ledger
+      } catch (err: any) {
+        alert(err.message || 'Extension failed');
+      } finally {
+        setIsExtending(false);
+      }
+    } else {
+      // New booking: just update local state
+      update("duration_hours", formData.duration_hours + hours);
+      update("payment_status", "pending");
+      update("payment_type", "pending");
+    }
   };
 
   const verifyYocoPayment = async () => {
@@ -140,25 +190,56 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
           {/* CARD 1: GUEST IDENTITY */}
           <section className="bg-muted/30 p-4 sm:p-6 rounded-2xl border space-y-4 flex flex-col">
-            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
-              <User size={14} /> Guest Identity
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70">FULL NAME</Label>
-                <Input id="guest_name" name="guest_name" placeholder="John Doe" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px]" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
+                <User size={14} /> Guest Identity
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex flex-col gap-1.5 w-full">
-                  <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70">PHONE NUMBER</Label>
-                  <Input id="guest_phone" name="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px]" />
+              {/* Walk-In Toggle */}
+              {!formData.id && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="walkin-toggle" className="text-[10px] font-bold opacity-70 cursor-pointer">WALK-IN</Label>
+                  <Switch
+                    id="walkin-toggle"
+                    checked={isWalkIn}
+                    onCheckedChange={(v) => {
+                      setIsWalkIn(v);
+                      if (v) {
+                        update('guest_name', '');
+                        update('guest_email', 'walkin@venue-os.com');
+                        update('guest_phone', '');
+                        update('user_type', 'walk_in');
+                      } else {
+                        update('guest_email', '');
+                        update('user_type', 'guest');
+                      }
+                    }}
+                  />
                 </div>
-                <div className="flex flex-col gap-1.5 w-full">
-                  <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70">EMAIL ADDRESS</Label>
-                  <Input id="guest_email" name="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px]" />
+              )}
+            </div>
+            {!isWalkIn && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70">FULL NAME</Label>
+                  <Input id="guest_name" name="guest_name" placeholder="John Doe" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px]" />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70">PHONE NUMBER</Label>
+                    <Input id="guest_phone" name="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px]" />
+                  </div>
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70">EMAIL ADDRESS</Label>
+                    <Input id="guest_email" name="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px]" />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+            {isWalkIn && (
+              <div className="py-4 text-center border border-dashed border-zinc-700 rounded-xl bg-zinc-900/30">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">No Guest Details Required</span>
+              </div>
+            )}
           </section>
 
           {/* CARD 2: SESSION SETUP */}
@@ -171,8 +252,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                {/* Quick Extensions */}
                {formData.id && (
                    <div className="flex gap-2">
-                       <Button size="sm" variant="outline" className="h-10 min-h-[40px] text-[10px] font-black uppercase" onClick={() => extendTime(0.5)}>+30 Min</Button>
-                       <Button size="sm" variant="outline" className="h-10 min-h-[40px] text-[10px] font-black uppercase" onClick={() => extendTime(1)}>+60 Min</Button>
+                       <Button size="sm" variant="outline" className="h-10 min-h-[40px] text-[10px] font-black uppercase" onClick={() => extendTime(0.5)} disabled={isExtending}>{isExtending ? '...' : '+30 Min'}</Button>
+                       <Button size="sm" variant="outline" className="h-10 min-h-[40px] text-[10px] font-black uppercase" onClick={() => extendTime(1)} disabled={isExtending}>{isExtending ? '...' : '+60 Min'}</Button>
                    </div>
                )}
             </div>

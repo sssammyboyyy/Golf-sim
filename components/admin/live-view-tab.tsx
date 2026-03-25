@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getSASTDate } from '@/lib/utils';
+import { createBrowserClient } from '@/lib/supabase/client';
 import { ManagerModal } from './manager-modal';
 import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target, XCircle, AlertTriangle, Globe, Smartphone } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export function LiveViewTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
       const pin = sessionStorage.getItem('admin-pin');
@@ -52,11 +53,26 @@ export function LiveViewTab() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedDate]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [selectedDate]);
+  }, [fetchDashboardData]);
+
+  // Realtime HUD: Auto-refresh on any bookings table mutation
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    const channel = supabase
+      .channel('bookings-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchDashboardData]);
 
   const grossRevenue = useMemo(() =>
     data
