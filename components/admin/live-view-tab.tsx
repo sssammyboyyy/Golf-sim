@@ -104,7 +104,7 @@ export function LiveViewTab() {
   const totalBookings = data.length;
 
   const shiftDate = (days: number) => {
-    const d = new Date(selectedDate + 'T00:00:00+02:00');
+    const d = new Date(selectedDate + 'T12:00:00+02:00'); // Use mid-day to avoid timezone boundary issues
     d.setDate(d.getDate() + days);
     setSelectedDate(d.toISOString().split('T')[0]);
   };
@@ -112,7 +112,7 @@ export function LiveViewTab() {
   /** Human-readable date: "Tuesday, 25 Mar" */
   const formattedDateLabel = useMemo(() => {
     try {
-      const d = new Date(selectedDate + 'T00:00:00+02:00');
+      const d = new Date(selectedDate + 'T12:00:00+02:00');
       return new Intl.DateTimeFormat('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' }).format(d);
     } catch { return selectedDate; }
   }, [selectedDate]);
@@ -395,9 +395,19 @@ export function LiveViewTab() {
                 </div>
 
                 {/* Guest Info — grid layout for overflow control */}
-                <div className="flex flex-col px-2 md:px-10 py-2 md:py-0 w-full md:flex-1 md:border-l border-zinc-800/30 mb-4 md:mb-0 min-w-0">
-                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 min-w-0">
-                    <span className="text-xl md:text-2xl font-black text-zinc-100 tracking-tight truncate max-w-[140px] md:max-w-[200px]">{booking.guest_name || 'WALK-IN'}</span>
+                <div className="grid grid-cols-[1fr_auto] items-center px-2 md:px-10 py-2 md:py-0 w-full md:flex-1 md:border-l border-zinc-800/30 mb-4 md:mb-0 min-w-0">
+                  <div className="flex flex-col min-w-0 pr-4">
+                    <span className="text-xl md:text-2xl font-black text-zinc-100 tracking-tight truncate max-w-[140px] md:max-w-[220px]">{booking.guest_name || 'WALK-IN'}</span>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                      {booking.addon_water_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Water(x{booking.addon_water_qty})</span>}
+                      {booking.addon_gloves_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Gloves(x{booking.addon_gloves_qty})</span>}
+                      {booking.addon_balls_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Balls(x{booking.addon_balls_qty})</span>}
+                      {booking.addon_club_rental && <span className="text-[9px] font-bold text-primary/80 uppercase">Clubs</span>}
+                      {booking.addon_coaching && <span className="text-[9px] font-bold text-amber-500/80 uppercase">Coach</span>}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 items-end">
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {online ? (
                         <span className="flex items-center gap-1 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20"><Globe size={10} /> Online</span>
@@ -405,13 +415,6 @@ export function LiveViewTab() {
                         <span className="flex items-center gap-1 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20"><Smartphone size={10} /> POS</span>
                       )}
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                    {booking.addon_water_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Water(x{booking.addon_water_qty})</span>}
-                    {booking.addon_gloves_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Gloves(x{booking.addon_gloves_qty})</span>}
-                    {booking.addon_balls_qty > 0 && <span className="text-[9px] font-bold text-zinc-500">Balls(x{booking.addon_balls_qty})</span>}
-                    {booking.addon_club_rental && <span className="text-[9px] font-bold text-primary/80 uppercase">Clubs</span>}
-                    {booking.addon_coaching && <span className="text-[9px] font-bold text-amber-500/80 uppercase">Coach</span>}
                   </div>
                 </div>
 

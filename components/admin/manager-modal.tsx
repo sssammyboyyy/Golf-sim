@@ -72,24 +72,24 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
   unitPrice: number;
 }) {
   return (
-    <div className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800 rounded-xl p-3 min-h-[60px]">
-      <div className="flex flex-col">
-        <span className="text-xs font-bold">{label}</span>
-        <span className="text-[10px] text-zinc-500">R{unitPrice} each</span>
+    <div className="flex flex-col justify-between bg-zinc-900/40 border border-zinc-800 rounded-xl p-3 min-h-[100px]">
+      <div className="flex flex-col mb-2">
+        <span className="text-sm font-bold tracking-tight flex items-center gap-1.5">{label}</span>
+        <span className="text-[10px] text-zinc-500">R{unitPrice}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-[44px] h-[44px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-colors border border-zinc-700"
+          className="w-[44px] h-[44px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-colors border border-zinc-700 shrink-0"
         >
           <Minus size={16} />
         </button>
-        <span className="w-8 text-center font-black text-lg tabular-nums">{value}</span>
+        <span className="flex-1 text-center font-black text-lg tabular-nums">{value}</span>
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="w-[44px] h-[44px] rounded-lg bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors border border-primary/30"
+          className="w-[44px] h-[44px] rounded-lg bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors border border-primary/30 shrink-0"
         >
           <Plus size={16} />
         </button>
@@ -337,7 +337,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 { label: '1', value: 1 },
                 { label: '2', value: 2 },
                 { label: '3', value: 3 },
-                { label: '4', value: 4 },
+                { label: '4+', value: 4 },
               ]}
               value={formData.player_count}
               onChange={(v) => update("player_count", v)}
@@ -345,18 +345,37 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             <p className="text-[10px] text-muted-foreground font-medium -mt-2">Rate: R{GET_BASE_HOURLY_RATE(formData.player_count)}/hr</p>
 
             {/* Duration — Segmented Pills */}
-            <SegmentedPill
-              label="Duration (Hours)"
-              options={[
-                { label: '0.5', value: 0.5 },
-                { label: '1', value: 1 },
-                { label: '1.5', value: 1.5 },
-                { label: '2', value: 2 },
-                { label: '3', value: 3 },
-              ]}
-              value={formData.duration_hours}
-              onChange={(v) => update("duration_hours", v)}
-            />
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-widest opacity-70">Duration</Label>
+              <div className="flex flex-row gap-1.5">
+                {[
+                  { label: '1h', value: 1 },
+                  { label: '2h', value: 2 },
+                  { label: '3h', value: 3 },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => update("duration_hours", opt.value)}
+                    className={`flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all border
+                      ${formData.duration_hours === opt.value
+                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-[1.02]'
+                        : 'bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200'
+                      }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                {/* +30m addative button */}
+                <button
+                  type="button"
+                  onClick={() => update("duration_hours", formData.duration_hours + 0.5)}
+                  className="flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all border bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200"
+                >
+                  +30m
+                </button>
+              </div>
+            </div>
 
             {/* Time + Bay */}
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 pt-2 w-full">
@@ -433,10 +452,15 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             </div>
 
             {/* Inventory Steppers */}
-            <div className="flex flex-col gap-3">
-              <QuantityStepper label="Water" value={formData.addon_water_qty || 0} onChange={(v) => update("addon_water_qty", v)} unitPrice={formData.addon_water_price ?? 20} />
-              <QuantityStepper label="Gloves" value={formData.addon_gloves_qty || 0} onChange={(v) => update("addon_gloves_qty", v)} unitPrice={formData.addon_gloves_price ?? 220} />
-              <QuantityStepper label="Balls" value={formData.addon_balls_qty || 0} onChange={(v) => update("addon_balls_qty", v)} unitPrice={formData.addon_balls_price ?? 50} />
+            <div className="grid grid-cols-2 gap-3">
+              <QuantityStepper label="💧 Water" value={formData.addon_water_qty || 0} onChange={(v) => update("addon_water_qty", v)} unitPrice={formData.addon_water_price ?? 20} />
+              <QuantityStepper label="🧤 Gloves" value={formData.addon_gloves_qty || 0} onChange={(v) => update("addon_gloves_qty", v)} unitPrice={formData.addon_gloves_price ?? 220} />
+              <QuantityStepper label="🎾 Balls" value={formData.addon_balls_qty || 0} onChange={(v) => update("addon_balls_qty", v)} unitPrice={formData.addon_balls_price ?? 50} />
+              
+              {/* Empty placeholder to complete 2x2 grid if needed */}
+              <div className="flex flex-col items-center justify-center p-3 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10 opacity-50 min-h-[100px]">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">More Soon</span>
+              </div>
             </div>
           </section>
 
@@ -496,12 +520,12 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                     AMOUNT DUE
                     {isManualPrice && (
                       <span className="px-1.5 py-0.5 text-[8px] font-black uppercase bg-amber-500/20 text-amber-300 rounded border border-amber-500/30">
-                        OVERRIDE
+                        UNLOCKED
                       </span>
                     )}
                   </span>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="manual-override" className="text-[9px] font-bold opacity-60 cursor-pointer">MANUAL</Label>
+                    <Label htmlFor="manual-override" className="text-[9px] font-bold opacity-60 cursor-pointer">PRICE UNLOCK </Label>
                     <Switch
                       id="manual-override"
                       checked={isManualPrice}
@@ -536,7 +560,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 {isManualPrice && (
                   <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2">
                     <button type="button" onClick={() => handleManualPriceChange(0)} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all">
-                      <Zap size={12} className="inline mr-1" />R0 / Comp
+                      <Zap size={12} className="inline mr-1" />COMP (R0)
                     </button>
                     <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 50))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all">
                       -R50
