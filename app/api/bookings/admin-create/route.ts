@@ -137,10 +137,40 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ status: 'success', data: retryData });
         } catch (retryError: any) {
           if (retryError.code === '23P01') {
-            return NextResponse.json({ 
-              error: "Conflict", 
-              message: "Slot Unavailable: This bay is already booked at this time." 
-            }, { status: 409 });
+            // Auto-Bay Allocation Fallback
+            // Fetch overlaps for this time slot
+            const { data: overlaps } = await supabaseAdmin
+              .from('bookings')
+              .select('simulator_id')
+              .neq('status', 'cancelled')
+              .lt('slot_start', basePayload.slot_end)
+              .gt('slot_end', basePayload.slot_start);
+            
+            const occupiedBays = (overlaps || []).map(b => Number(b.simulator_id));
+            const availableBays = [1, 2, 3].filter(b => !occupiedBays.includes(b));
+            
+            if (availableBays.length > 0) {
+              const fallbackBay = availableBays[0];
+              console.warn(`[Auto-Bay] Bay ${basePayload.simulator_id} occupied. Falling back to Bay ${fallbackBay}`);
+              try {
+                const fallbackPayload = { ...basePayload, simulator_id: fallbackBay };
+                const finalRetryData = await performInsert(fallbackPayload);
+                return NextResponse.json({ status: 'success', data: finalRetryData });
+              } catch (fallbackError: any) {
+                if (fallbackError.code === '23P01') {
+                  return NextResponse.json({ 
+                    error: "Conflict", 
+                    message: "Slot Unavailable: All bays are occupied at this time." 
+                  }, { status: 409 });
+                }
+                throw fallbackError;
+              }
+            } else {
+              return NextResponse.json({ 
+                error: "Conflict", 
+                message: "Slot Unavailable: All bays are occupied at this time." 
+              }, { status: 409 });
+            }
           }
           throw retryError;
         }

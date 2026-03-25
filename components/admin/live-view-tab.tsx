@@ -5,7 +5,7 @@ import { getSASTDate } from '@/lib/utils';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { ManagerModal } from './manager-modal';
 import { toast } from 'sonner';
-import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target, XCircle, AlertTriangle, Globe, Smartphone, Clock } from 'lucide-react';
+import { Plus, CheckCircle, CreditCard, ChevronRight, Activity, Layers, Edit2, ChevronLeft, Calendar as CalendarIcon, Banknote, Users, Target, XCircle, AlertTriangle, Globe, Smartphone, Clock, Trash2 } from 'lucide-react';
 
 /** POS Tiered Pricing — mirrors GEMINI.md §POS */
 const GET_BASE_HOURLY_RATE = (players: number): number => {
@@ -146,33 +146,33 @@ export function LiveViewTab() {
     setIsModalOpen(true);
   };
 
-  /** TRUE OPTIMISTIC Quick Extend (+1h) — local state first, server second */
-  const handleQuickExtend = (booking: any) => {
+  /** TRUE OPTIMISTIC Quick Extend — local state first, server second */
+  const handleQuickExtend = (booking: any, hours: number) => {
     const snapshot = [...data];
-    const hourlyRate = GET_BASE_HOURLY_RATE(Number(booking.player_count || 1));
+    const addedRate = GET_BASE_HOURLY_RATE(Number(booking.player_count || 1)) * hours;
 
     // Immediate local update
     setData(prev => prev.map(b => {
       if (b.id !== booking.id) return b;
       return {
         ...b,
-        duration_hours: Number(b.duration_hours) + 1,
-        total_price: Number(b.total_price) + hourlyRate,
-        amount_due: Number(b.amount_due || 0) + hourlyRate,
+        duration_hours: Number(b.duration_hours) + hours,
+        total_price: Number(b.total_price) + addedRate,
+        amount_due: Number(b.amount_due || 0) + addedRate,
       };
     }));
-    toast.success(`+1H Extended — R${hourlyRate} added`, { duration: 2000 });
+    toast.success(`+${hours}H Extended — R${addedRate} added`, { duration: 2000 });
 
     // Background server call
     const pin = sessionStorage.getItem('admin-pin');
-    const newEnd = new Date(new Date(booking.slot_end).getTime() + 60 * 60 * 1000).toISOString();
+    const newEnd = new Date(new Date(booking.slot_end).getTime() + hours * 60 * 60 * 1000).toISOString();
 
     fetch('/api/bookings/admin-extend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: booking.id, pin, xmin: booking.xmin,
-        new_slot_end: newEnd, duration_hours_added: 1,
+        new_slot_end: newEnd, duration_hours_added: hours,
         player_count: booking.player_count
       })
     }).then(async (res) => {
@@ -430,12 +430,20 @@ export function LiveViewTab() {
                       <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">R{booking.total_price}</span>
                     </div>
                     {/* Quick Extend — Optimistic */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking); }}
-                      className="mt-1.5 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-all active:scale-95 border border-primary/20 hover:border-primary/50 px-2 py-1 rounded min-h-[32px]"
-                    >
-                      <Clock size={10} /> +1H
-                    </button>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 0.5); }}
+                        className="bg-primary text-black font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                      >
+                        +30M
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 1); }}
+                        className="bg-primary text-black font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                      >
+                        +1H
+                      </button>
+                    </div>
                     <div className="flex items-center gap-1.5 opacity-60 mt-1">
                       <CreditCard size={10} />
                       <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">{booking.payment_type || 'PENDING'}</span>
@@ -460,6 +468,16 @@ export function LiveViewTab() {
                         <XCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Settle</span>
                       </Button>
                     )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Delete this record?')) handleDelete(booking.id);
+                      }}
+                      className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 transition-all active:scale-95 flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl"
+                    >
+                      <Trash2 size={14} />
+                    </button>
 
                     <div className="p-2.5 md:p-3 rounded-xl bg-zinc-900 border border-zinc-800 group-hover:bg-primary/10 group-hover:border-primary/40 transition-all flex items-center justify-center min-w-[44px] min-h-[44px]">
                       <Edit2 size={14} className="text-zinc-500 group-hover:text-primary transition-colors" />

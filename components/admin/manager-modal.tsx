@@ -73,9 +73,9 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
   unitPrice: number;
 }) {
   return (
-    <div className="flex flex-col justify-between bg-zinc-800/80 border border-zinc-600 rounded-xl p-3 min-h-[100px]">
+    <div className="flex flex-col justify-between bg-zinc-900/40 border border-dashed border-zinc-700/50 rounded-xl p-3 min-h-[100px]">
       <div className="flex flex-col mb-2">
-        <span className="text-sm font-bold tracking-tight flex items-center gap-1.5 text-zinc-100">{label}</span>
+        <span className="text-sm font-bold tracking-tight flex items-center gap-1.5 text-zinc-300">{label}</span>
         <span className="text-[10px] text-zinc-400">R{unitPrice}</span>
       </div>
       <div className="flex items-center justify-between gap-1">
@@ -323,10 +323,10 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               </div>
               {formData.id && (
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase" onClick={() => extendTime(0.5)} disabled={isExtending}>
+                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-black hover:bg-primary/80" onClick={() => extendTime(0.5)} disabled={isExtending}>
                     {isExtending ? '...' : '+30m'}
                   </Button>
-                  <Button size="sm" variant="outline" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase" onClick={() => extendTime(1)} disabled={isExtending}>
+                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-black hover:bg-primary/80" onClick={() => extendTime(1)} disabled={isExtending}>
                     {isExtending ? '...' : '+1h'}
                   </Button>
                 </div>
