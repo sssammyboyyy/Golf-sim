@@ -296,7 +296,7 @@ export function LiveViewTab() {
               <button
                 key={bay.id}
                 onClick={() => handleOpenCreate(bay.id)}
-                className={`flex-1 min-h-[44px] rounded-xl text-[10px] font-black uppercase ${bay.bg} ${bay.text} ${bay.hover} hover:text-white border ${bay.border} transition-all`}
+                className={`flex-1 min-h-[44px] rounded-xl text-[10px] font-black uppercase ${bay.bg} ${bay.text} ${bay.hover} hover:text-white border ${bay.border} transition-all active:scale-95`}
               >
                 {bay.label}
               </button>
@@ -305,7 +305,7 @@ export function LiveViewTab() {
 
           {/* Date Navigation */}
           <div className="flex items-center justify-between md:justify-start bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl h-14 md:h-auto">
-            <button onClick={() => shiftDate(-1)} className="p-4 hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white border-r border-zinc-800 min-w-[44px] min-h-[44px] flex items-center justify-center">
+            <button onClick={() => shiftDate(-1)} className="p-4 hover:bg-zinc-800 transition-all active:scale-95 text-zinc-500 hover:text-white border-r border-zinc-800 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <ChevronLeft size={20} />
             </button>
             <div className="flex-1 md:flex-none flex items-center justify-center gap-3 px-6 py-2 bg-black/40">
@@ -317,10 +317,10 @@ export function LiveViewTab() {
                 className="bg-transparent text-base md:text-sm font-black text-white outline-none cursor-pointer uppercase tracking-tighter"
               />
             </div>
-            <button onClick={() => shiftDate(1)} className="p-4 hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white border-l border-zinc-800 min-w-[44px] min-h-[44px] flex items-center justify-center">
+            <button onClick={() => shiftDate(1)} className="p-4 hover:bg-zinc-800 transition-all active:scale-95 text-zinc-500 hover:text-white border-l border-zinc-800 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <ChevronRight size={20} />
             </button>
-            <button onClick={() => setSelectedDate(getSASTDate())} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-l border-zinc-800 h-full hidden md:flex items-center min-h-[44px]">
+            <button onClick={() => setSelectedDate(getSASTDate())} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all active:scale-95 border-l border-zinc-800 h-full hidden md:flex items-center min-h-[44px]">
               TODAY
             </button>
           </div>
@@ -432,7 +432,7 @@ export function LiveViewTab() {
                     {/* Quick Extend — Optimistic */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking); }}
-                      className="mt-1.5 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 px-2 py-1 rounded min-h-[32px]"
+                      className="mt-1.5 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-all active:scale-95 border border-primary/20 hover:border-primary/50 px-2 py-1 rounded min-h-[32px]"
                     >
                       <Clock size={10} /> +1H
                     </button>

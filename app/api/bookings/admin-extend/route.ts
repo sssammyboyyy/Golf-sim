@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    if (!id || !xmin || !new_slot_end || !duration_hours_added) {
+    if (!id || !new_slot_end || !duration_hours_added) {
       return NextResponse.json({
         error: "Bad Request",
-        message: "Missing required fields: id, xmin, new_slot_end, duration_hours_added."
+        message: "Missing required fields: id, new_slot_end, duration_hours_added."
       }, { status: 400 });
     }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // OCC check: if xmin has changed, another user modified this row
-    if (String(currentRow.xmin) !== String(xmin)) {
+    if (xmin && String(currentRow.xmin) !== String(xmin)) {
       return NextResponse.json({
         error: "Conflict",
         message: "State changed by another user. Refresh and try again."

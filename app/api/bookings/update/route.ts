@@ -37,7 +37,7 @@ const GET_BASE_HOURLY_RATE = (players: number): number => {
  * Standardized Financial Engine
  * Recomputes totals based on POS add-ons and ensures state persistence.
  */
-const calculateFinancials = (payload: any) => {
+const calculateFinancials = (payload: any, updates: any) => {
   const players = Number(payload.player_count || 1);
   const duration = Number(payload.duration_hours || 1);
   const baseRate = GET_BASE_HOURLY_RATE(players);
@@ -51,9 +51,11 @@ const calculateFinancials = (payload: any) => {
   
   const systemTotal = calculatedBase + water + gloves + balls + clubs + coaching;
 
-  // Preserve manual price overrides if provided explicitly in the top-level updates,
-  // otherwise default to the system calculation based on the merged state.
-  const total_price = payload.total_price !== undefined ? Number(payload.total_price) : systemTotal;
+  // Preserve manual price overrides if provided explicitly in the top-level updates.
+  // This ensures that if a manager changes an inventory quantity or duration (without typing a custom price),
+  // the `systemTotal` correctly updates. If they DO type a price, that override takes precedence.
+  const isManualOverride = updates.total_price !== undefined;
+  const total_price = isManualOverride ? Number(updates.total_price) : systemTotal;
   
   const amount_paid = Number(payload.amount_paid || 0);
   const amount_due = Math.max(0, total_price - amount_paid);
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ALWAYS recalculate financials to ensure state consistency across merged payload
-    const financials = calculateFinancials(finalUpdates);
+    const financials = calculateFinancials(finalUpdates, updates);
     finalUpdates = { ...finalUpdates, ...financials };
 
     // Strip protected/non-writable columns before calling update

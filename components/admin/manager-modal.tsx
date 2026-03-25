@@ -48,7 +48,7 @@ function SegmentedPill({ options, value, onChange, label }: {
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            className={`flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all border
+            className={`flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all active:scale-95 border
               ${value === opt.value
                 ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-[1.02]'
                 : 'bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200'
@@ -75,14 +75,14 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
   return (
     <div className="flex flex-col justify-between bg-zinc-800/80 border border-zinc-600 rounded-xl p-3 min-h-[100px]">
       <div className="flex flex-col mb-2">
-        <span className="text-sm font-bold tracking-tight flex items-center gap-1.5">{label}</span>
+        <span className="text-sm font-bold tracking-tight flex items-center gap-1.5 text-zinc-100">{label}</span>
         <span className="text-[10px] text-zinc-400">R{unitPrice}</span>
       </div>
       <div className="flex items-center justify-between gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-[44px] h-[44px] rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300 flex items-center justify-center transition-colors border border-zinc-600 shrink-0"
+          className="w-[44px] h-[44px] rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300 flex items-center justify-center transition-all active:scale-95 border border-zinc-600 shrink-0"
         >
           <Minus size={16} />
         </button>
@@ -90,7 +90,7 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="w-[44px] h-[44px] rounded-lg bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors border border-primary/30 shrink-0"
+          className="w-[44px] h-[44px] rounded-lg bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-all active:scale-95 border border-primary/30 shrink-0"
         >
           <Plus size={16} />
         </button>
@@ -360,7 +360,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                     key={opt.value}
                     type="button"
                     onClick={() => update("duration_hours", opt.value)}
-                    className={`flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all border
+                    className={`flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all active:scale-95 border
                       ${formData.duration_hours === opt.value
                         ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-[1.02]'
                         : 'bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200'
@@ -373,7 +373,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 <button
                   type="button"
                   onClick={() => update("duration_hours", formData.duration_hours + 0.5)}
-                  className="flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all border bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200"
+                  className="flex-1 min-h-[44px] min-w-[44px] rounded-xl text-sm font-black uppercase transition-all active:scale-95 border bg-zinc-900/50 text-zinc-400 border-white/10 hover:border-white/20 hover:text-zinc-200"
                 >
                   +30m
                 </button>
@@ -405,7 +405,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                       key={bay.id}
                       type="button"
                       onClick={() => update("simulator_id", Number(bay.id))}
-                      className={`flex-1 min-h-[44px] rounded-xl text-xs font-black uppercase transition-all border
+                      className={`flex-1 min-h-[44px] rounded-xl text-xs font-black uppercase transition-all active:scale-95 border
                         ${String(formData.simulator_id) === bay.id
                           ? `${bay.activeBg} text-white ${bay.border} shadow-lg scale-[1.02]`
                           : `${bay.bg} ${bay.color} ${bay.border} hover:opacity-80`
@@ -440,14 +440,14 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex items-center justify-between p-4 bg-zinc-800/80 border border-zinc-600 rounded-xl w-full min-h-[60px]">
                 <div className="flex flex-col">
-                  <Label htmlFor="addon_club_rental" className="font-bold text-sm cursor-pointer">Club Rentals</Label>
+                  <Label htmlFor="addon_club_rental" className="font-bold text-sm cursor-pointer text-zinc-100">Club Rentals</Label>
                   <span className="text-[10px] text-zinc-400">R{CLUB_RENTAL_HOURLY}/hr</span>
                 </div>
                 <Switch id="addon_club_rental" checked={formData.addon_club_rental} onCheckedChange={(v) => update("addon_club_rental", v)} />
               </div>
               <div className="flex items-center justify-between p-4 bg-zinc-800/80 border border-zinc-600 rounded-xl w-full min-h-[60px]">
                 <div className="flex flex-col">
-                  <Label htmlFor="addon_coaching" className="font-bold text-sm cursor-pointer">Coaching</Label>
+                  <Label htmlFor="addon_coaching" className="font-bold text-sm cursor-pointer text-zinc-100">Coaching</Label>
                   <span className="text-[10px] text-zinc-400">Flat R{COACHING_FLAT_FEE}</span>
                 </div>
                 <Switch id="addon_coaching" checked={formData.addon_coaching} onCheckedChange={(v) => update("addon_coaching", v)} />
@@ -562,13 +562,13 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 {/* Quick Override Actions */}
                 {isManualPrice && (
                   <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2">
-                    <button type="button" onClick={() => handleManualPriceChange(0)} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all">
+                    <button type="button" onClick={() => handleManualPriceChange(0)} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       <Zap size={12} className="inline mr-1" />COMP (R0)
                     </button>
-                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 50))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all">
+                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 50))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       -R50
                     </button>
-                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 100))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all">
+                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 100))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       -R100
                     </button>
                   </div>
