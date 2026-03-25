@@ -1,20 +1,17 @@
 module.exports = {
   ci: {
     collect: {
-      // Best Practice: Audit the actual production build users see
-      startServerCommand: 'npm run build && npm start', 
-      chromePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-      url: ['http://localhost:3000/admin', 'http://localhost:3000/booking'],
-      numberOfRuns: 3, 
+      // Direct npx calls avoid some shell issues on Windows
+      startServerCommand: 'npx next build && npx next start', 
+      url: ['http://localhost:3000/', 'http://localhost:3000/booking'],
+      numberOfRuns: 1, // Start with 1 to see result faster
     },
     assert: {
       preset: 'lighthouse:recommended',
       assertions: {
         'categories:performance': ['error', {minScore: 0.9}],
         'categories:accessibility': ['error', {minScore: 0.9}],
-        // Prevent mobile zoom-breaking fonts
         'font-size': 'error',
-        // Ensure buttons are big enough for mobile thumbs
         'tap-targets': 'error',
       },
     },
