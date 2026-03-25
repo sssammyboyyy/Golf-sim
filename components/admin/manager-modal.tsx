@@ -154,13 +154,13 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
   const handleManualPriceChange = (value: number) => {
     setIsManualPrice(true);
-    update("total_price", value);
+    update("amount_due", value);
     update("payment_status", "pending");
   };
 
   const handleResetPrice = () => {
     setIsManualPrice(false);
-    setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
+    setFormData((prev: any) => ({ ...prev, amount_due: totals.total - Number(prev.amount_paid || 0), total_price: totals.total }));
   };
 
   const extendTime = async (hours: number) => {
@@ -323,10 +323,10 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               </div>
               {formData.id && (
                 <div className="flex gap-2">
-                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-black hover:bg-primary/80" onClick={() => extendTime(0.5)} disabled={isExtending}>
+                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-white hover:bg-primary/80" onClick={() => extendTime(0.5)} disabled={isExtending}>
                     {isExtending ? '...' : '+30m'}
                   </Button>
-                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-black hover:bg-primary/80" onClick={() => extendTime(1)} disabled={isExtending}>
+                  <Button size="sm" className="h-[44px] min-w-[44px] text-[10px] font-black uppercase bg-primary text-white hover:bg-primary/80" onClick={() => extendTime(1)} disabled={isExtending}>
                     {isExtending ? '...' : '+1h'}
                   </Button>
                 </div>
@@ -545,12 +545,15 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   {isManualPrice ? (
                     <Input
                       type="number"
-                      value={currentTotal}
-                      onChange={(e) => handleManualPriceChange(Number(e.target.value))}
+                      value={formData.amount_due ?? 0}
+                      onChange={(e) => {
+                        update("amount_due", Number(e.target.value));
+                        setIsManualPrice(true);
+                      }}
                       className="text-3xl font-black tabular-nums bg-transparent border-none text-primary-foreground p-0 h-12 focus-visible:ring-0 w-[140px] text-base md:text-sm"
                     />
                   ) : (
-                    <span className="text-3xl font-black tabular-nums">{currentTotal}</span>
+                    <span className="text-3xl font-black tabular-nums">{formData.amount_due ?? currentTotal}</span>
                   )}
                   {isManualPrice && (
                     <Button variant="ghost" size="sm" className="h-[44px] min-w-[44px] px-3 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={handleResetPrice}>
@@ -565,17 +568,17 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                     <button type="button" onClick={() => handleManualPriceChange(0)} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       <Zap size={12} className="inline mr-1" />COMP (R0)
                     </button>
-                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 50))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
+                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, (formData.amount_due ?? currentTotal) - 50))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       -R50
                     </button>
-                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, currentTotal - 100))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
+                    <button type="button" onClick={() => handleManualPriceChange(Math.max(0, (formData.amount_due ?? currentTotal) - 100))} className="flex-1 min-h-[44px] rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 text-[10px] font-black uppercase border border-primary-foreground/20 transition-all active:scale-95">
                       -R100
                     </button>
                   </div>
                 )}
 
                 <Button variant="secondary" size="lg" className="w-full font-black text-[12px] uppercase shadow-lg h-14 min-h-[56px] mt-2" onClick={() => onSave(formData)}>
-                  Charge R{currentTotal}
+                  Charge R{formData.amount_due ?? currentTotal}
                 </Button>
               </div>
             </div>

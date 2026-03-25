@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
       duration_hours: newDuration,
       total_price: newTotal,
       amount_due: newDue,
-      payment_status: 'pending'
+      payment_status: 'pending',
+      payment_type: 'pending'
     };
 
     // 4. Execute Update

@@ -159,6 +159,8 @@ export function LiveViewTab() {
         duration_hours: Number(b.duration_hours) + hours,
         total_price: Number(b.total_price) + addedRate,
         amount_due: Number(b.amount_due || 0) + addedRate,
+        payment_status: 'pending',
+        payment_type: 'pending'
       };
     }));
     toast.success(`+${hours}H Extended — R${addedRate} added`, { duration: 2000 });
@@ -426,20 +428,20 @@ export function LiveViewTab() {
                 <div className="flex flex-row items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-end px-2 md:px-0 flex-shrink-0">
                   <div className="flex flex-col items-start md:items-end">
                     <div className="flex items-center gap-2 md:gap-0 md:flex-col md:items-end">
-                      <span className="text-[9px] font-bold text-zinc-500 uppercase md:hidden">Total</span>
-                      <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">R{booking.total_price}</span>
+                      <span className="text-[9px] font-bold text-zinc-500 uppercase md:hidden">DUE</span>
+                      <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">R{booking.amount_due ?? 0}</span>
                     </div>
                     {/* Quick Extend — Optimistic */}
                     <div className="flex items-center gap-1 mt-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 0.5); }}
-                        className="bg-primary text-black font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                        className="bg-primary text-white font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
                       >
                         +30M
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 1); }}
-                        className="bg-primary text-black font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                        className="bg-primary text-white font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
                       >
                         +1H
                       </button>
@@ -454,7 +456,7 @@ export function LiveViewTab() {
                     {paid ? (
                       <Button
                         size="sm"
-                        className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
+                        className="bg-emerald-500 hover:bg-emerald-400 text-white border border-emerald-400 font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
                         onClick={(e) => { e.stopPropagation(); handleQuickSettle(booking, 'unsettle'); }}
                       >
                         <CheckCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Paid</span>

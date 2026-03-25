@@ -58,7 +58,9 @@ const calculateFinancials = (payload: any, updates: any) => {
   const total_price = isManualOverride ? Number(updates.total_price) : systemTotal;
   
   const amount_paid = Number(payload.amount_paid || 0);
-  const amount_due = Math.max(0, total_price - amount_paid);
+
+  const isManualDue = updates.amount_due !== undefined;
+  const amount_due = isManualDue ? Number(updates.amount_due) : Math.max(0, total_price - amount_paid);
   
   return { total_price, amount_due };
 };
