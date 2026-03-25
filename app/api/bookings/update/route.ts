@@ -23,16 +23,38 @@ const calculateSASTTimestamps = (date: string, time: string, duration: number) =
 };
 
 /**
+ * Standardized Base Hourly Rate Engine
+ * 1p=250, 2p=360, 3p=480, 4p=600
+ */
+const GET_BASE_HOURLY_RATE = (players: number): number => {
+  if (players >= 4) return 600;
+  if (players === 3) return 480;
+  if (players === 2) return 360;
+  return 250;
+};
+
+/**
  * Standardized Financial Engine
- * Recomputes totals based on POS add-ons.
+ * Recomputes totals based on POS add-ons and ensures state persistence.
  */
 const calculateFinancials = (payload: any) => {
-  const base = Number(payload.base_price || 0);
-  const water = Number(payload.addon_water_qty || 0) * Number(payload.addon_water_price || 20);
-  const gloves = Number(payload.addon_gloves_qty || 0) * Number(payload.addon_gloves_price || 0);
-  const balls = Number(payload.addon_balls_qty || 0) * Number(payload.addon_balls_price || 0);
+  const players = Number(payload.player_count || 1);
+  const duration = Number(payload.duration_hours || 1);
+  const baseRate = GET_BASE_HOURLY_RATE(players);
   
-  const total_price = base + water + gloves + balls;
+  const calculatedBase = baseRate * duration;
+  const water = Number(payload.addon_water_qty || 0) * Number(payload.addon_water_price ?? 20);
+  const gloves = Number(payload.addon_gloves_qty || 0) * Number(payload.addon_gloves_price ?? 220);
+  const balls = Number(payload.addon_balls_qty || 0) * Number(payload.addon_balls_price ?? 50);
+  const clubs = payload.addon_club_rental ? (100 * duration) : 0;
+  const coaching = payload.addon_coaching ? 250 : 0;
+  
+  const systemTotal = calculatedBase + water + gloves + balls + clubs + coaching;
+
+  // Preserve manual price overrides if provided explicitly in the top-level updates,
+  // otherwise default to the system calculation based on the merged state.
+  const total_price = payload.total_price !== undefined ? Number(payload.total_price) : systemTotal;
+  
   const amount_paid = Number(payload.amount_paid || 0);
   const amount_due = Math.max(0, total_price - amount_paid);
   
@@ -58,24 +80,42 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    let finalUpdates = { ...updates };
+    // 2. Fetch Existing Record (Crucial for deep merge to avoid state wipe)
+    const { data: existingRecord, error: fetchError } = await supabaseAdmin
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    // 2. Dynamic Math Engines
-    // Rebuild timestamps if any time-parameters are changed
-    if (updates.booking_date && updates.start_time && updates.duration_hours) {
+    if (fetchError || !existingRecord) {
+      return NextResponse.json({ error: "Not Found", message: "Booking not found." }, { status: 404 });
+    }
+
+    // 3. Deep Merge Logic
+    // This ensures that partial updates (like just changing payment_status) 
+    // do not reset player counts or retail quantities to 0.
+    let finalUpdates = { ...existingRecord, ...updates };
+
+    // 4. Dynamic Math Engines
+    // Rebuild timestamps anchored to SAST if any scheduling parameters are modified
+    if (finalUpdates.booking_date && finalUpdates.start_time && finalUpdates.duration_hours) {
       const timestamps = calculateSASTTimestamps(
-        updates.booking_date, 
-        updates.start_time, 
-        Number(updates.duration_hours)
+        finalUpdates.booking_date, 
+        finalUpdates.start_time, 
+        Number(finalUpdates.duration_hours)
       );
       finalUpdates = { ...finalUpdates, ...timestamps };
     }
 
-    // ALWAYS recalculate financials to ensure state consistency
-    const financials = calculateFinancials(updates);
+    // ALWAYS recalculate financials to ensure state consistency across merged payload
+    const financials = calculateFinancials(finalUpdates);
     finalUpdates = { ...finalUpdates, ...financials };
 
-    // 3. Update Database
+    // Strip protected/non-writable columns before calling update
+    const columnsToStrip = ['id', 'created_at', 'updated_at', 'xmin'];
+    columnsToStrip.forEach(col => delete finalUpdates[col]);
+
+    // 5. Update Database
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .update(finalUpdates)
@@ -83,7 +123,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    // 4. Concurrency Guard
+    // 6. Concurrency Guard
     if (error && error.code === '23P01') {
       return NextResponse.json({ 
         error: "Conflict", 

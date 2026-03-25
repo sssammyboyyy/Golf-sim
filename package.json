@@ -6,6 +6,7 @@
     "dev": "next dev",
     "clean": "rm -rf .next .open-next dist",
     "build": "next build",
+    "start": "next start",
     "build:cloudflare": "npm run clean && next build && npx @opennextjs/cloudflare build && bash scripts/deploy.sh",
     "pages:build": "npm run build:cloudflare",
     "preview": "npm run pages:build && wrangler pages dev .open-next",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241112.0",
+    "@lhci/cli": "^0.15.1",
     "@opennextjs/cloudflare": "latest",
     "@tailwindcss/postcss": "latest",
     "@types/node": "^22.5.0",

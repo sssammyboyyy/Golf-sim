@@ -121,7 +121,9 @@ export function LiveViewTab() {
   // 🎯 HANDLERS
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** Open modal with auto-bay pre-fill */
+  /** 
+   * Open modal with auto-bay pre-fill and explicit PENDING status for walk-ins
+   */
   const handleOpenCreate = (prefillBayId: number = 1) => {
     const now = new Date();
     const defaultTime = now.toLocaleTimeString('en-ZA', {
@@ -132,7 +134,9 @@ export function LiveViewTab() {
       guest_name: '', guest_email: 'walkin@venue-os.com', guest_phone: '',
       simulator_id: prefillBayId, player_count: 1, duration_hours: 1,
       start_time: defaultTime, booking_date: selectedDate,
-      status: 'confirmed', payment_type: 'pending', payment_status: 'pending',
+      status: 'confirmed', 
+      payment_type: 'pending', // Explicitly pending
+      payment_status: 'pending', // Explicitly pending
       user_type: 'walk_in',
       addon_water_qty: 0, addon_gloves_qty: 0, addon_balls_qty: 0,
       addon_club_rental: false, addon_coaching: false,
@@ -274,10 +278,10 @@ export function LiveViewTab() {
         </div>
 
         <div className="flex flex-col items-stretch gap-4 w-full md:w-auto">
-          {/* Primary Walk-In CTA */}
+          {/* Primary Walk-In CTA — 56px height for accessibility */}
           <Button
             onClick={() => handleOpenCreate(1)}
-            className="bg-white text-black hover:bg-primary hover:text-white font-black uppercase text-xs h-14 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all w-full md:w-auto"
+            className="bg-white text-black hover:bg-primary hover:text-white font-black uppercase text-xs h-14 min-h-[56px] shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all w-full md:w-auto"
           >
             <Plus className="mr-2 h-4 w-4" /> ADD WALK-IN
           </Button>
@@ -310,7 +314,7 @@ export function LiveViewTab() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-sm md:text-md font-black text-white outline-none cursor-pointer uppercase tracking-tighter"
+                className="bg-transparent text-base md:text-sm font-black text-white outline-none cursor-pointer uppercase tracking-tighter"
               />
             </div>
             <button onClick={() => shiftDate(1)} className="p-4 hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white border-l border-zinc-800 min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -428,7 +432,7 @@ export function LiveViewTab() {
                     {/* Quick Extend — Optimistic */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking); }}
-                      className="mt-1.5 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 px-2 py-1 rounded min-h-[28px]"
+                      className="mt-1.5 flex items-center gap-1 text-[8px] font-black uppercase text-primary/70 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 px-2 py-1 rounded min-h-[32px]"
                     >
                       <Clock size={10} /> +1H
                     </button>
@@ -442,7 +446,7 @@ export function LiveViewTab() {
                     {paid ? (
                       <Button
                         size="sm"
-                        className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black text-[9px] uppercase h-10 md:h-12 px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
+                        className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
                         onClick={(e) => { e.stopPropagation(); handleQuickSettle(booking, 'unsettle'); }}
                       >
                         <CheckCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Paid</span>
@@ -450,7 +454,7 @@ export function LiveViewTab() {
                     ) : (
                       <Button
                         size="sm"
-                        className="bg-red-600 hover:bg-red-500 text-white font-black text-[9px] uppercase h-10 md:h-12 px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
+                        className="bg-red-600 hover:bg-red-500 text-white font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
                         onClick={(e) => { e.stopPropagation(); handleQuickSettle(booking, 'settle'); }}
                       >
                         <XCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Settle</span>

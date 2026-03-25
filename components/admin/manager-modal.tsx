@@ -30,9 +30,9 @@ const BAY_OPTIONS = [
   { id: '3', label: 'Window Bay', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500' },
 ];
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🎛️ SEGMENTED PILL COMPONENT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/**
+ * 🎛️ SEGMENTED PILL COMPONENT
+ */
 function SegmentedPill({ options, value, onChange, label }: {
   options: { label: string; value: number }[];
   value: number;
@@ -62,9 +62,10 @@ function SegmentedPill({ options, value, onChange, label }: {
   );
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ➕➖ STEPPER COMPONENT (44px touch targets)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/**
+ * ➕➖ STEPPER COMPONENT (44px touch targets)
+ * Refined Contrast: bg-zinc-800/80 + border-zinc-600
+ */
 function QuantityStepper({ value, onChange, label, unitPrice }: {
   value: number;
   onChange: (v: number) => void;
@@ -72,16 +73,16 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
   unitPrice: number;
 }) {
   return (
-    <div className="flex flex-col justify-between bg-zinc-900/40 border border-zinc-800 rounded-xl p-3 min-h-[100px]">
+    <div className="flex flex-col justify-between bg-zinc-800/80 border border-zinc-600 rounded-xl p-3 min-h-[100px]">
       <div className="flex flex-col mb-2">
         <span className="text-sm font-bold tracking-tight flex items-center gap-1.5">{label}</span>
-        <span className="text-[10px] text-zinc-500">R{unitPrice}</span>
+        <span className="text-[10px] text-zinc-400">R{unitPrice}</span>
       </div>
       <div className="flex items-center justify-between gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-[44px] h-[44px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-colors border border-zinc-700 shrink-0"
+          className="w-[44px] h-[44px] rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300 flex items-center justify-center transition-colors border border-zinc-600 shrink-0"
         >
           <Minus size={16} />
         </button>
@@ -98,9 +99,9 @@ function QuantityStepper({ value, onChange, label, unitPrice }: {
   );
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🏗️ MAIN MODAL
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/**
+ * 🏗️ MAIN MODAL
+ */
 export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any) {
   const [formData, setFormData] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -119,7 +120,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     }
   }, [booking]);
 
-  // 🧠 REACTIVE POS LEDGER — calculates the "system" total
+  // REACTIVE POS LEDGER — calculates the "system" total
   const totals = useMemo(() => {
     if (!formData) return { base: 0, extras: 0, total: 0 };
 
@@ -138,7 +139,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     };
   }, [formData]);
 
-  // 🔗 SYNC TOTAL — only when manual override is OFF
+  // SYNC TOTAL — only when manual override is OFF
   useEffect(() => {
     if (formData && !isManualPrice && formData.total_price !== totals.total) {
       setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
@@ -243,7 +244,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full sm:max-w-[650px] max-h-[95vh] overflow-y-auto border-t-8 border-t-primary p-0">
+      <DialogContent className="w-[95vw] sm:max-w-[650px] max-h-[95vh] overflow-y-auto border-t-8 border-t-primary p-0">
         {/* ━━ STICKY HEADER ━━ */}
         <div className="sticky top-0 bg-background/95 backdrop-blur-md z-10 px-4 py-3 sm:px-6 sm:py-4 border-b">
           <DialogHeader>
@@ -276,6 +277,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                         update('guest_email', 'walkin@venue-os.com');
                         update('guest_phone', '');
                         update('user_type', 'walk_in');
+                        update('payment_status', 'pending');
+                        update('payment_type', 'pending');
                       } else {
                         update('guest_email', '');
                         update('user_type', 'guest');
@@ -286,10 +289,10 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               )}
             </div>
 
-            {/* Name — always visible */}
+            {/* Name — 16px font on mobile */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70">FULL NAME</Label>
-              <Input id="guest_name" placeholder={isWalkIn ? "Walk-In / Guest Name" : "John Doe"} value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px]" />
+              <Input id="guest_name" placeholder={isWalkIn ? "Walk-In / Guest Name" : "John Doe"} value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
             </div>
 
             {/* Contact — hidden for walk-ins */}
@@ -297,11 +300,11 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-top-1">
                 <div className="flex flex-col gap-1.5 w-full">
                   <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70">PHONE</Label>
-                  <Input id="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px]" />
+                  <Input id="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
                 </div>
                 <div className="flex flex-col gap-1.5 w-full">
                   <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70">EMAIL</Label>
-                  <Input id="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px]" />
+                  <Input id="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
                 </div>
               </div>
             )}
@@ -388,7 +391,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   type="time"
                   value={formData.start_time || '12:00'}
                   onChange={(e) => update("start_time", e.target.value)}
-                  className="font-mono font-bold text-lg tracking-tight h-12 min-h-[48px]"
+                  className="font-mono font-bold text-lg tracking-tight h-12 min-h-[48px] text-base md:text-sm"
                 />
               </div>
               <div className="flex flex-col space-y-1.5 w-full">
@@ -419,7 +422,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               <Label htmlFor="notes" className="text-[10px] font-bold">NOTES</Label>
               <textarea
                 id="notes"
-                className="w-full min-h-[80px] p-4 text-sm rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                className="w-full min-h-[80px] p-4 text-base md:text-sm rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                 placeholder="Kitchen orders, special requests..."
                 value={formData.notes || ""}
                 onChange={(e) => update("notes", e.target.value)}
@@ -435,17 +438,17 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
             {/* Toggle Services */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center justify-between p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl w-full min-h-[60px]">
+              <div className="flex items-center justify-between p-4 bg-zinc-800/80 border border-zinc-600 rounded-xl w-full min-h-[60px]">
                 <div className="flex flex-col">
                   <Label htmlFor="addon_club_rental" className="font-bold text-sm cursor-pointer">Club Rentals</Label>
-                  <span className="text-[10px] text-zinc-500">R{CLUB_RENTAL_HOURLY}/hr</span>
+                  <span className="text-[10px] text-zinc-400">R{CLUB_RENTAL_HOURLY}/hr</span>
                 </div>
                 <Switch id="addon_club_rental" checked={formData.addon_club_rental} onCheckedChange={(v) => update("addon_club_rental", v)} />
               </div>
-              <div className="flex items-center justify-between p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl w-full min-h-[60px]">
+              <div className="flex items-center justify-between p-4 bg-zinc-800/80 border border-zinc-600 rounded-xl w-full min-h-[60px]">
                 <div className="flex flex-col">
                   <Label htmlFor="addon_coaching" className="font-bold text-sm cursor-pointer">Coaching</Label>
-                  <span className="text-[10px] text-zinc-500">Flat R{COACHING_FLAT_FEE}</span>
+                  <span className="text-[10px] text-zinc-400">Flat R{COACHING_FLAT_FEE}</span>
                 </div>
                 <Switch id="addon_coaching" checked={formData.addon_coaching} onCheckedChange={(v) => update("addon_coaching", v)} />
               </div>
@@ -458,7 +461,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               <QuantityStepper label="🎾 Balls" value={formData.addon_balls_qty || 0} onChange={(v) => update("addon_balls_qty", v)} unitPrice={formData.addon_balls_price ?? 50} />
               
               {/* Empty placeholder to complete 2x2 grid if needed */}
-              <div className="flex flex-col items-center justify-center p-3 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10 opacity-50 min-h-[100px]">
+              <div className="flex flex-col items-center justify-center p-3 border border-dashed border-zinc-600 rounded-xl bg-zinc-800/10 opacity-50 min-h-[100px]">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">More Soon</span>
               </div>
             </div>
@@ -484,7 +487,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   if (v === 'cash' || v === 'card' || v === 'eft') update("payment_status", "paid_instore");
                   if (v === 'pending') update("payment_status", "pending");
                 }}>
-                  <SelectTrigger id="payment_type" className="bg-background border-2 h-12 min-h-[48px]"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                  <SelectTrigger id="payment_type" className="bg-background border-2 h-12 min-h-[48px] text-base md:text-sm"><SelectValue placeholder="Select Method" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="cash">Physical Cash</SelectItem>
@@ -544,7 +547,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                       type="number"
                       value={currentTotal}
                       onChange={(e) => handleManualPriceChange(Number(e.target.value))}
-                      className="text-3xl font-black tabular-nums bg-transparent border-none text-primary-foreground p-0 h-12 focus-visible:ring-0 w-[140px]"
+                      className="text-3xl font-black tabular-nums bg-transparent border-none text-primary-foreground p-0 h-12 focus-visible:ring-0 w-[140px] text-base md:text-sm"
                     />
                   ) : (
                     <span className="text-3xl font-black tabular-nums">{currentTotal}</span>
