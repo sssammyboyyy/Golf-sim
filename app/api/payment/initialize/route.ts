@@ -308,7 +308,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Fire Checkout (origin already resolved above)
-    const yocoResponse = await fetch("https://online.yoco.com/v1/checkouts", {
+    const yocoResponse = await fetch("https://payments.yoco.com/api/checkouts", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${yocoSecret}`,
