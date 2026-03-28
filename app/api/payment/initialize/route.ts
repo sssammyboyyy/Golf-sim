@@ -34,8 +34,8 @@ export async function POST(request: Request) {
   try {
     const envCheck = validateEnvVars([
       "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      "YOCO_SECRET_KEY"
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      // YOCO_SECRET_KEY removed from mandatory list to allow Mock Gateway fallback
     ]);
 
     if (envCheck) {
@@ -246,12 +246,45 @@ export async function POST(request: Request) {
       return Response.json({ free_booking: true, booking_id: booking.id, assigned_bay: assignedSimulatorId })
     }
 
-    // --- YOCO CHECKOUT ---
+    // --- YOCO MOCK GATEWAY FALLBACK ---
+    const yocoSecret = process.env.YOCO_SECRET_KEY;
+    if (!yocoSecret || yocoSecret.trim() === '') {
+      console.log("[YOCO MOCK GATEWAY] No secret key found. Simulating checkout.");
+      
+      const mockYocoId = `mock_chk_${Math.random().toString(36).substring(2, 10)}`;
+      
+      await supabaseAdmin
+        .from('bookings')
+        .update({ yoco_payment_id: mockYocoId })
+        .eq('id', booking.id);
+
+      await Promise.allSettled([
+        sendStoreReceiptEmail({
+          guest_email, guest_name: guest_name || "Golfer", guest_phone,
+          booking_date, start_time, duration_hours: durationNum, player_count,
+          simulator_id: assignedSimulatorId, total_price: dbTotalPrice,
+          amount_paid: 0, addon_club_rental, addon_coaching, yoco_payment_id: mockYocoId
+        }),
+        sendGuestConfirmationEmail({
+          guest_email, guest_name: guest_name || "Golfer", guest_phone,
+          booking_date, start_time, duration_hours: durationNum, player_count,
+          simulator_id: assignedSimulatorId, total_price: dbTotalPrice,
+          amount_paid: 0, addon_club_rental, addon_coaching
+        })
+      ]);
+
+      return Response.json({ 
+        checkoutUrl: `/booking/success?bookingId=${booking.id}&mock=true`, 
+        yocoId: mockYocoId 
+      });
+    }
+
+    // --- ACTUAL YOCO CHECKOUT ---
     const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.themulligan.org"
     const yocoResponse = await fetch("https://online.yoco.com/v1/checkouts", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.YOCO_SECRET_KEY}`,
+        Authorization: `Bearer ${yocoSecret}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
