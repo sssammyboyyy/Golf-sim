@@ -239,6 +239,22 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     }
   };
 
+  const handleFinalSave = () => {
+    const submitData = { ...formData };
+    
+    // Aggressive stripping of view-only or ghost columns
+    delete submitData.balance_due;
+    delete submitData.xmin;
+    
+    // THE INTENT FILTER: Only send financial overrides if the manager unlocked the price
+    if (!isManualPrice) {
+      delete submitData.total_price;
+      delete submitData.amount_due;
+    }
+    
+    onSave(submitData);
+  };
+
   const isPaidOut = formData.payment_status === 'completed' || formData.payment_status === 'paid_instore';
   const currentTotal = formData.total_price ?? totals.total;
 
@@ -577,11 +593,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   </div>
                 )}
 
-                <Button variant="secondary" size="lg" className="w-full font-black text-[12px] uppercase shadow-lg h-14 min-h-[56px] mt-2" onClick={() => {
-                  const submitData = { ...formData };
-                  delete (submitData as any).balance_due;
-                  onSave(submitData);
-                }}>
+                <Button variant="secondary" size="lg" className="w-full font-black text-[12px] uppercase shadow-lg h-14 min-h-[56px] mt-2" onClick={handleFinalSave}>
                   Charge R{formData.amount_due ?? currentTotal}
                 </Button>
               </div>
@@ -611,7 +623,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               )}
               <div className="flex flex-col gap-3 w-full">
                 <Button variant="outline" className="font-bold text-xs uppercase h-12 min-h-[48px] w-full" onClick={onClose}>Discard</Button>
-                <Button className="font-black text-xs uppercase shadow-md hover:shadow-xl transition-all h-14 min-h-[56px] w-full" onClick={() => onSave(formData)}>Persist Changes</Button>
+                <Button className="font-black text-xs uppercase shadow-md hover:shadow-xl transition-all h-14 min-h-[56px] w-full" onClick={handleFinalSave}>Persist Changes</Button>
               </div>
             </div>
           )}
