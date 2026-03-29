@@ -35,7 +35,6 @@ export async function POST(request: Request) {
     const envCheck = validateEnvVars([
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-      // YOCO_SECRET_KEY removed from mandatory list to allow Mock Gateway fallback
     ]);
 
     if (envCheck) {
@@ -126,7 +125,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, bypassed: true, assigned_bay: assignedSimulatorId });
     }
 
-    // 5. CONTINUE ONLINE FLOW (Yoco Path)
+    // 5. CONTINUE ONLINE FLOW
     const player_count = body.player_count || body.players
     const session_type = body.session_type || body.sessionType
     const famous_course_option = body.famous_course_option || body.sessionType
@@ -246,112 +245,43 @@ export async function POST(request: Request) {
       return Response.json({ free_booking: true, booking_id: booking.id, assigned_bay: assignedSimulatorId })
     }
 
-    // --- YOCO MOCK GATEWAY FALLBACK ---
-    const yocoSecret = process.env.YOCO_SECRET_KEY;
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://bestmulligan.golf-sim.pages.dev';
-
-    if (!yocoSecret || yocoSecret.trim().length < 10 || yocoSecret.includes('insert_your_key')) {
-      console.log("[YOCO MOCK GATEWAY] No valid secret key found. Simulating checkout.");
-      
-      const mockYocoId = `mock_chk_${Math.random().toString(36).substring(2, 10)}`;
-      
-      await supabaseAdmin
-        .from('bookings')
-        .update({ yoco_payment_id: mockYocoId })
-        .eq('id', booking.id);
-
-      await Promise.allSettled([
-        sendStoreReceiptEmail({
-          guest_email, guest_name: guest_name || "Golfer", guest_phone,
-          booking_date, start_time, duration_hours: durationNum, player_count,
-          simulator_id: assignedSimulatorId, total_price: dbTotalPrice,
-          amount_paid: 0, addon_club_rental, addon_coaching, yoco_payment_id: mockYocoId
-        }),
-        sendGuestConfirmationEmail({
-          guest_email, guest_name: guest_name || "Golfer", guest_phone,
-          booking_date, start_time, duration_hours: durationNum, player_count,
-          simulator_id: assignedSimulatorId, total_price: dbTotalPrice,
-          amount_paid: 0, addon_club_rental, addon_coaching
-        })
-      ]);
-
-      return Response.json({ 
-        checkoutUrl: `${origin}/booking/success?bookingId=${booking.id}&mock=true`, 
-        yocoId: mockYocoId 
-      });
-    }
-
-    // --- ACTUAL YOCO CHECKOUT ---
+    // ==========================================
+    // YOCO PUBLIC LINK BYPASS (API BLOCKED)
+    // ==========================================
+    // NOTE: Replace 'the-mulligan' with the venue's actual Yoco public slug if different.
+    const yocoPublicSlug = "the-mulligan"; 
     
-    // 1. Minimum Amount Rule: Yoco rejects any transaction < R2.00 (200 cents).
-    const amountInCents = Math.round(amountToCharge * 100);
-    if (amountInCents < 200) {
-      console.log(`[YOCO SKIPPED] Amount R${amountToCharge} is below Yoco's R2.00 minimum. Converting to walk-in/deposit.`);
-      
-      const emailProps = {
-        guest_email, guest_name: guest_name || "Golfer", booking_date, start_time,
-        duration_hours: durationNum, player_count, simulator_id: assignedSimulatorId,
-        total_price: dbTotalPrice, amount_paid: 0, addon_club_rental, addon_coaching
-      };
+    const paymentUrl = new URL(`https://pay.yoco.com/${yocoPublicSlug}`);
+    // Public links take Rands (dbTotalPrice), not cents.
+    paymentUrl.searchParams.append('amount', amountToCharge.toString());
+    paymentUrl.searchParams.append('reference', booking.id);
 
-      await Promise.allSettled([
-        sendStoreReceiptEmail(emailProps),
-        sendGuestConfirmationEmail(emailProps)
-      ]);
+    // We do NOT update the yoco_payment_id in the database because we don't have one.
+    // The booking remains 'pending'. Staff will manually reconcile via the Admin HUD.
 
-      return Response.json({ free_booking: true, booking_id: booking.id, assigned_bay: assignedSimulatorId, bypass_reason: "below_minimum" });
-    }
+    // Fire emails
+    const emailProps = {
+      guest_email,
+      guest_name: guest_name || "Golfer",
+      booking_date,
+      start_time,
+      duration_hours: durationNum,
+      player_count,
+      simulator_id: assignedSimulatorId,
+      total_price: dbTotalPrice,
+      amount_paid: 0,
+      addon_club_rental,
+      addon_coaching
+    };
 
-    // 2. Secret Key Format Validation
-    if (!yocoSecret.startsWith('sk_live_') && !yocoSecret.startsWith('sk_test_')) {
-      throw new Error(`Invalid Yoco Key Format: Must start with sk_live_ or sk_test_`);
-    }
-
-    // 3. Fire Checkout (origin already resolved above)
-    const yocoResponse = await fetch("https://payments.yoco.com/api/checkouts", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${yocoSecret}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: amountInCents,
-        currency: "ZAR",
-        cancelUrl: `${origin}/booking?cancelled=true&reference=${booking.id}`,
-        successUrl: `${origin}/booking/success?bookingId=${booking.id}`,
-        failureUrl: `${origin}/booking?error=payment_failed&reference=${booking.id}`,
-        metadata: { booking_id: booking.id },
-      }),
-    })
-
-    // 4. Raw Error Exposure & Ghost Cleanup
-    if (!yocoResponse.ok) {
-      const errorBody = await yocoResponse.text();
-      console.error("[YOCO_CRITICAL_FAILURE]", { status: yocoResponse.status, body: errorBody });
-      
-      // Ghost Cleanup: nuke the pending record so it doesn't pollute the dashboard
-      await supabaseAdmin.from('bookings').delete().eq('id', booking.id);
-      
-      return Response.json({ 
-        error: 'Yoco checkout API failure', 
-        status: yocoResponse.status,
-        details: errorBody 
-      }, { status: 500 });
-    }
-
-    // 6. Checkout ID Capture
-    const yocoData = await yocoResponse.json();
-    
-    // Capture Yoco ID and update DB before redirect
-    await supabaseAdmin
-      .from('bookings')
-      .update({ yoco_payment_id: yocoData.id })
-      .eq('id', booking.id);
+    await Promise.allSettled([
+      sendStoreReceiptEmail(emailProps),
+      sendGuestConfirmationEmail(emailProps)
+    ]);
 
     return Response.json({ 
-      checkoutUrl: yocoData.redirectUrl, 
-      yocoId: yocoData.id,
-      booking_id: booking.id 
+      checkoutUrl: paymentUrl.toString(), 
+      yocoId: null 
     });
 
   } catch (error: any) {
