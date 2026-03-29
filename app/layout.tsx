@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn(inter.className, "min-h-screen bg-background antialiased")}>
+      <body className={`${inter.className} min-h-screen bg-background antialiased font-sans`}>
         {children}
         <Toaster theme="dark" position="top-right" richColors closeButton />
       </body>

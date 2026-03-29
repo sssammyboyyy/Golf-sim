@@ -82,7 +82,18 @@ const calculateFinancials = (payload: any, existingRecord: any, updates: any) =>
   const amount_due = isManualDue ? Math.max(0, Number(updates.amount_due)) : Math.max(0, total_price - amount_paid);
   
   // Dynamic status assignment
-  const status = (amount_due <= 0) ? 'confirmed' : existingRecord.status;
+  let status = updates.status || existingRecord.status;
+  let payment_status = updates.payment_status || existingRecord.payment_status;
+
+  if (amount_due <= 0) {
+    status = 'confirmed';
+    if (payment_status !== 'paid_instore') payment_status = 'paid_online';
+  } else if (amount_paid > 0 && amount_due > 0) {
+    payment_status = 'partially_paid';
+    status = 'confirmed'; // Session is booked, just owes money
+  }
+  
+  return { total_price, amount_paid, amount_due, status, payment_status };
   
   return { total_price, amount_paid, amount_due };
 };
@@ -150,10 +161,18 @@ export async function POST(request: NextRequest) {
         return obj;
       }, {} as any);
 
-    // 6. Update Database using sanitized payload
+    // 6. Update Database using sanitized payload 
+    // Explicitly mapping financial columns from the calculation engine to ensure persistence
     const { data, error } = await supabaseAdmin
       .from('bookings')
-      .update(sanitizedPayload)
+      .update({
+        ...sanitizedPayload,
+        total_price: financials.total_price,
+        amount_paid: financials.amount_paid,
+        amount_due: financials.amount_due,
+        payment_status: financials.payment_status,
+        status: financials.status
+      })
       .eq('id', id)
       .select()
       .single();

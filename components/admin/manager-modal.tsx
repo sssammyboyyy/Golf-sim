@@ -141,10 +141,19 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
   // SYNC TOTAL — only when manual override is OFF
   useEffect(() => {
-    if (formData && !isManualPrice && formData.total_price !== totals.total) {
-      setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
+    if (formData && !isManualPrice) {
+      const amountAlreadyPaid = Number(booking?.amount_paid) || 0;
+      const outstandingBalance = totals.total - amountAlreadyPaid;
+      
+      if (formData.total_price !== totals.total || formData.amount_due !== outstandingBalance) {
+        setFormData((prev: any) => ({ 
+          ...prev, 
+          total_price: totals.total,
+          amount_due: outstandingBalance 
+        }));
+      }
     }
-  }, [totals.total, isManualPrice]);
+  }, [totals.total, isManualPrice, booking?.amount_paid]);
 
   if (!formData) return null;
 
@@ -218,11 +227,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     delete submitData.balance_due;
     delete submitData.xmin;
     
-    // THE INTENT FILTER: Only send financial overrides if the manager unlocked the price
-    if (!isManualPrice) {
-      delete submitData.total_price;
-      delete submitData.amount_due;
-    }
+    // ALWAYS send total_price and amount_due to forcefully sync the backend ledger
+    // with the exact frontend POS calculations.
 
     // CONTEXT-AWARE SETTLEMENT FLOW
     if (submitData.payment_status === 'pending') {
@@ -526,17 +532,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 </Select>
               </div>
 
-              {formData.payment_status === 'pending' && (formData.booking_source === 'online' || formData.guest_email !== 'walkin@venue-os.com') && !isPaidOut && (
-                <Button 
-                  variant="outline" 
-                  className="h-12 min-h-[48px] border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold uppercase gap-2" 
-                  onClick={handleManualReconcile} 
-                  disabled={isVerifying}
-                >
-                  {isVerifying ? <RotateCcw className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} 
-                  Confirm Yoco Payment (Manual)
-                </Button>
-              )}
+
 
               {/* ━━ PRICE CARD ━━ */}
               <div className="p-4 sm:p-6 bg-primary text-primary-foreground rounded-2xl shadow-xl space-y-3 relative overflow-hidden">
@@ -548,12 +544,29 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   <span>Base: R{totals.base}</span>
                   <span>Retail: R{totals.extras}</span>
                 </div>
-                
                 {/* Dynamic Balance Indicator */}
-                <div className="flex justify-between px-3 py-2 bg-black/20 rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10 shadow-inner">
-                  <span className="opacity-90">Original Total: R{formData.total_price || 0}</span>
-                  <span className="text-yellow-400">Total Now: R{totals.total}</span>
-                </div>
+                {(() => {
+                  const amountAlreadyPaid = Number(booking?.amount_paid) || 0;
+                  const newTotalPrice = totals.total;
+                  const outstandingBalance = newTotalPrice - amountAlreadyPaid;
+
+                  return (
+                    <div className="flex flex-col gap-1.5 px-3 py-3 bg-black/30 rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10 shadow-inner">
+                      <div className="flex justify-between w-full opacity-70">
+                        <span>Original Paid:</span>
+                        <span>R{amountAlreadyPaid}</span>
+                      </div>
+                      <div className="flex justify-between w-full opacity-70">
+                        <span>New Total:</span>
+                        <span>R{newTotalPrice}</span>
+                      </div>
+                      <div className="flex justify-between w-full pt-1.5 mt-1 border-t border-white/10">
+                        <span className="text-yellow-400">Balance Due Now:</span>
+                        <span className="text-yellow-400">R{outstandingBalance}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <Separator className="my-4 bg-primary-foreground/20" />
 

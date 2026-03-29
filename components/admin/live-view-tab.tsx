@@ -448,7 +448,11 @@ export function LiveViewTab() {
                   
                   <div className="flex flex-col gap-2 items-end">
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {online ? (
+                      {booking.payment_status === 'partially_paid' ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300 rounded-lg">
+                          <AlertTriangle size={10} /> Partial
+                        </span>
+                      ) : online ? (
                         <span className="flex items-center gap-1 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20"><Globe size={10} /> Online</span>
                       ) : (
                         <span className="flex items-center gap-1 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20"><Smartphone size={10} /> POS</span>
