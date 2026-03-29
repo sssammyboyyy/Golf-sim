@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
     const additionalCost = GET_BASE_HOURLY_RATE(players) * hoursAdded;
 
     // 3. Optimistic Concurrency Control (OCC) via PostgreSQL xmin
-    // Fetch current row and compare xmin before applying the update.
+    // Fetch current row. We fetch ALL financial fields to preserve SSOT.
     const { data: currentRow } = await supabaseAdmin
       .from('bookings')
-      .select('id, xmin::text, duration_hours, total_price, amount_due')
+      .select('id, xmin::text, duration_hours, total_price, amount_paid, amount_due, status, payment_status')
       .eq('id', id)
       .single();
 
@@ -74,9 +74,18 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
+    const historicPaid = Number(currentRow.amount_paid || 0);
     const newDuration = Number(currentRow.duration_hours) + hoursAdded;
     const newTotal = Number(currentRow.total_price) + additionalCost;
-    const newDue = Number(currentRow.amount_due || 0) + additionalCost;
+    const newDue = Math.max(0, newTotal - historicPaid);
+
+    // Dynamic Payment Status Derivation
+    let newPaymentStatus = currentRow.payment_status;
+    if (newDue > 0 && historicPaid > 0) {
+      newPaymentStatus = 'partially_paid';
+    } else if (newDue > 0 && historicPaid === 0) {
+      newPaymentStatus = 'pending';
+    }
 
     // Calculate new end_time text (SAST-safe)
     const endDate = new Date(new_slot_end);
@@ -92,9 +101,9 @@ export async function POST(request: NextRequest) {
       end_time: newEndTime,
       duration_hours: newDuration,
       total_price: newTotal,
+      amount_paid: historicPaid, // Preserve the payment history
       amount_due: newDue,
-      payment_status: 'pending',
-      payment_type: 'pending'
+      payment_status: newPaymentStatus
     };
 
     // 4. THE IRON GATE: Sanitize payload against physical database columns

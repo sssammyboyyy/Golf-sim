@@ -66,11 +66,14 @@ const calculateFinancials = (payload: any, existingRecord: any, updates: any) =>
   const total_price = isManualTotal ? Math.max(0, Number(updates.total_price)) : systemTotal;
   
   // MANUAL POS RECONCILIATION LOGIC
-  // If we're marking as paid_online, we might be confirming a specific amount from notes
   let amount_paid = Number(existingRecord.amount_paid) || 0;
   
-  if (updates.payment_status === 'paid_online' && updates.reconciled_manually) {
-    // Attempt to extract intended payment from notes: "Expected Online Payment: R150"
+  // SSOT SETTLEMENT INTENT
+  // If the manager has triggered a "Settle" action, they have paid the current total.
+  if (updates.action === 'settle' || updates.payment_status === 'paid_instore') {
+    amount_paid = total_price;
+  } 
+  else if (updates.payment_status === 'paid_online' && updates.reconciled_manually) {
     const expectedMatch = existingRecord.notes?.match(/Expected Online Payment: R(\d+)/);
     const intendedAmount = expectedMatch ? Number(expectedMatch[1]) : (total_price - amount_paid);
     amount_paid += intendedAmount;
@@ -78,7 +81,9 @@ const calculateFinancials = (payload: any, existingRecord: any, updates: any) =>
     amount_paid = Number(updates.amount_paid);
   }
 
-  const isManualDue = updates.amount_due !== undefined;
+  // Derive amount_due from SSOT values (Total - Paid)
+  // Ignore any amount_due passed from the frontend unless it's a manual override.
+  const isManualDue = updates.amount_due !== undefined && isManualTotal;
   const amount_due = isManualDue ? Math.max(0, Number(updates.amount_due)) : Math.max(0, total_price - amount_paid);
   
   // Dynamic status assignment
@@ -87,15 +92,13 @@ const calculateFinancials = (payload: any, existingRecord: any, updates: any) =>
 
   if (amount_due <= 0) {
     status = 'confirmed';
-    if (payment_status !== 'paid_instore') payment_status = 'paid_online';
+    if (payment_status !== 'paid_instore' && payment_status !== 'completed') payment_status = 'paid_online';
   } else if (amount_paid > 0 && amount_due > 0) {
     payment_status = 'partially_paid';
-    status = 'confirmed'; // Session is booked, just owes money
+    status = 'confirmed'; 
   }
   
   return { total_price, amount_paid, amount_due, status, payment_status };
-  
-  return { total_price, amount_paid, amount_due };
 };
 
 export async function POST(request: NextRequest) {

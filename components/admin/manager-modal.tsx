@@ -190,6 +190,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             new_slot_end: newEnd.toISOString(),
             duration_hours_added: hours,
             player_count: formData.player_count
+            // NO financial data sent; backend handles SSOT ledger
           })
         });
 
@@ -223,12 +224,21 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   const handleFinalSave = () => {
     const submitData = { ...formData };
     
-    // Aggressive stripping of view-only or ghost columns
+    // Aggressive stripping of view-only, ghost, or calculated columns
+    // We force the backend to derive these from SSOT
     delete submitData.balance_due;
     delete submitData.xmin;
     
-    // ALWAYS send total_price and amount_due to forcefully sync the backend ledger
-    // with the exact frontend POS calculations.
+    // Only send amount_paid/due if it was a manual price override
+    if (!isManualPrice) {
+      delete submitData.amount_due;
+      delete submitData.total_price;
+    }
+
+    // Settlement Intent
+    if (submitData.payment_status === 'paid_instore') {
+      submitData.action = 'settle';
+    }
 
     // CONTEXT-AWARE SETTLEMENT FLOW
     if (submitData.payment_status === 'pending') {
