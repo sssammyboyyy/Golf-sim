@@ -65,12 +65,26 @@ const calculateFinancials = (payload: any, existingRecord: any, updates: any) =>
   const isManualTotal = updates.total_price !== undefined;
   const total_price = isManualTotal ? Math.max(0, Number(updates.total_price)) : systemTotal;
   
-  const amount_paid = Number(payload.amount_paid) || 0;
+  // MANUAL POS RECONCILIATION LOGIC
+  // If we're marking as paid_online, we might be confirming a specific amount from notes
+  let amount_paid = Number(existingRecord.amount_paid) || 0;
+  
+  if (updates.payment_status === 'paid_online' && updates.reconciled_manually) {
+    // Attempt to extract intended payment from notes: "Expected Online Payment: R150"
+    const expectedMatch = existingRecord.notes?.match(/Expected Online Payment: R(\d+)/);
+    const intendedAmount = expectedMatch ? Number(expectedMatch[1]) : (total_price - amount_paid);
+    amount_paid += intendedAmount;
+  } else if (updates.amount_paid !== undefined) {
+    amount_paid = Number(updates.amount_paid);
+  }
 
   const isManualDue = updates.amount_due !== undefined;
   const amount_due = isManualDue ? Math.max(0, Number(updates.amount_due)) : Math.max(0, total_price - amount_paid);
   
-  return { total_price, amount_due };
+  // Dynamic status assignment
+  const status = (amount_due <= 0) ? 'confirmed' : existingRecord.status;
+  
+  return { total_price, amount_paid, amount_due };
 };
 
 export async function POST(request: NextRequest) {
@@ -155,7 +169,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Dispatch Confirmation Emails on Manual Reconciliation
-    if (updates.payment_status === 'paid_online' && updates.status === 'confirmed') {
+    if ((updates.payment_status === 'paid_online' || updates.payment_status === 'paid_instore') && updates.reconciled_manually) {
       const emailProps = {
         guest_email: data.guest_email,
         guest_name: data.guest_name || "Golfer",

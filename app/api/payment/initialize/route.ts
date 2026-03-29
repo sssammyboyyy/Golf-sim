@@ -183,13 +183,14 @@ export async function POST(request: Request) {
     }
 
     const bookingRequestId = body.booking_request_id || crypto.randomUUID()
-
-    // Deposit Eligibility — mirrors frontend confirm page logic
-    const isDepositEligible = session_type?.includes('ball') || session_type?.includes('famous');
-    const depositAmount = isDepositEligible ? Math.ceil(dbTotalPrice * 0.40) : dbTotalPrice;
+    
+    // 1. DEPOSIT MATH & INTENT
+    const isDepositEligible = session_type.includes('ball') || session_type.includes('famous');
+    const depositAmount = isDepositEligible ? Math.ceil(dbTotalPrice * 0.4) : dbTotalPrice;
     const amountToCharge = (pay_full_amount || !isDepositEligible) ? dbTotalPrice : depositAmount;
-    const outstandingBalance = dbTotalPrice - amountToCharge;
 
+    // 3. ZERO-TRUST LEDGER INSERT
+    // We MUST set amount_paid to 0. It is only updated when the Manager clicks Settle in the HUD.
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
       .insert({
@@ -207,9 +208,9 @@ export async function POST(request: Request) {
         famous_course_option,
         base_price,
         total_price: dbTotalPrice,
-        amount_paid: skipYoco ? dbTotalPrice : amountToCharge,
-        amount_due: skipYoco ? 0 : outstandingBalance,
-        payment_type: skipYoco ? 'bypass' : (outstandingBalance > 0 ? 'deposit' : 'full'),
+        amount_paid: skipYoco ? dbTotalPrice : 0, // STRICT: Zero-Trust
+        amount_due: dbTotalPrice, // Full price is due until paid
+        payment_type: skipYoco ? 'bypass' : (dbTotalPrice - amountToCharge > 0 ? 'deposit' : 'full'),
         status: dbStatus,
         payment_status: dbPaymentStatus,
         guest_name,
@@ -218,8 +219,10 @@ export async function POST(request: Request) {
         accept_whatsapp,
         enter_competition,
         coupon_code: couponApplied,
+        notes: `Expected Online Payment: R${amountToCharge}`, // Passes context to HUD
         addon_coaching: addon_coaching || false,
         addon_club_rental: addon_club_rental || false,
+        booking_source: 'online'
       })
       .select()
       .single()
@@ -250,25 +253,23 @@ export async function POST(request: Request) {
       return Response.json({ free_booking: true, booking_id: booking.id, assigned_bay: assignedSimulatorId })
     }
 
-    // ==========================================
-    // YOCO PUBLIC LINK BYPASS
-    // ==========================================
-    const yocoPublicSlug = "mgan"; // The verified active slug
-
-    // Human-readable reference: "Tiger-a1b2c3" so manager can ID payment on Yoco app
+    // 2. ENRICHED YOCO URL
+    const yocoPublicSlug = "mgan"; 
+    const paymentUrl = new URL(`https://pay.yoco.com/${yocoPublicSlug}`);
+    
+    // Yoco Public Links accept amount and reference. We pack the reference for max context.
     const safeName = guest_name ? guest_name.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '') : 'Guest';
     const shortId = booking.id.substring(0, 6);
-    const yocoReference = `${safeName}-${shortId}`;
     
-    const paymentUrl = new URL(`https://pay.yoco.com/${yocoPublicSlug}`);
-    // Public links take Rands, not cents.
     paymentUrl.searchParams.append('amount', amountToCharge.toString());
-    paymentUrl.searchParams.append('reference', yocoReference);
+    paymentUrl.searchParams.append('reference', `${safeName}-${shortId}`);
+    
+    // Attempt to pre-fill Yoco's internal fields
+    if (guest_name) paymentUrl.searchParams.append('name', guest_name);
+    if (guest_email) paymentUrl.searchParams.append('email', guest_email);
+    paymentUrl.searchParams.append('description', `Booking: ${session_type}`);
 
-    // We do NOT update the yoco_payment_id because this bypass doesn't generate one.
-    // The booking remains 'pending'. Staff will manually reconcile via the Admin HUD.
-
-    // Fire confirmation emails
+    // Fire confirmation emails ONLY if price is 0 (handled by if(dbTotalPrice === 0) later)
     const emailProps = {
       guest_email,
       guest_name: guest_name || "Golfer",
