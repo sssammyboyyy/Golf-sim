@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -83,11 +83,13 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   const [formData, setFormData] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isWalkIn, setIsWalkIn] = useState(false);
+  const [isManualPrice, setIsManualPrice] = useState(false);
 
   useEffect(() => {
     if (booking) {
       setFormData({ ...booking });
       setIsDeleting(false);
+      setIsManualPrice(false); // Reset on load
       const walkInStatus = !booking.id || booking.user_type === 'walk_in' || booking.guest_email === 'walkin@venue-os.com';
       setIsWalkIn(walkInStatus);
 
@@ -111,15 +113,22 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     return { total: baseTotal + clubs + coaching + water + gloves + balls };
   }, [formData]);
 
+  // AUTO-CALC EFFECT (Suspended if isManualPrice is true)
   useEffect(() => {
-    if (formData) {
+    if (formData && !isManualPrice) {
       const amountAlreadyPaid = Number(booking?.amount_paid) || 0;
       const outstandingBalance = Math.max(0, totals.total - amountAlreadyPaid);
       if (formData.total_price !== totals.total || formData.amount_due !== outstandingBalance) {
         setFormData((prev: any) => ({ ...prev, total_price: totals.total, amount_due: outstandingBalance }));
       }
     }
-  }, [totals.total, booking?.amount_paid]);
+  }, [totals.total, booking?.amount_paid, isManualPrice]);
+
+  const handleResetPrice = () => {
+    setIsManualPrice(false);
+    const amountAlreadyPaid = Number(booking?.amount_paid) || 0;
+    setFormData((prev: any) => ({ ...prev, total_price: totals.total, amount_due: Math.max(0, totals.total - amountAlreadyPaid) }));
+  };
 
   if (!formData) return null;
 
@@ -157,11 +166,12 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     onSave(submitData);
   };
 
-  const outstandingBalance = totals.total - (Number(booking?.amount_paid) || 0);
+  // The button displays either the manual amount_due or the calculated outstanding balance
+  const displayAmountDue = isManualPrice ? formData.amount_due : Math.max(0, totals.total - (Number(booking?.amount_paid) || 0));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-t-4 border-t-primary bg-[#0a0a0a]">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden border-t-4 border-t-primary bg-[#0a0a0a]">
         
         {/* HEADER */}
         <div className="bg-zinc-950 px-4 py-3 flex items-center justify-between border-b border-zinc-800">
@@ -180,10 +190,10 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
           )}
         </div>
 
-        {/* BODY - ZERO SCROLL OPTIMIZED */}
+        {/* BODY */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
           
-          {/* Identity (Hidden if Walk In) */}
+          {/* Identity */}
           {!isWalkIn && (
             <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95">
               <Input placeholder="Name" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="bg-zinc-900 border-zinc-800 text-white" />
@@ -193,7 +203,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
           {/* Session Setup Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Col: Bays & Times */}
+            {/* Left Col */}
             <div className="flex flex-col gap-3">
               <div className="flex flex-row gap-1.5 h-[42px]">
                 {BAY_OPTIONS.map((bay) => (
@@ -216,14 +226,14 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 </div>
               </div>
             </div>
-            {/* Right Col: Sliders */}
+            {/* Right Col */}
             <div className="flex flex-col gap-3">
                <CustomSlider min={1} max={6} value={formData.player_count} onChange={(v: number) => update("player_count", v)} label="Players" format={(v: number) => `${v}P`} />
                <CustomSlider min={0.5} max={6} step={0.5} value={formData.duration_hours} onChange={handleDurationChange} label="Duration" format={(v: number) => `${v}H`} />
             </div>
           </div>
 
-          {/* Compact Services */}
+          {/* Add-ons */}
           <div className="flex flex-col gap-2">
             <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Add-ons</Label>
             <div className="flex flex-wrap gap-2">
@@ -241,11 +251,37 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             </div>
           </div>
 
-          {/* Notes & Method Inline */}
+          {/* MANUAL OVERRIDE COMPONENT */}
+          <div className="flex flex-col gap-2 bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Manual Price Override</Label>
+              <Switch checked={isManualPrice} onCheckedChange={(v) => !v ? handleResetPrice() : setIsManualPrice(true)} />
+            </div>
+            {isManualPrice && (
+              <div className="flex gap-3 animate-in fade-in slide-in-from-top-2">
+                <div className="flex-1">
+                  <Label className="text-[9px] font-bold text-zinc-500 uppercase">Total Value</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-black">R</span>
+                    <input type="number" value={formData.total_price} onChange={(e) => update("total_price", Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-6 pr-2 py-2 text-sm font-black text-white outline-none focus:border-primary transition-all" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-[9px] font-bold text-amber-500/80 uppercase">Amount Due</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-500/50 font-black">R</span>
+                    <input type="number" value={formData.amount_due} onChange={(e) => update("amount_due", Number(e.target.value))} className="w-full bg-zinc-950 border border-amber-500/40 rounded-lg pl-6 pr-2 py-2 text-sm font-black text-amber-400 outline-none focus:border-amber-500 transition-all shadow-[0_0_10px_rgba(245,158,11,0.1)]" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Notes & Method */}
           <div className="grid grid-cols-2 gap-3">
              <input placeholder="Kitchen notes..." value={formData.notes || ""} onChange={(e) => update("notes", e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 text-sm text-zinc-300 outline-none" />
              <Select value={formData.payment_type} onValueChange={(v) => update("payment_type", v)}>
-               <SelectTrigger className="bg-zinc-900 border-zinc-800 h-10 rounded-lg text-xs font-bold text-white"><SelectValue placeholder="Payment Method" /></SelectTrigger>
+               <SelectTrigger className="bg-zinc-900 border-zinc-800 h-10 rounded-lg text-xs font-bold text-white"><SelectValue placeholder="Method" /></SelectTrigger>
                <SelectContent>
                  <SelectItem value="pending">Pending</SelectItem>
                  <SelectItem value="cash">In-Store (Cash/Card)</SelectItem>
@@ -255,7 +291,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
           </div>
         </div>
 
-        {/* STICKY FOOTER */}
+        {/* FOOTER */}
         <div className="bg-zinc-950 border-t border-zinc-800 p-4 flex items-center justify-between z-20">
           {formData.id ? (
             <Button variant="ghost" onClick={() => setIsDeleting(!isDeleting)} className={`${isDeleting ? 'bg-red-500 text-white' : 'text-zinc-500 hover:text-red-500'} text-xs font-black uppercase h-12 px-4 rounded-xl transition-all`}>
@@ -266,9 +302,9 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
           <div className="flex items-center gap-3">
             {isDeleting ? (
               <Button onClick={() => onDelete(formData.id)} className="bg-red-600 hover:bg-red-500 text-white uppercase text-xs font-black h-12 px-8 rounded-xl animate-in slide-in-from-right-2">CONFIRM DELETE</Button>
-            ) : outstandingBalance > 0 ? (
+            ) : displayAmountDue > 0 ? (
               <Button onClick={handleFinalSave} className="bg-amber-500 hover:bg-amber-400 text-black uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                CHARGE R{outstandingBalance}
+                CHARGE R{displayAmountDue}
               </Button>
             ) : (
               <Button onClick={handleFinalSave} className="bg-emerald-600 hover:bg-emerald-500 text-white uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
