@@ -269,7 +269,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             ) : outstandingBalance > 0 ? (
               <Button onClick={handleFinalSave} className="bg-amber-500 hover:bg-amber-400 text-black uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)]">
                 CHARGE R{outstandingBalance}
-              </BUtton>
+              </Button>
             ) : (
               <Button onClick={handleFinalSave} className="bg-emerald-600 hover:bg-emerald-500 text-white uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                 SAVE CHANGES
