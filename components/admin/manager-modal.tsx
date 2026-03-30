@@ -30,6 +30,27 @@ const BAY_OPTIONS = [
   { id: '3', label: 'Window Bay', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500' },
 ];
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🕒 SYNC ENGINE HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const addHoursToTime = (timeStr: string, hours: number): string => {
+  if (!timeStr) return "";
+  const [h, m] = timeStr.split(':').map(Number);
+  const totalMinutes = h * 60 + m + Math.round(hours * 60);
+  const newH = Math.floor(totalMinutes / 60) % 24;
+  const newM = totalMinutes % 60;
+  return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
+};
+
+const diffInHours = (startStr: string, endStr: string): number => {
+  if (!startStr || !endStr) return 0;
+  const [sH, sM] = startStr.split(':').map(Number);
+  const [eH, eM] = endStr.split(':').map(Number);
+  let diffMins = (eH * 60 + eM) - (sH * 60 + sM);
+  if (diffMins < 0) diffMins += 24 * 60; // Handle midnight wrap-around
+  return Number((diffMins / 60).toFixed(2));
+};
+
 /**
  * 🎛️ SEGMENTED PILL COMPONENT
  */
@@ -114,8 +135,24 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
       setFormData({ ...booking });
       setIsDeleting(false);
       setIsManualPrice(false);
-      setIsWalkIn(!booking.id || booking.user_type === 'walk_in' || booking.guest_email === 'walkin@venue-os.com');
+      const walkInStatus = !booking.id || booking.user_type === 'walk_in' || booking.guest_email === 'walkin@venue-os.com';
+      setIsWalkIn(walkInStatus);
       setIsExtending(false);
+
+      // Default walk-in start time to NOW if it's a new booking
+      if (walkInStatus && !booking.id && (!booking.start_time || booking.start_time === '12:00')) {
+        const now = new Date();
+        const currentStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const defaultDuration = booking.duration_hours || 1;
+        const endStr = addHoursToTime(currentStr, defaultDuration);
+        
+        setFormData((prev: any) => ({ 
+          ...prev, 
+          start_time: currentStr,
+          end_time: endStr,
+          duration_hours: defaultDuration
+        }));
+      }
     }
   }, [booking]);
 
@@ -166,14 +203,26 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   };
 
   const extendDuration = (hours: number) => {
-    const startMs = new Date(`1970-01-01T${formData.start_time}:00`).getTime();
-    const newEndMs = startMs + hours * 60 * 60 * 1000;
-    const newEndTime = new Date(newEndMs).toISOString().substring(11, 16);
-    
+    const newEndTime = addHoursToTime(formData.start_time, hours);
     setFormData((prev: any) => ({
       ...prev,
       duration_hours: hours,
       end_time: newEndTime,
+      payment_status: "pending"
+    }));
+  };
+
+  const handleStartTimeChange = (newStart: string) => {
+    const newEndTime = addHoursToTime(newStart, formData.duration_hours);
+    setFormData((prev: any) => ({ ...prev, start_time: newStart, end_time: newEndTime }));
+  };
+
+  const handleEndTimeChange = (newEnd: string) => {
+    const derivedDuration = diffInHours(formData.start_time, newEnd);
+    setFormData((prev: any) => ({ 
+      ...prev, 
+      end_time: newEnd, 
+      duration_hours: derivedDuration,
       payment_status: "pending"
     }));
   };
@@ -227,14 +276,14 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 scrollbar-hide">
 
           {/* ━━ CARD 1: GUEST IDENTITY ━━ */}
-          <section className="bg-muted/30 p-4 sm:p-6 rounded-2xl border space-y-4 flex flex-col">
+          <section className="bg-muted/30 p-4 sm:p-6 rounded-2xl border space-y-4 flex flex-col transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-primary">
                 <User size={14} /> Guest Identity
               </div>
               {!formData.id && (
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="walkin-toggle" className="text-[10px] font-bold opacity-70 cursor-pointer">WALK-IN</Label>
+                  <Label htmlFor="walkin-toggle" className="text-[10px] font-bold opacity-70 cursor-pointer uppercase">WALK-IN</Label>
                   <Switch
                     id="walkin-toggle"
                     checked={isWalkIn}
@@ -256,26 +305,33 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
               )}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70">FULL NAME</Label>
-              <Input id="guest_name" placeholder={isWalkIn ? "Walk-In / Guest Name" : "John Doe"} value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
-            </div>
-
-            {!isWalkIn && (
-              <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-top-1">
-                <div className="flex flex-col gap-1.5 w-full">
-                  <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70">PHONE</Label>
-                  <Input id="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
+            {isWalkIn ? (
+              <div className="bg-zinc-900/50 p-4 rounded-xl border border-dashed border-zinc-700 flex items-center gap-3 text-zinc-400 animate-in fade-in zoom-in-95">
+                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                  <User size={18} className="opacity-50" />
                 </div>
-                <div className="flex flex-col gap-1.5 w-full">
-                  <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70">EMAIL</Label>
-                  <Input id="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">POS Mode Active</span>
+                  <span className="text-sm font-bold text-zinc-300">Anonymous Walk-In Guest</span>
                 </div>
               </div>
-            )}
-            {isWalkIn && (
-              <div className="py-2 px-3 text-[10px] font-bold text-zinc-500 italic bg-zinc-900/30 rounded-lg border border-dashed border-zinc-700">
-                POS Mode — contact info not required
+            ) : (
+              <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="guest_name" className="text-[10px] font-bold opacity-70 uppercase">Full Name</Label>
+                  <Input id="guest_name" placeholder="John Doe" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm bg-background border-zinc-200" />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <Label htmlFor="guest_phone" className="text-[10px] font-bold opacity-70 uppercase">Phone</Label>
+                    <Input id="guest_phone" placeholder="082 123 4567" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm bg-background border-zinc-200" />
+                  </div>
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <Label htmlFor="guest_email" className="text-[10px] font-bold opacity-70 uppercase">Email</Label>
+                    <Input id="guest_email" placeholder="guest@example.com" value={formData.guest_email || ""} onChange={(e) => update("guest_email", e.target.value)} className="h-12 min-h-[48px] text-base md:text-sm bg-background border-zinc-200" />
+                  </div>
+                </div>
               </div>
             )}
           </section>
@@ -330,13 +386,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   id="start_time"
                   type="time"
                   value={formData.start_time || '12:00'}
-                  onChange={(e) => {
-                    const newStart = e.target.value;
-                    const startMs = new Date(`1970-01-01T${newStart}:00`).getTime();
-                    const endMs = startMs + formData.duration_hours * 60 * 60 * 1000;
-                    const newEndTime = new Date(endMs).toISOString().substring(11, 16);
-                    setFormData((prev: any) => ({ ...prev, start_time: newStart, end_time: newEndTime }));
-                  }}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   className="w-full bg-white border border-zinc-200 text-zinc-900 text-lg font-bold px-3 py-2 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none h-12"
                 />
               </div>
@@ -348,19 +398,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   id="end_time"
                   type="time"
                   value={formData.end_time || ""}
-                  onChange={(e) => {
-                    const newEnd = e.target.value;
-                    const startMs = new Date(`1970-01-01T${formData.start_time}:00`).getTime();
-                    const endMs = new Date(`1970-01-01T${newEnd}:00`).getTime();
-                    const diffHrs = (endMs - startMs) / (1000 * 60 * 60);
-                    const validHrs = diffHrs > 0 ? diffHrs : 0.5;
-                    setFormData((prev: any) => ({
-                      ...prev,
-                      end_time: newEnd,
-                      duration_hours: Number(validHrs.toFixed(2)),
-                      payment_status: "pending"
-                    }));
-                  }}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
                   className="w-full bg-white border border-zinc-200 text-zinc-900 text-lg font-bold px-3 py-2 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none h-12"
                 />
               </div>
@@ -447,13 +485,13 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="payment_type" className="text-[10px] font-bold opacity-70">PAYMENT METHOD</Label>
+                <Label htmlFor="payment_type" className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Payment Method</Label>
                 <Select name="payment_type" value={formData.payment_type} onValueChange={(v) => {
                   update("payment_type", v);
                   if (v === 'cash' || v === 'card' || v === 'eft') update("payment_status", "paid_instore");
                   if (v === 'pending') update("payment_status", "pending");
                 }}>
-                  <SelectTrigger id="payment_type" className="bg-background border-2 h-12"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                  <SelectTrigger id="payment_type" className="bg-background border-2 h-12 rounded-xl text-sm font-bold"><SelectValue placeholder="Select Method" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="cash">Physical Cash</SelectItem>
@@ -464,71 +502,45 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 </Select>
               </div>
 
-              <div className="bg-[#143b29] text-white p-6 rounded-2xl shadow-xl space-y-4 relative overflow-hidden">
-                <div className="absolute top-[-20px] right-[-20px] opacity-10 pointer-events-none">
-                  <CreditCard size={140} />
+              {isManualPrice && (
+                <div className="flex flex-col space-y-1.5 bg-background p-4 rounded-xl border-2 border-primary/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Manual Price Override</Label>
+                    <Switch checked={isManualPrice} onCheckedChange={(v) => !v ? handleResetPrice() : setIsManualPrice(true)} />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold opacity-40">R</span>
+                    <input 
+                      type="number" 
+                      value={formData.amount_due} 
+                      onChange={(e) => update("amount_due", Number(e.target.value))}
+                      className="bg-transparent border-b-2 border-primary/30 p-1 w-full focus:ring-0 text-xl font-black outline-none"
+                    />
+                  </div>
                 </div>
+              )}
 
-                {outstandingBalance > 0 ? (
-                  <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex justify-between items-center bg-black/20 p-4 rounded-xl border border-white/10">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Balance Due</span>
-                        <div className="flex flex-col text-[10px] font-bold opacity-40 mt-1">
-                          <span>Paid: R{amountAlreadyPaid}</span>
-                          <span>Total: R{totals.total}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xl font-bold opacity-60">R</span>
-                        <span className="text-4xl font-black tabular-nums tracking-tighter">
-                          {isManualPrice ? (
-                            <input 
-                              type="number" 
-                              value={formData.amount_due} 
-                              onChange={(e) => update("amount_due", Number(e.target.value))}
-                              className="bg-transparent border-none p-0 w-[100px] focus:ring-0 text-white"
-                            />
-                          ) : outstandingBalance}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button 
-                      onClick={handleFinalSave} 
-                      className="w-full bg-[#b88642] hover:bg-[#a07436] text-white font-black h-16 text-sm uppercase shadow-xl transition-all"
-                    >
-                      CHARGE R{formData.amount_due ?? outstandingBalance}
-                    </Button>
-
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[9px] font-bold opacity-60 flex items-center gap-1.5 uppercase hover:text-white cursor-help">
-                        <RotateCcw size={10} /> POS OVERRIDE
-                      </span>
-                      <Switch checked={isManualPrice} onCheckedChange={(v) => !v ? handleResetPrice() : setIsManualPrice(true)} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3 justify-center py-6 text-emerald-400 animate-in zoom-in-95">
-                    <div className="p-4 bg-emerald-500/20 rounded-full border border-emerald-500/30">
-                      <CheckCircle className="w-10 h-10" />
-                    </div>
-                    <span className="font-black text-xl uppercase tracking-[0.2em]">Settled</span>
-                    <span className="text-[10px] opacity-60 font-bold uppercase tracking-tight italic">Balance cleared</span>
-                  </div>
-                )}
-              </div>
+              {!isManualPrice && outstandingBalance > 0 && (
+                <div className="flex items-center justify-between px-2">
+                   <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Financial Override</span>
+                    <span className="text-[8px] text-zinc-400">Enable manual price adjustments</span>
+                   </div>
+                   <Switch checked={isManualPrice} onCheckedChange={(v) => !v ? handleResetPrice() : setIsManualPrice(true)} />
+                </div>
+              )}
             </div>
           </section>
         </div>
 
-        {/* ━━ STICKY FOOTER ━━ */}
-        <div className="bg-background/95 backdrop-blur-md border-t p-4 sm:p-6 flex items-center justify-between z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+        {/* ━━ UNIFIED CHECKOUT STICKY FOOTER ━━ */}
+        <div className="bg-background/95 backdrop-blur-md border-t p-4 sm:p-6 flex items-center justify-between z-10 shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
+          {/* Destructive Action (Distant Left) */}
           {formData.id ? (
             <Button 
               variant="ghost" 
               onClick={() => setIsDeleting(!isDeleting)}
-              className={`${isDeleting ? 'bg-destructive text-destructive-foreground' : 'text-zinc-500 hover:text-destructive'} text-[10px] font-black uppercase h-12 px-4 transition-all duration-300`}
+              className={`${isDeleting ? 'bg-destructive text-destructive-foreground' : 'text-zinc-500 hover:text-destructive'} text-[10px] font-black uppercase h-12 px-4 rounded-xl transition-all duration-300`}
             >
               <Trash2 className="w-4 h-4 mr-2" /> 
               {isDeleting ? 'Confirm?' : 'Delete'}
@@ -536,16 +548,27 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
           ) : <div />}
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={onClose} className="text-zinc-500 border-zinc-800 hover:bg-zinc-900 uppercase text-[10px] font-black h-12 px-6">
+            <Button variant="outline" onClick={onClose} className="text-zinc-500 border-zinc-200 hover:bg-zinc-50 uppercase text-[10px] font-black h-12 px-6 rounded-xl">
               Discard
             </Button>
+            
             {isDeleting ? (
-              <Button variant="destructive" onClick={() => onDelete(formData.id)} className="uppercase text-[10px] font-black h-12 px-8 animate-in slide-in-from-right-2">
-                DESTROY
+              <Button variant="destructive" onClick={() => onDelete(formData.id)} className="uppercase text-[10px] font-black h-14 px-10 rounded-xl animate-in slide-in-from-right-2">
+                DESTROY RECORD
+              </Button>
+            ) : outstandingBalance > 0 ? (
+              <Button 
+                onClick={handleFinalSave} 
+                className="bg-[#b88642] hover:bg-[#a07436] text-white uppercase text-sm font-black h-14 px-10 rounded-xl shadow-[0_10px_20px_rgba(184,134,66,0.3)] animate-pulse hover:animate-none transition-all"
+              >
+                CHARGE R{formData.amount_due ?? outstandingBalance}
               </Button>
             ) : (
-              <Button onClick={handleFinalSave} className="bg-primary hover:bg-primary/90 text-white uppercase text-[10px] font-black h-12 px-8 shadow-lg shadow-primary/20">
-                Apply Changes
+              <Button 
+                onClick={handleFinalSave} 
+                className="bg-emerald-600 hover:bg-emerald-500 text-white uppercase text-sm font-black h-14 px-10 rounded-xl shadow-[0_10px_20px_rgba(16,185,129,0.3)] transition-all"
+              >
+                SAVE CHANGES
               </Button>
             )}
           </div>

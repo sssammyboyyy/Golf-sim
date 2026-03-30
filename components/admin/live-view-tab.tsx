@@ -421,11 +421,15 @@ export function LiveViewTab() {
                 onClick={() => { setSelectedBooking(booking); setIsModalOpen(true); }}
                 className={`group relative flex flex-col md:flex-row items-stretch md:items-center justify-between p-4 md:p-6 bg-[#0a0a0a] ${bay.border} border border-zinc-800/80 rounded-2xl hover:bg-zinc-800/40 hover:border-primary/50 transition-all cursor-pointer overflow-hidden shadow-lg`}
               >
-                {/* Bay Glow Stripe */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1.5 md:w-2 ${bay.glow} ${!paid ? 'animate-pulse' : ''} shadow-[0_0_15px_currentColor]`} />
+                {/* Bay Glow Stripe + Traffic Light Status */}
+                <div className={`absolute left-0 top-0 bottom-0 w-2 ${
+                  booking.amount_due > 0 && Number(booking.amount_paid) > 0 ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' :
+                  booking.amount_due > 0 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' :
+                  'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                } ${booking.amount_due > 0 && !paid ? 'animate-pulse' : ''}`} />
 
                 {/* Time + Bay Info */}
-                <div className="flex flex-row items-center gap-4 md:gap-8 w-full md:w-auto pl-2 mb-4 md:mb-0">
+                <div className="flex flex-row items-center gap-4 md:gap-8 w-full md:w-auto pl-4 mb-4 md:mb-0">
                   <div className="flex flex-col items-center justify-center min-w-[70px] md:min-w-[90px] border-r border-zinc-800/50 pr-4 md:pr-8">
                     <span className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter leading-none">{booking.start_time}</span>
                     <span className="text-[8px] md:text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-1 md:mt-2">Start</span>
@@ -484,63 +488,63 @@ export function LiveViewTab() {
                     <div className="flex items-center gap-1 mt-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 0.5); }}
-                        className="bg-primary text-white font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                        className="bg-primary/20 text-primary hover:bg-primary hover:text-white font-black uppercase text-[8px] px-2 py-1.5 rounded transition-all min-h-[28px] border border-primary/30"
                       >
                         +30M
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleQuickExtend(booking, 1); }}
-                        className="bg-primary text-white font-black uppercase text-[10px] px-3 py-2 rounded shadow-lg hover:scale-105 active:scale-95 transition-all min-h-[32px]"
+                        className="bg-primary/20 text-primary hover:bg-primary hover:text-white font-black uppercase text-[8px] px-2 py-1.5 rounded transition-all min-h-[28px] border border-primary/30"
                       >
                         +1H
                       </button>
                     </div>
-                    <div className="flex items-center gap-1.5 opacity-60 mt-1">
-                      <CreditCard size={10} />
-                      <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">{booking.payment_type || 'PENDING'}</span>
-                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 md:gap-3">
-
+                    {/* Primary Settlement Button */}
                     {paid ? (
                       <Button
                         size="sm"
-                        className="bg-emerald-500 hover:bg-emerald-400 text-white border border-emerald-400 font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
+                        className="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 font-black text-[9px] uppercase h-12 px-5 transition-all min-w-[80px] rounded-xl"
                         onClick={(e) => { e.stopPropagation(); handleQuickSettle(booking, 'unsettle'); }}
                       >
-                        <CheckCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Paid</span>
+                        <CheckCircle className="w-3 h-3 mr-1.5" /> <span className="hidden md:inline">Paid</span>
                       </Button>
                     ) : (
                       <Button
                         size="sm"
-                        className="bg-red-600 hover:bg-red-500 text-white font-black text-[9px] uppercase h-12 min-h-[44px] px-3 md:px-5 shadow-lg group-hover:scale-105 transition-transform min-w-[44px]"
+                        className="bg-red-600 hover:bg-red-500 text-white font-black text-[9px] uppercase h-12 px-5 shadow-xl hover:scale-105 transition-all min-w-[80px] rounded-xl animate-pulse"
                         onClick={(e) => { e.stopPropagation(); handleQuickSettle(booking, 'settle'); }}
                       >
-                        <XCircle className="w-3 h-3 md:mr-1.5" /> <span className="hidden md:inline">Settle</span>
+                        <Plus className="w-3 h-3 mr-1.5" /> <span className="hidden md:inline">Settle</span>
                       </Button>
                     )}
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm('Delete this record?')) handleDelete(booking.id);
-                      }}
-                      className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 transition-all active:scale-95 flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {/* Secondary Actions — grouped away to prevent misclicks */}
+                    <div className="flex items-center gap-1.5 bg-zinc-900/50 p-1 rounded-2xl border border-zinc-800">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleForceRecalculate(booking.id); }}
+                        className="p-2.5 rounded-xl hover:bg-zinc-800 text-zinc-500 hover:text-amber-500 transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
+                        title="Fix Financials"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
 
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleForceRecalculate(booking.id); }}
-                      className="p-2.5 md:p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-amber-500/50 text-zinc-500 hover:text-amber-500 transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
-                      title="Force Recalculate Financials"
-                    >
-                      <RotateCcw size={14} />
-                    </button>
+                      <div className="p-2.5 rounded-xl hover:bg-primary/10 text-zinc-500 hover:text-primary transition-all flex items-center justify-center min-w-[44px] min-h-[44px]">
+                        <Edit2 size={14} />
+                      </div>
 
-                    <div className="p-2.5 md:p-3 rounded-xl bg-zinc-900 border border-zinc-800 group-hover:bg-primary/10 group-hover:border-primary/40 transition-all flex items-center justify-center min-w-[44px] min-h-[44px]">
-                      <Edit2 size={14} className="text-zinc-500 group-hover:text-primary transition-colors" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('🚨 DELETE BOOKING?\nThis cannot be undone.')) handleDelete(booking.id);
+                        }}
+                        className="p-2.5 rounded-xl hover:bg-red-500/20 text-zinc-600 hover:text-red-500 transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
