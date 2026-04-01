@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic"
 
 import { createClient } from "@supabase/supabase-js"
-import { getCorrelationId, logEvent, validateEnvVars } from "@/lib/logger"
+import { getCorrelationId, logEvent } from "@/lib/logger"
 import { getSupabaseAdmin } from "@/lib/supabase/client"
 import { getOperatingHours } from "@/lib/schedule-config"
 import { sendStoreReceiptEmail, sendGuestConfirmationEmail } from "@/lib/mail"
@@ -32,20 +32,6 @@ export async function POST(request: Request) {
   logEvent("booking_initialize_start", { correlationId, idempotencyKey })
 
   try {
-    const envCheck = validateEnvVars([
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      "SUPABASE_SERVICE_ROLE_KEY"
-    ]);
-
-    if (envCheck) {
-      logEvent("env_validation_failed", { correlationId, missing: envCheck.missing }, "error")
-      return NextResponse.json(
-        { error: "Server configuration error", error_code: "MISSING_ENV", correlation_id: correlationId },
-        { status: 500 }
-      );
-    }
-
     const body = await request.json()
     
     // ELEVATED PRIVILEGES: Explicitly use Service Role Key for RLS Bypass
