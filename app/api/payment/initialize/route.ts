@@ -231,23 +231,9 @@ export async function POST(request: Request) {
 
     // --- BYPASS EMAIL DISPATCH (100% Coupon) ---
     if (skipYoco) {
-      const emailProps = {
-        guest_email,
-        guest_name: guest_name || "Golfer",
-        booking_date,
-        start_time,
-        duration_hours: durationNum,
-        player_count,
-        simulator_id: assignedSimulatorId,
-        total_price: dbTotalPrice,
-        amount_paid: dbTotalPrice,
-        addon_club_rental,
-        addon_coaching
-      };
-
-      await Promise.allSettled([
-        sendStoreReceiptEmail(emailProps),
-        sendGuestConfirmationEmail(emailProps)
+      Promise.allSettled([
+        sendStoreReceiptEmail(booking),
+        sendGuestConfirmationEmail(booking)
       ]);
 
       return Response.json({ free_booking: true, booking_id: booking.id, assigned_bay: assignedSimulatorId })
@@ -269,25 +255,10 @@ export async function POST(request: Request) {
     if (guest_email) paymentUrl.searchParams.append('email', guest_email);
     paymentUrl.searchParams.append('description', `Booking: ${session_type}`);
 
-    // Fire confirmation emails ONLY if price is 0 (handled by if(dbTotalPrice === 0) later)
-    const emailProps = {
-      guest_email,
-      guest_name: guest_name || "Golfer",
-      booking_date,
-      start_time,
-      duration_hours: durationNum,
-      player_count,
-      simulator_id: assignedSimulatorId,
-      total_price: dbTotalPrice,
-      amount_paid: 0,
-      addon_club_rental,
-      addon_coaching
-    };
-
     if (dbTotalPrice === 0) {
-      await Promise.allSettled([
-        sendStoreReceiptEmail(emailProps),
-        sendGuestConfirmationEmail(emailProps)
+      Promise.allSettled([
+        sendStoreReceiptEmail(booking),
+        sendGuestConfirmationEmail(booking)
       ]);
     }
 

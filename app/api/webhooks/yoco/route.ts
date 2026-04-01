@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendGuestConfirmationEmail, sendStoreReceiptEmail } from '@/lib/mail';
 
 // Initialize Supabase Admin strictly outside the handler for edge caching
 const supabaseAdmin = createClient(
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Ledger Reconciliation (Bypass RLS with Admin)
-    const { error: updateError } = await supabaseAdmin
+    const { data: updatedBooking, error: updateError } = await supabaseAdmin
       .from('bookings')
       .update({ 
         payment_status: 'paid_online',
@@ -53,7 +54,9 @@ export async function POST(request: Request) {
         amount_paid: payload.amount / 100, // Yoco sends cents, ledger stores ZAR
         payment_verified_at: new Date().toISOString()
       })
-      .eq('id', bookingId);
+      .eq('id', bookingId)
+      .select()
+      .single();
 
     if (updateError) {
       console.error("[WEBHOOK_CRITICAL] Failed to update ledger:", updateError);
@@ -61,6 +64,12 @@ export async function POST(request: Request) {
     }
 
     console.log(`[WEBHOOK_SUCCESS] Booking ${bookingId} reconciled as paid_online.`);
+    
+    // 5. Dispatch Confirmation Emails (Non-blocking)
+    Promise.allSettled([
+      sendGuestConfirmationEmail(updatedBooking),
+      sendStoreReceiptEmail(updatedBooking)
+    ]);
     
     // 4. The Mandatory 200 OK (Stops Yoco from retrying)
     return NextResponse.json({ received: true, success: true });
