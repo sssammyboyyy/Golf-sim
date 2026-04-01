@@ -136,7 +136,9 @@ export async function POST(request: Request) {
       addon_club_rental
     } = body
 
-    let dbTotalPrice = Number(total_price)
+    let dbTotalPrice = Number(total_price || base_price || 0)
+    let dbAmountDue = dbTotalPrice
+    let dbAmountPaid = 0
     let dbPaymentStatus = "pending"
     let dbStatus = "pending"
     let skipYoco = false
@@ -155,13 +157,15 @@ export async function POST(request: Request) {
       if (couponData) {
         couponApplied = cleanCouponCode
         if (couponData.discount_percent === 100) {
-          dbTotalPrice = 0
+          // 100% Discount: Due becomes 0. Treat it as fully "paid" via coupon to balance the ledger.
+          dbAmountDue = 0
+          dbAmountPaid = dbTotalPrice 
           dbPaymentStatus = "completed"
           dbStatus = "confirmed"
           skipYoco = true
         } else if (couponData.discount_percent > 0) {
-          const discountAmount = (Number(base_price) * (couponData.discount_percent / 100));
-          dbTotalPrice = Math.max(0, Number(base_price) - discountAmount);
+          const discountAmount = (Number(base_price || dbTotalPrice) * (couponData.discount_percent / 100))
+          dbAmountDue = Math.max(0, dbTotalPrice - discountAmount)
         }
       }
     }
@@ -200,8 +204,8 @@ export async function POST(request: Request) {
         famous_course_option,
         base_price,
         total_price: dbTotalPrice,
-        amount_paid: skipYoco ? dbTotalPrice : 0, // STRICT: Zero-Trust
-        amount_due: dbTotalPrice, // Full price is due until paid
+        amount_paid: dbAmountPaid,
+        amount_due: dbAmountDue,
         payment_type: skipYoco ? 'bypass' : (dbTotalPrice - amountToCharge > 0 ? 'deposit' : 'full'),
         status: dbStatus,
         payment_status: dbPaymentStatus,
