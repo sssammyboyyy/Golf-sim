@@ -8,6 +8,17 @@ export async function POST(request: NextRequest) {
   try {
     const { players, duration, sessionType } = await request.json();
     
+    // 1. Strict Type Coercion (Prevent RPC signature mismatches)
+    const safePlayers = Number(players);
+    const safeDuration = Number(duration);
+    const safeSessionType = String(sessionType).trim();
+
+    console.log(`[Pricing Telemetry] Executing get_price RPC:`, { 
+      players: safePlayers, 
+      duration: safeDuration, 
+      type: safeSessionType 
+    });
+
     // ELEVATED PRIVILEGES: Explicitly use Service Role Key for RLS Bypass
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,10 +27,12 @@ export async function POST(request: NextRequest) {
 
     const { data: price, error } = await supabaseAdmin
       .rpc('get_price', {
-        p_players: players,
-        p_duration: duration,
-        p_session_type: sessionType
+        p_players: safePlayers,
+        p_duration: safeDuration,
+        p_session_type: safeSessionType
       });
+
+    console.log(`[Pricing Telemetry] RPC Response:`, { data: price, error });
 
     if (error) throw error;
 
