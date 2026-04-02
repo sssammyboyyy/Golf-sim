@@ -246,10 +246,19 @@ export async function POST(request: Request) {
 
       // 2. Fire confirmation emails (Non-blocking)
       if (bypassBooking) {
-        await Promise.allSettled([
+        const emailResults = await Promise.allSettled([
           sendGuestConfirmationEmail(bypassBooking),
           sendStoreReceiptEmail(bypassBooking)
         ]);
+
+        // Log exactly why emails might be failing in Edge runtime
+        emailResults.forEach((res, idx) => {
+          if (res.status === "rejected") {
+            console.error(`[Email Telemetry] Dispatch ${idx === 0 ? 'Guest' : 'Store'} Failed:`, res.reason);
+          } else {
+            console.log(`[Email Telemetry] Dispatch ${idx === 0 ? 'Guest' : 'Store'} Success.`);
+          }
+        });
       }
 
       // 3. Early return to prevent Yoco API URL generation
