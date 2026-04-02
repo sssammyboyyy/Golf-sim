@@ -246,7 +246,7 @@ export async function POST(request: Request) {
 
       // 2. Fire confirmation emails (Non-blocking)
       if (bypassBooking) {
-        Promise.allSettled([
+        await Promise.allSettled([
           sendGuestConfirmationEmail(bypassBooking),
           sendStoreReceiptEmail(bypassBooking)
         ]);
