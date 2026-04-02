@@ -6,6 +6,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { LiveViewTab } from '@/components/admin/live-view-tab';
 import { HealthTab } from '@/components/admin/health-tab';
 import { WeeklyScheduleTab } from '@/components/admin/weekly-schedule-tab';
+import { ChantelBirthdayBanner } from '@/components/chantel-birthday-banner';
 
 // --- HELPERS ---
 const calculateTotal = (players: number, duration: number) => {
@@ -49,6 +50,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-emerald-500/30">
+      <ChantelBirthdayBanner />
       {/* Top Header */}
       <header className="border-b border-zinc-900 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-8 h-20 flex justify-between items-center">
