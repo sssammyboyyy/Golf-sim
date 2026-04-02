@@ -65,7 +65,7 @@ export async function sendGuestConfirmationEmail(booking: any) {
     `;
 
     await resend.emails.send({
-      from: 'The Mulligan <bookings@venue-os.com>',
+      from: 'The Mulligan <bookings@themulligan.org>',
       to: booking.guest_email,
       subject: `Confirmed: Your Tee Time at The Mulligan ⛳`,
       html: html,
@@ -124,7 +124,7 @@ export async function sendStoreReceiptEmail(booking: any) {
     `;
 
     await resend.emails.send({
-      from: 'The Mulligan Admin <admin@venue-os.com>',
+      from: 'The Mulligan <alerts@themulligan.org>',
       to: 'themulligan.store@gmail.com',
       subject: `🚨 New Booking: ${bayName} @ ${booking.start_time}`,
       html: html,
