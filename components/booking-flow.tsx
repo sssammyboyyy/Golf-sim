@@ -228,7 +228,7 @@ export default function BookingFlow() {
   const canProceed = () => {
     switch (step) {
       case 1: return sessionType !== ""
-      case 2: return date !== undefined && timeSlot !== ""
+      case 2: return date !== undefined && timeSlot !== "" && !isCalculatingPrice && finalPrice > 0
       default: return false
     }
   }
@@ -584,8 +584,12 @@ export default function BookingFlow() {
               disabled={!canProceed() || isCalculatingPrice}
               className="px-4 sm:px-10 rounded-xl font-black text-base md:text-lg bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 w-full sm:w-auto h-14"
             >
-              <span className="hidden sm:inline">{step === 2 ? "SECURE CHECKOUT" : "NEXT"}</span>
-              <span className="sm:hidden">{step === 2 ? "PAY NOW" : "NEXT"}</span> 
+              <span className="hidden sm:inline">
+                {isCalculatingPrice ? "CALCULATING PRICE..." : (step === 2 ? "SECURE CHECKOUT" : "NEXT")}
+              </span>
+              <span className="sm:hidden">
+                {isCalculatingPrice ? "CALCULATING..." : (step === 2 ? "PAY NOW" : "NEXT")}
+              </span> 
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
