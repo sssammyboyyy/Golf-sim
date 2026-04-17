@@ -130,11 +130,19 @@ export function LiveViewTab() {
 
   const handleSave = async (formData: any) => {
     const isEdit = !!formData.id;
-    const endpoint = isEdit ? '/api/bookings/update' : '/api/bookings/admin-create';
+    let endpoint = isEdit ? '/api/bookings/update' : '/api/bookings/admin-create';
+    let method = 'POST';
+
+    // ━━ FINANCIAL OVERRIDE ROUTING ━━
+    if (isEdit && formData.isManualOverride) {
+      endpoint = '/api/bookings/admin-update';
+      method = 'PATCH';
+    }
+
     try {
       const pin = sessionStorage.getItem('admin-pin');
       const payload = { ...formData, pin };
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) throw new Error("Save failed.");
       setIsModalOpen(false);
       toast.success(isEdit ? 'Booking updated.' : 'Walk-in created.');

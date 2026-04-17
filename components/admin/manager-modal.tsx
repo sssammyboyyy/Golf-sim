@@ -82,13 +82,17 @@ function CompactQuantityStepper({ value, onChange, label, unitPrice }: any) {
 export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any) {
   const [formData, setFormData] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isManualPrice, setIsManualPrice] = useState(true);
+  const [isManualPrice, setIsManualPrice] = useState(false);
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
+  const [manualTotal, setManualTotal] = useState(0);
 
   useEffect(() => {
     if (booking) {
       setFormData({ ...booking, amount_paid: booking.amount_paid || 0 });
       setIsDeleting(false);
-      setIsManualPrice(true);
+      setIsManualPrice(false);
+      setIsEditingTotal(false);
+      setManualTotal(Number(booking.total_price || 0));
 
       if (!booking.id && (!booking.start_time || booking.start_time === '12:00')) {
         const now = new Date();
@@ -140,6 +144,12 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
 
   const handleFinalSave = () => {
     const submitData = { ...formData };
+    
+    if (isEditingTotal) {
+      submitData.total_price = manualTotal;
+      submitData.isManualOverride = true; // Flag for Tab to hit admin-update
+    }
+
     submitData.amount_due = Math.max(0, Number(submitData.total_price || 0) - Number(submitData.amount_paid || 0));
     
     if (submitData.payment_type === 'cash' || submitData.payment_type === 'card') {
@@ -234,17 +244,41 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             {isManualPrice && (
               <div className="flex gap-3 animate-in fade-in slide-in-from-top-2">
                 <div className="flex-1">
-                  <Label className="text-[9px] font-bold text-zinc-500 uppercase">Total</Label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-black">R</span>
-                    <input type="number" value={formData.total_price || 0} onChange={(e) => update("total_price", Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-6 pr-2 py-2 text-sm font-black text-white outline-none focus:border-primary transition-all" />
+                  <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-lg h-10 px-3 overflow-hidden">
+                    <Label className="text-[10px] font-bold text-zinc-400">TOTAL</Label>
+                    {!isEditingTotal ? (
+                      <span 
+                        onClick={() => setIsEditingTotal(true)}
+                        className="text-sm font-black text-white hover:text-primary cursor-pointer transition-colors"
+                      >
+                        R{manualTotal}
+                      </span>
+                    ) : (
+                      <input 
+                        type="number" 
+                        autoFocus
+                        value={manualTotal} 
+                        onBlur={() => setIsEditingTotal(false)}
+                        onChange={(e) => setManualTotal(Number(e.target.value))} 
+                        className="w-20 bg-transparent border-none text-right text-sm font-black text-primary outline-none" 
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-[9px] font-bold text-emerald-500/80 uppercase">Paid</Label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50 font-black">R</span>
-                    <input type="number" value={formData.amount_paid || 0} onChange={(e) => update("amount_paid", Number(e.target.value))} className="w-full bg-zinc-950 border border-emerald-500/40 rounded-lg pl-6 pr-2 py-2 text-sm font-black text-emerald-400 outline-none focus:border-emerald-500 transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]" />
+                  <div className="relative">
+                    <div className="flex justify-between items-center bg-zinc-900 border border-emerald-500/20 rounded-lg h-10 px-3">
+                      <Label className="text-[10px] font-bold text-emerald-500/60 uppercase">Paid</Label>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-black text-emerald-500/40">R</span>
+                        <input 
+                          type="number" 
+                          value={formData.amount_paid || 0} 
+                          onChange={(e) => update("amount_paid", Number(e.target.value))} 
+                          className="w-16 bg-transparent border-none text-right text-sm font-black text-emerald-400 outline-none" 
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
