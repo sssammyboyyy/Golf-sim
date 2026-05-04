@@ -1,81 +1,120 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { sendGuestConfirmationEmail, sendStoreReceiptEmail } from '@/lib/mail';
+import { dispatchBookingConfirmations } from '@/lib/email/dispatcher';
 
-export async function POST(request: Request) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    // Extract the raw body for signature verification
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get('Webhook-Signature');
+    const webhookSecret = process.env.YOCO_WEBHOOK_SECRET;
 
-    // 1. Event Type Guard
-    if (body.type !== 'payment.succeeded') {
-      // Return 200 to acknowledge receipt of events we don't care about
-      return NextResponse.json({ received: true, ignored: true });
+    if (!signatureHeader) {
+      return NextResponse.json({ error: 'Missing Webhook-Signature header' }, { status: 401 });
     }
 
-    const payload = body.payload;
-    const bookingId = payload?.metadata?.booking_id;
-    const yocoId = payload?.id;
+    if (!webhookSecret) {
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
+
+    // Verify the HMAC-SHA256 signature
+    // Note: Adjust the digest format ('base64' or 'hex') if Yoco specifies differently in their documentation.
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('base64'); 
+
+    if (crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expectedSignature)) === false) {
+       // Optional fallback to check hex if base64 isn't what they send
+       const expectedSignatureHex = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+       if (signatureHeader !== expectedSignatureHex) {
+           return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+       }
+    }
+
+    // Parse the known safe JSON payload
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    // Ensure this is the correct event type
+    if (payload.type !== 'payment.succeeded') {
+      // Yoco sends other events, we can just ignore them and return 200 to acknowledge receipt
+      return NextResponse.json({ message: 'Event ignored' }, { status: 200 });
+    }
+
+    const bookingId = payload.payload?.metadata?.booking_id || payload.metadata?.booking_id;
+    const amountPaid = payload.payload?.amount || payload.amount || 0;
 
     if (!bookingId) {
-      console.error("[WEBHOOK_ERROR] Missing booking_id in metadata");
-      return NextResponse.json({ error: 'Missing reference' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing metadata.booking_id in payload' }, { status: 400 });
     }
 
-    // 2. Idempotency Guard (Double-Tap Protection)
-    const { data: existingBooking, error: fetchError } = await supabaseAdmin
+    // Initialize Supabase admin client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: 'Supabase credentials not configured' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Perform an idempotent update
+    const { data, error } = await supabase
       .from('bookings')
-      .select('payment_status')
-      .eq('id', bookingId)
-      .single();
-
-    if (fetchError || !existingBooking) {
-      console.error("[WEBHOOK_ERROR] Booking not found:", fetchError);
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
-    }
-
-    if (existingBooking.payment_status === 'paid_online' || existingBooking.payment_status === 'completed') {
-      console.log(`[WEBHOOK_IDEMPOTENCY] Booking ${bookingId} already paid. Skipping.`);
-      return NextResponse.json({ received: true, message: 'Already processed' }, { status: 200 });
-    }
-
-    // 3. Ledger Reconciliation (Bypass RLS with Admin)
-    const { data: updatedBooking, error: updateError } = await supabaseAdmin
-      .from('bookings')
-      .update({ 
-        payment_status: 'paid_online',
+      .update({
         status: 'confirmed',
-        yoco_payment_id: yocoId, // Ensure the live ID is locked in
-        amount_paid: payload.amount / 100, // Yoco sends cents, ledger stores ZAR
-        payment_verified_at: new Date().toISOString()
+        payment_status: 'completed',
+        amount_paid: amountPaid,
       })
       .eq('id', bookingId)
-      .select()
-      .single();
+      .eq('payment_status', 'pending')
+      .select();
 
-    if (updateError) {
-      console.error("[WEBHOOK_CRITICAL] Failed to update ledger:", updateError);
-      throw new Error("Database update failed");
+    if (error) {
+      // 23P01 is the PostgreSQL exclusion constraint (EXCLUDE USING gist) violation code
+      if (error.code === '23P01' || error.message.includes('overlapping') || error.message.includes('conflicting key value')) {
+        console.error(`CRITICAL [23P01]: Payment collected for ${bookingId} but slot constraint failed. Marking as requires_refund.`);
+        
+        // Failover: Save the transaction asynchronously so it does not ghost
+        await supabase
+          .from('bookings')
+          .update({
+            status: 'requires_refund',
+            payment_status: 'completed',
+            amount_paid: amountPaid
+          })
+          .eq('id', bookingId);
+          
+        // NOTE: Optional admin alert hook could be triggered here via after()
+        // Webhook shouldn't fail for Yoco to keep retrying if we correctly logged it.
+        return NextResponse.json({ message: 'Payment successful but slot was taken. Marked for refund.', booking_id: bookingId }, { status: 200 });
+      }
+
+      console.error('Supabase update error:', error);
+      return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
     }
 
-    console.log(`[WEBHOOK_SUCCESS] Booking ${bookingId} reconciled as paid_online.`);
-    
-    // 5. Dispatch Confirmation Emails (Non-blocking)
-    Promise.allSettled([
-      sendGuestConfirmationEmail(updatedBooking),
-      sendStoreReceiptEmail(updatedBooking)
-    ]);
-    
-    // 4. The Mandatory 200 OK (Stops Yoco from retrying)
-    return NextResponse.json({ received: true, success: true });
+    if (data && data.length === 0) {
+      // It's possible the booking was already completed or genuinely deleted
+      return NextResponse.json({ message: 'Booking not found or not in pending payment state' }, { status: 200 });
+    }
+
+    // Unleash the state-aware background dispatcher
+    after(() => dispatchBookingConfirmations(bookingId));
+
+    return NextResponse.json({ message: 'Webhook processed successfully', booking_id: bookingId }, { status: 200 });
 
   } catch (error: any) {
-    console.error("[WEBHOOK_FATAL]", error.message);
-    // Return 500 so Yoco knows it failed and will queue a retry
-    return NextResponse.json({ error: 'Internal Webhook Error' }, { status: 500 });
+    console.error('Webhook error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
   }
 }

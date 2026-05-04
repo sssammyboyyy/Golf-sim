@@ -82,17 +82,14 @@ function CompactQuantityStepper({ value, onChange, label, unitPrice }: any) {
 export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any) {
   const [formData, setFormData] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isManualPrice, setIsManualPrice] = useState(false);
-  const [isEditingTotal, setIsEditingTotal] = useState(false);
-  const [manualTotal, setManualTotal] = useState(0);
+  const [adminPin, setAdminPin] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (booking) {
-      setFormData({ ...booking, amount_paid: booking.amount_paid || 0 });
+      setFormData({ ...booking, amount_paid: booking.amount_paid || 0, total_price: booking.total_price || 0 });
       setIsDeleting(false);
-      setIsManualPrice(false);
-      setIsEditingTotal(false);
-      setManualTotal(Number(booking.total_price || 0));
+      setIsUpdating(false);
 
       if (!booking.id && (!booking.start_time || booking.start_time === '12:00')) {
         const now = new Date();
@@ -116,10 +113,11 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   }, [formData]);
 
   useEffect(() => {
-    if (formData && !isManualPrice) {
+    if (formData && !formData.id) {
+      // Only auto-update total price for new bookings based on add-ons/duration
       setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
     }
-  }, [totals.total, isManualPrice]);
+  }, [totals.total]);
 
   if (!formData) return null;
 
@@ -142,13 +140,45 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
     update("payment_status", "pending");
   };
 
+  const handleLedgerUpdate = async () => {
+    if (!formData.id) {
+       alert("Cannot update ledger on an unsaved booking.");
+       return;
+    }
+    if (!adminPin) {
+       alert("Admin PIN is required.");
+       return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const res = await fetch("/api/bookings/admin-override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          booking_id: formData.id,
+          total_price: Number(formData.total_price),
+          amount_paid: Number(formData.amount_paid),
+          admin_pin: adminPin
+        })
+      });
+      if (res.ok) {
+        setAdminPin("");
+        setIsUpdating(false);
+        onClose(); // Parent/Realtime will refresh the UI
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to update ledger");
+        setIsUpdating(false);
+      }
+    } catch (e) {
+      alert("Error updating ledger via API");
+      setIsUpdating(false);
+    }
+  };
+
   const handleFinalSave = () => {
     const submitData = { ...formData };
-    
-    if (isEditingTotal) {
-      submitData.total_price = manualTotal;
-      submitData.isManualOverride = true; // Flag for Tab to hit admin-update
-    }
 
     submitData.amount_due = Math.max(0, Number(submitData.total_price || 0) - Number(submitData.amount_paid || 0));
     
@@ -235,34 +265,20 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
             </div>
           </div>
 
-          {/* FINANCIAL LEDGER OVERRIDE */}
+          {/* FINANCIAL LEDGER */}
           <div className="flex flex-col gap-2 bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Financial Ledger Override</Label>
-              <Switch checked={isManualPrice} onCheckedChange={(v) => setIsManualPrice(v)} />
-            </div>
-            {isManualPrice && (
-              <div className="flex gap-3 animate-in fade-in slide-in-from-top-2">
+            <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Financial Ledger</Label>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
                 <div className="flex-1">
                   <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-lg h-10 px-3 overflow-hidden">
                     <Label className="text-[10px] font-bold text-zinc-400">TOTAL</Label>
-                    {!isEditingTotal ? (
-                      <span 
-                        onClick={() => setIsEditingTotal(true)}
-                        className="text-sm font-black text-white hover:text-primary cursor-pointer transition-colors"
-                      >
-                        R{manualTotal}
-                      </span>
-                    ) : (
-                      <input 
-                        type="number" 
-                        autoFocus
-                        value={manualTotal} 
-                        onBlur={() => setIsEditingTotal(false)}
-                        onChange={(e) => setManualTotal(Number(e.target.value))} 
-                        className="w-20 bg-transparent border-none text-right text-sm font-black text-primary outline-none" 
-                      />
-                    )}
+                    <input 
+                      type="number" 
+                      value={formData.total_price || 0} 
+                      onChange={(e) => update("total_price", Number(e.target.value))} 
+                      className="w-20 bg-transparent border-none text-right text-sm font-black text-primary outline-none" 
+                    />
                   </div>
                 </div>
                 <div className="flex-1">
@@ -282,7 +298,26 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                   </div>
                 </div>
               </div>
-            )}
+
+              {formData.id && (
+                <div className="flex gap-2 items-center bg-zinc-950 p-2 rounded-lg border border-primary/30">
+                  <Input 
+                    type="password" 
+                    value={adminPin} 
+                    onChange={(e) => setAdminPin(e.target.value)} 
+                    placeholder="Admin PIN" 
+                    className="bg-zinc-900 border-zinc-800 text-white flex-1 h-8 text-xs" 
+                  />
+                  <Button 
+                    disabled={isUpdating || !adminPin} 
+                    onClick={handleLedgerUpdate} 
+                    className="bg-primary hover:bg-primary/80 text-black uppercase text-[10px] font-black h-8 px-4"
+                  >
+                    {isUpdating ? "UPDATING..." : "UPDATE LEDGER"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Payment Method */}
