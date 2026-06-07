@@ -85,39 +85,70 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
   const [adminPin, setAdminPin] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    if (booking) {
-      setFormData({ ...booking, amount_paid: booking.amount_paid || 0, total_price: booking.total_price || 0 });
-      setIsDeleting(false);
-      setIsUpdating(false);
+  const [hourlyDiscount, setHourlyDiscount] = useState(0);
 
-      if (!booking.id && (!booking.start_time || booking.start_time === '12:00')) {
-        const now = new Date();
-        const currentStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const defaultDuration = booking.duration_hours || 1;
-        const initialTotal = GET_BASE_HOURLY_RATE(1) * defaultDuration;
-        setFormData((prev: any) => ({ ...prev, start_time: currentStr, end_time: addHoursToTime(currentStr, defaultDuration), duration_hours: defaultDuration, total_price: initialTotal }));
-      }
-    }
-  }, [booking]);
-
-  const totals = useMemo(() => {
-    if (!formData) return { total: 0 };
-    const baseTotal = GET_BASE_HOURLY_RATE(formData.player_count) * formData.duration_hours;
-    const clubs = formData.addon_club_rental ? (CLUB_RENTAL_HOURLY * formData.duration_hours) : 0;
+  const flatAddonCosts = useMemo(() => {
+    if (!formData) return 0;
     const coaching = formData.addon_coaching ? COACHING_FLAT_FEE : 0;
     const water = (formData.addon_water_qty || 0) * (formData.addon_water_price ?? 20);
     const gloves = (formData.addon_gloves_qty || 0) * (formData.addon_gloves_price ?? 220);
     const balls = (formData.addon_balls_qty || 0) * (formData.addon_balls_price ?? 50);
-    return { total: baseTotal + clubs + coaching + water + gloves + balls };
-  }, [formData]);
+    return coaching + water + gloves + balls;
+  }, [
+    formData?.addon_coaching, 
+    formData?.addon_water_qty, formData?.addon_water_price, 
+    formData?.addon_gloves_qty, formData?.addon_gloves_price, 
+    formData?.addon_balls_qty, formData?.addon_balls_price
+  ]);
+
+  const genericHourlyRate = useMemo(() => {
+    if (!formData) return 0;
+    return GET_BASE_HOURLY_RATE(formData.player_count || 1) + (formData.addon_club_rental ? CLUB_RENTAL_HOURLY : 0);
+  }, [formData?.player_count, formData?.addon_club_rental]);
 
   useEffect(() => {
-    if (formData && !formData.id) {
-      // Only auto-update total price for new bookings based on add-ons/duration
-      setFormData((prev: any) => ({ ...prev, total_price: totals.total }));
+    if (booking) {
+      let initialFormData = { ...booking, amount_paid: booking.amount_paid || 0, total_price: booking.total_price || 0 };
+      setIsDeleting(false);
+      setIsUpdating(false);
+
+      let isNewBooking = false;
+      if (!booking.id && (!booking.start_time || booking.start_time === '12:00')) {
+        isNewBooking = true;
+        const now = new Date();
+        const currentStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const defaultDuration = booking.duration_hours || 1;
+        const initialTotal = GET_BASE_HOURLY_RATE(1) * defaultDuration;
+        initialFormData = { ...initialFormData, start_time: currentStr, end_time: addHoursToTime(currentStr, defaultDuration), duration_hours: defaultDuration, total_price: initialTotal };
+      }
+
+      setFormData(initialFormData);
+
+      // Calculate initial hourly discount to preserve custom pricing
+      const coaching = initialFormData.addon_coaching ? COACHING_FLAT_FEE : 0;
+      const water = (initialFormData.addon_water_qty || 0) * (initialFormData.addon_water_price ?? 20);
+      const gloves = (initialFormData.addon_gloves_qty || 0) * (initialFormData.addon_gloves_price ?? 220);
+      const balls = (initialFormData.addon_balls_qty || 0) * (initialFormData.addon_balls_price ?? 50);
+      const initialFlatAddons = coaching + water + gloves + balls;
+      
+      const initialGenericHourly = GET_BASE_HOURLY_RATE(initialFormData.player_count || 1) + (initialFormData.addon_club_rental ? CLUB_RENTAL_HOURLY : 0);
+      
+      if (isNewBooking) {
+        setHourlyDiscount(0);
+      } else {
+        const initialEffectiveHourly = (Number(initialFormData.total_price || 0) - initialFlatAddons) / (initialFormData.duration_hours || 1);
+        setHourlyDiscount(initialGenericHourly - initialEffectiveHourly);
+      }
     }
-  }, [totals.total]);
+  }, [booking]);
+
+  // Auto-calculate total price when duration, addons, or generic rate changes
+  useEffect(() => {
+    if (formData) {
+      const newTotal = ((genericHourlyRate - hourlyDiscount) * formData.duration_hours) + flatAddonCosts;
+      setFormData((prev: any) => ({ ...prev, total_price: Math.max(0, Math.round(newTotal * 100) / 100) }));
+    }
+  }, [formData?.duration_hours, genericHourlyRate, flatAddonCosts]);
 
   if (!formData) return null;
 
@@ -278,7 +309,12 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                     <input 
                       type="number" 
                       value={formData.total_price || 0} 
-                      onChange={(e) => update("total_price", Number(e.target.value))} 
+                      onChange={(e) => {
+                        const newTotal = Number(e.target.value);
+                        update("total_price", newTotal);
+                        const newEffectiveHourly = (newTotal - flatAddonCosts) / (formData.duration_hours || 1);
+                        setHourlyDiscount(genericHourlyRate - newEffectiveHourly);
+                      }} 
                       className="w-20 bg-transparent border-none text-right text-sm font-black text-primary outline-none" 
                     />
                   </div>

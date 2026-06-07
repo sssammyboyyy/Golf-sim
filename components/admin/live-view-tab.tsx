@@ -95,7 +95,17 @@ export function LiveViewTab() {
 
   const handleQuickExtend = (booking: any, hours: number) => {
     const snapshot = [...data];
-    const addedRate = GET_BASE_HOURLY_RATE(Number(booking.player_count || 1)) * hours;
+    
+    // Calculate effective hourly rate from current booking state
+    const coaching = booking.addon_coaching ? 250 : 0;
+    const water = (booking.addon_water_qty || 0) * (booking.addon_water_price ?? 20);
+    const gloves = (booking.addon_gloves_qty || 0) * (booking.addon_gloves_price ?? 220);
+    const balls = (booking.addon_balls_qty || 0) * (booking.addon_balls_price ?? 50);
+    const flatAddonCosts = coaching + water + gloves + balls;
+    
+    const effectiveHourly = (Number(booking.total_price || 0) - flatAddonCosts) / (Number(booking.duration_hours) || 1);
+    const addedRate = Math.max(0, effectiveHourly) * hours;
+    
     setData(prev => prev.map(b => {
       if (b.id !== booking.id) return b;
       return { ...b, duration_hours: Number(b.duration_hours) + hours, total_price: Number(b.total_price) + addedRate, amount_due: Number(b.amount_due || 0) + addedRate, payment_status: 'pending', payment_type: 'pending' };
