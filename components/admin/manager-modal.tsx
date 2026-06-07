@@ -63,12 +63,20 @@ function CustomSlider({ min, max, step = 1, value, onChange, label, format = Str
   );
 }
 
-function CompactQuantityStepper({ value, onChange, label, unitPrice }: any) {
+function CompactQuantityStepper({ value, onChange, label, unitPrice, onPriceChange }: any) {
   return (
     <div className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 flex-1 min-w-[120px]">
       <div className="flex flex-col">
         <span className="text-[10px] font-bold text-zinc-300">{label}</span>
-        <span className="text-[8px] text-zinc-500">R{unitPrice}</span>
+        <div className="flex items-center">
+          <span className="text-[8px] text-zinc-500">R</span>
+          <input 
+            type="number" 
+            value={unitPrice} 
+            onChange={(e) => onPriceChange && onPriceChange(Number(e.target.value))} 
+            className="w-10 bg-transparent border-none text-[8px] text-zinc-500 outline-none p-0 focus:ring-0 appearance-none" 
+          />
+        </div>
       </div>
       <div className="flex items-center gap-1.5">
         <button onClick={() => onChange(Math.max(0, value - 1))} className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center"><Minus size={12}/></button>
@@ -79,7 +87,7 @@ function CompactQuantityStepper({ value, onChange, label, unitPrice }: any) {
   )
 }
 
-export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any) {
+export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data }: any) {
   const [formData, setFormData] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [adminPin, setAdminPin] = useState("");
@@ -119,7 +127,25 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
         const currentStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         const defaultDuration = booking.duration_hours || 1;
         const initialTotal = GET_BASE_HOURLY_RATE(1) * defaultDuration;
-        initialFormData = { ...initialFormData, start_time: currentStr, end_time: addHoursToTime(currentStr, defaultDuration), duration_hours: defaultDuration, total_price: initialTotal };
+        
+        let wPrice = 20, gPrice = 220, bPrice = 50;
+        if (data && data.length > 0) {
+           const latest = data[0];
+           wPrice = latest.addon_water_price ?? 20;
+           gPrice = latest.addon_gloves_price ?? 220;
+           bPrice = latest.addon_balls_price ?? 50;
+        }
+
+        initialFormData = { 
+          ...initialFormData, 
+          start_time: currentStr, 
+          end_time: addHoursToTime(currentStr, defaultDuration), 
+          duration_hours: defaultDuration, 
+          total_price: initialTotal,
+          addon_water_price: wPrice,
+          addon_gloves_price: gPrice,
+          addon_balls_price: bPrice
+        };
       }
 
       setFormData(initialFormData);
@@ -292,9 +318,9 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete }: any
                 <span className="text-[10px] font-bold text-zinc-300 w-full">Coach</span>
                 <Switch checked={formData.addon_coaching} onCheckedChange={(v) => update("addon_coaching", v)} />
               </div>
-              <CompactQuantityStepper label="Water" value={formData.addon_water_qty || 0} onChange={(v: number) => update("addon_water_qty", v)} unitPrice={formData.addon_water_price ?? 20} />
-              <CompactQuantityStepper label="Gloves" value={formData.addon_gloves_qty || 0} onChange={(v: number) => update("addon_gloves_qty", v)} unitPrice={formData.addon_gloves_price ?? 220} />
-              <CompactQuantityStepper label="Balls" value={formData.addon_balls_qty || 0} onChange={(v: number) => update("addon_balls_qty", v)} unitPrice={formData.addon_balls_price ?? 50} />
+              <CompactQuantityStepper label="Water" value={formData.addon_water_qty || 0} onChange={(v: number) => update("addon_water_qty", v)} unitPrice={formData.addon_water_price ?? 20} onPriceChange={(v: number) => update("addon_water_price", v)} />
+              <CompactQuantityStepper label="Gloves" value={formData.addon_gloves_qty || 0} onChange={(v: number) => update("addon_gloves_qty", v)} unitPrice={formData.addon_gloves_price ?? 220} onPriceChange={(v: number) => update("addon_gloves_price", v)} />
+              <CompactQuantityStepper label="Balls" value={formData.addon_balls_qty || 0} onChange={(v: number) => update("addon_balls_qty", v)} unitPrice={formData.addon_balls_price ?? 50} onPriceChange={(v: number) => update("addon_balls_price", v)} />
             </div>
           </div>
 

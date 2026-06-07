@@ -11,7 +11,8 @@ const BOOKING_TABLE_COLUMNS = [
   'status', 'payment_status', 'payment_type', 'user_type', 
   'booking_source', 'notes', 'addon_water_qty', 'addon_gloves_qty', 
   'addon_balls_qty', 'addon_club_rental', 'addon_coaching', 
-  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id'
+  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id',
+  'addon_water_price', 'addon_gloves_price', 'addon_balls_price'
 ];
 
 /**
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Dynamic Math Engines
     // Rebuild timestamps anchored to SAST if any scheduling parameters are modified
-    if (finalUpdates.booking_date && finalUpdates.start_time && finalUpdates.duration_hours) {
+    if (updates.duration_hours !== undefined || updates.booking_date !== undefined || updates.start_time !== undefined) {
       const timestamps = calculateSASTTimestamps(
         finalUpdates.booking_date, 
         finalUpdates.start_time, 

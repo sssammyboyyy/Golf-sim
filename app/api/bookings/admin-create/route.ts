@@ -39,7 +39,8 @@ const BOOKING_TABLE_COLUMNS = [
   'status', 'payment_status', 'payment_type', 'user_type', 
   'booking_source', 'notes', 'addon_water_qty', 'addon_gloves_qty', 
   'addon_balls_qty', 'addon_club_rental', 'addon_coaching', 
-  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id'
+  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id',
+  'addon_water_price', 'addon_gloves_price', 'addon_balls_price'
 ];
 
 /**

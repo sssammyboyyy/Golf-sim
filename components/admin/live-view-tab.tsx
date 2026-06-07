@@ -268,10 +268,11 @@ export function LiveViewTab() {
                   <div className="flex flex-col items-end bg-[#131313] p-2 rounded-lg border border-zinc-800/80 min-w-[130px] shadow-inner">
                     <div className="flex justify-between items-end w-full mb-1 border-b border-white/5 pb-1">
                       <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">TOTAL</span>
-                      <span className="text-xl font-black text-white tabular-nums tracking-tighter leading-none">R{booking.total_price ?? 0}</span>
+                      <span className="text-[10px] font-black text-zinc-400 tabular-nums tracking-tighter leading-none">R{booking.total_price ?? 0}</span>
                     </div>
-                    <div className="flex justify-between w-full text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">
-                      <span>Paid:</span> <span className="text-emerald-400">R{booking.amount_paid || 0}</span>
+                    <div className="flex justify-between items-end w-full mb-0.5">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Paid:</span>
+                      <span className="text-xl font-black text-emerald-400 tabular-nums tracking-tighter leading-none">R{booking.amount_paid || 0}</span>
                     </div>
                     <div className="flex justify-between items-center w-full">
                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Due:</span>
@@ -300,7 +301,7 @@ export function LiveViewTab() {
           })
         )}
       </div>
-      <ManagerModal isOpen={isModalOpen} booking={selectedBooking} onClose={() => setIsModalOpen(false)} onSave={handleSave} onDelete={handleDelete} />
+      <ManagerModal isOpen={isModalOpen} booking={selectedBooking} onClose={() => setIsModalOpen(false)} onSave={handleSave} onDelete={handleDelete} data={data} />
     </div>
   );
 }
