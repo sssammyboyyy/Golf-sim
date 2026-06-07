@@ -20,7 +20,8 @@ const BOOKING_TABLE_COLUMNS = [
   'status', 'payment_status', 'payment_type', 'user_type', 
   'booking_source', 'notes', 'addon_water_qty', 'addon_gloves_qty', 
   'addon_balls_qty', 'addon_club_rental', 'addon_coaching', 
-  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id'
+  'n8n_status', 'slot_start', 'slot_end', 'yoco_payment_id',
+  'addon_water_price', 'addon_gloves_price', 'addon_balls_price'
 ];
 
 export async function POST(request: NextRequest) {
@@ -48,16 +49,13 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 2. Calculate additional cost using the tiered pricing matrix
-    const players = Number(player_count || 1);
     const hoursAdded = Number(duration_hours_added);
-    const additionalCost = GET_BASE_HOURLY_RATE(players) * hoursAdded;
 
     // 3. Optimistic Concurrency Control (OCC) via PostgreSQL xmin
-    // Fetch current row. We fetch ALL financial fields to preserve SSOT.
+    // Fetch current row. We fetch ALL fields to calculate effective rate.
     const { data: currentRow } = await supabaseAdmin
       .from('bookings')
-      .select('id, xmin::text, duration_hours, total_price, amount_paid, amount_due, status, payment_status')
+      .select('*, xmin::text')
       .eq('id', id)
       .single();
 
@@ -75,6 +73,16 @@ export async function POST(request: NextRequest) {
         message: "State changed by another user. Refresh and try again."
       }, { status: 409 });
     }
+
+    // 2. Calculate effective hourly rate from the database row
+    const coaching = currentRow.addon_coaching ? 250 : 0;
+    const water = (currentRow.addon_water_qty || 0) * (currentRow.addon_water_price ?? 20);
+    const gloves = (currentRow.addon_gloves_qty || 0) * (currentRow.addon_gloves_price ?? 220);
+    const balls = (currentRow.addon_balls_qty || 0) * (currentRow.addon_balls_price ?? 50);
+    const flatAddonCosts = coaching + water + gloves + balls;
+
+    const effectiveHourly = (Number(currentRow.total_price || 0) - flatAddonCosts) / (Number(currentRow.duration_hours) || 1);
+    const additionalCost = Math.max(0, effectiveHourly) * hoursAdded;
 
     const historicPaid = Number(currentRow.amount_paid || 0);
     const newDuration = Number(currentRow.duration_hours) + hoursAdded;
