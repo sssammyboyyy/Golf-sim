@@ -51,21 +51,33 @@ const GET_BASE_HOURLY_RATE = (players: number): number => {
  * Recomputes totals based on POS add-ons and ensures state persistence.
  */
 const calculateFinancials = (payload: any, existingRecord: any, updates: any) => {
-  const players = Number(payload.player_count !== undefined ? payload.player_count : existingRecord.player_count) || 1;
-  const duration = Number(payload.duration_hours !== undefined ? payload.duration_hours : existingRecord.duration_hours) || 1;
-  const baseRate = GET_BASE_HOURLY_RATE(players);
+  // 1. Calculate historical hourly discount from existing record
+  const oldPlayers = Number(existingRecord.player_count) || 1;
+  const oldDuration = Number(existingRecord.duration_hours) || 1;
+  const oldWater = (Number(existingRecord.addon_water_qty) || 0) * (Number(existingRecord.addon_water_price) || 20);
+  const oldGloves = (Number(existingRecord.addon_gloves_qty) || 0) * (Number(existingRecord.addon_gloves_price) || 220);
+  const oldBalls = (Number(existingRecord.addon_balls_qty) || 0) * (Number(existingRecord.addon_balls_price) || 50);
+  const oldCoaching = existingRecord.addon_coaching ? 250 : 0;
+  const oldFlatAddons = oldWater + oldGloves + oldBalls + oldCoaching;
   
-  const calculatedBase = baseRate * duration;
-  const water = (Number(payload.addon_water_qty) || 0) * (Number(payload.addon_water_price) || 20);
-  const gloves = (Number(payload.addon_gloves_qty) || 0) * (Number(payload.addon_gloves_price) || 220);
-  const balls = (Number(payload.addon_balls_qty) || 0) * (Number(payload.addon_balls_price) || 50);
-  const clubs = payload.addon_club_rental ? (100 * duration) : 0;
-  const coaching = payload.addon_coaching ? 250 : 0;
-  
-  const systemTotal = Math.max(0, calculatedBase + water + gloves + balls + clubs + coaching);
+  const oldEffectiveHourly = (Number(existingRecord.total_price || 0) - oldFlatAddons) / oldDuration;
+  const oldGenericHourly = GET_BASE_HOURLY_RATE(oldPlayers) + (existingRecord.addon_club_rental ? 100 : 0);
+  const hourlyDiscount = oldGenericHourly - oldEffectiveHourly;
+
+  // 2. Calculate new system total using preserved hourly discount
+  const newPlayers = Number(payload.player_count) || 1;
+  const newDuration = Number(payload.duration_hours) || 1;
+  const newWater = (Number(payload.addon_water_qty) || 0) * (Number(payload.addon_water_price) || 20);
+  const newGloves = (Number(payload.addon_gloves_qty) || 0) * (Number(payload.addon_gloves_price) || 220);
+  const newBalls = (Number(payload.addon_balls_qty) || 0) * (Number(payload.addon_balls_price) || 50);
+  const newCoaching = payload.addon_coaching ? 250 : 0;
+  const newFlatAddons = newWater + newGloves + newBalls + newCoaching;
+
+  const newGenericHourly = GET_BASE_HOURLY_RATE(newPlayers) + (payload.addon_club_rental ? 100 : 0);
+  const calculatedTotal = (newGenericHourly - hourlyDiscount) * newDuration + newFlatAddons;
 
   const isManualTotal = updates.total_price !== undefined;
-  const total_price = isManualTotal ? Math.max(0, Number(updates.total_price)) : systemTotal;
+  const total_price = isManualTotal ? Math.max(0, Number(updates.total_price)) : Math.max(0, Math.round(calculatedTotal * 100) / 100);
   
   // MANUAL POS RECONCILIATION LOGIC
   let amount_paid = Number(existingRecord.amount_paid) || 0;
