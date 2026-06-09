@@ -41,7 +41,7 @@ const calculateSASTTimestamps = (date: string, time: string, duration: number) =
  * 1p=250, 2p=360, 3p=480, 4p=600
  */
 const GET_BASE_HOURLY_RATE = (players: number): number => {
-  if (players >= 4) return 600;
+  if (players >= 4) return 600 + (players - 4) * 150;
   if (players === 3) return 480;
   if (players === 2) return 360;
   return 250;

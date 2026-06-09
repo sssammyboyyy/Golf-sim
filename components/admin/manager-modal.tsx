@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Trash2, Flag, Minus, Plus, RotateCcw, AlertTriangle } from "lucide-react"
 
 const GET_BASE_HOURLY_RATE = (players: number) => {
-  if (players >= 4) return 600;
+  if (players >= 4) return 600 + (players - 4) * 150;
   if (players === 3) return 480;
   if (players === 2) return 360;
   return 250;

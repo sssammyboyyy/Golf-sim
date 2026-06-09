@@ -9,7 +9,7 @@ import { Plus, CheckCircle, ChevronRight, Activity, Layers, Edit2, ChevronLeft, 
 import { Button } from "@/components/ui/button";
 
 const GET_BASE_HOURLY_RATE = (players: number): number => {
-  if (players >= 4) return 600;
+  if (players >= 4) return 600 + (players - 4) * 150;
   if (players === 3) return 480;
   if (players === 2) return 360;
   return 250;
