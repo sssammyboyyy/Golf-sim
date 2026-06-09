@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Trash2, Flag, Minus, Plus } from "lucide-react"
+import { Trash2, Flag, Minus, Plus, RotateCcw, AlertTriangle } from "lucide-react"
 
 const GET_BASE_HOURLY_RATE = (players: number) => {
   if (players >= 4) return 600;
@@ -93,7 +93,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
   const [adminPin, setAdminPin] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const [hourlyDiscount, setHourlyDiscount] = useState(0);
+  const [isManualOverride, setIsManualOverride] = useState(false);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
 
   const flatAddonCosts = useMemo(() => {
     if (!formData) return 0;
@@ -113,6 +114,11 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
     if (!formData) return 0;
     return GET_BASE_HOURLY_RATE(formData.player_count || 1) + (formData.addon_club_rental ? CLUB_RENTAL_HOURLY : 0);
   }, [formData?.player_count, formData?.addon_club_rental]);
+
+  const calculatedDefaultTotal = useMemo(() => {
+    if (!formData) return 0;
+    return (genericHourlyRate * (formData.duration_hours || 1)) + flatAddonCosts;
+  }, [genericHourlyRate, formData?.duration_hours, flatAddonCosts]);
 
   useEffect(() => {
     if (booking) {
@@ -158,23 +164,25 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
       const initialFlatAddons = coaching + water + gloves + balls;
       
       const initialGenericHourly = GET_BASE_HOURLY_RATE(initialFormData.player_count || 1) + (initialFormData.addon_club_rental ? CLUB_RENTAL_HOURLY : 0);
+      const expectedTotal = (initialGenericHourly * (initialFormData.duration_hours || 1)) + initialFlatAddons;
       
       if (isNewBooking) {
-        setHourlyDiscount(0);
+        setIsManualOverride(false);
+        setOverrideConfirmed(false);
       } else {
-        const initialEffectiveHourly = (Number(initialFormData.total_price || 0) - initialFlatAddons) / (initialFormData.duration_hours || 1);
-        setHourlyDiscount(initialGenericHourly - initialEffectiveHourly);
+        const isDiff = Math.abs(Number(initialFormData.total_price || 0) - expectedTotal) > 0.01;
+        setIsManualOverride(isDiff);
+        setOverrideConfirmed(isDiff); // Already confirmed since it's an existing saved booking
       }
     }
   }, [booking]);
 
   // Auto-calculate total price when duration, addons, or generic rate changes
   useEffect(() => {
-    if (formData) {
-      const newTotal = ((genericHourlyRate - hourlyDiscount) * formData.duration_hours) + flatAddonCosts;
-      setFormData((prev: any) => ({ ...prev, total_price: Math.max(0, Math.round(newTotal * 100) / 100) }));
+    if (formData && !isManualOverride) {
+      setFormData((prev: any) => ({ ...prev, total_price: Math.max(0, Math.round(calculatedDefaultTotal * 100) / 100) }));
     }
-  }, [formData?.duration_hours, genericHourlyRate, flatAddonCosts]);
+  }, [calculatedDefaultTotal, isManualOverride]);
 
   if (!formData) return null;
 
@@ -330,19 +338,34 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-lg h-10 px-3 overflow-hidden">
-                    <Label className="text-[10px] font-bold text-zinc-400">TOTAL</Label>
-                    <input 
-                      type="number" 
-                      value={formData.total_price || 0} 
-                      onChange={(e) => {
-                        const newTotal = Number(e.target.value);
-                        update("total_price", newTotal);
-                        const newEffectiveHourly = (newTotal - flatAddonCosts) / (formData.duration_hours || 1);
-                        setHourlyDiscount(genericHourlyRate - newEffectiveHourly);
-                      }} 
-                      className="w-20 bg-transparent border-none text-right text-sm font-black text-primary outline-none" 
-                    />
+                  <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-lg h-10 px-3 overflow-hidden gap-2">
+                    <Label className="text-[10px] font-bold text-zinc-400 whitespace-nowrap">TOTAL</Label>
+                    <div className="flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        value={formData.total_price || 0} 
+                        onChange={(e) => {
+                          const newTotal = Number(e.target.value);
+                          update("total_price", newTotal);
+                          setIsManualOverride(true);
+                          setOverrideConfirmed(false);
+                        }} 
+                        className={`w-20 bg-transparent border-none text-right text-sm font-black outline-none ${isManualOverride ? 'text-amber-500' : 'text-primary'}`} 
+                      />
+                      {isManualOverride && (
+                        <button
+                          title="Reset to default price"
+                          onClick={() => {
+                            setIsManualOverride(false);
+                            setOverrideConfirmed(false);
+                            update("total_price", calculatedDefaultTotal);
+                          }}
+                          className="text-zinc-500 hover:text-white transition-colors"
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex-1">
@@ -373,7 +396,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
                     className="bg-zinc-900 border-zinc-800 text-white flex-1 h-8 text-xs" 
                   />
                   <Button 
-                    disabled={isUpdating || !adminPin} 
+                    disabled={isUpdating || !adminPin || (isManualOverride && !overrideConfirmed && formData.total_price !== calculatedDefaultTotal)} 
                     onClick={handleLedgerUpdate} 
                     className="bg-primary hover:bg-primary/80 text-black uppercase text-[10px] font-black h-8 px-4"
                   >
@@ -382,6 +405,21 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
                 </div>
               )}
             </div>
+
+            {isManualOverride && !overrideConfirmed && formData.total_price !== calculatedDefaultTotal && (
+              <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-amber-500 text-xs font-bold">
+                  <AlertTriangle size={14} />
+                  <span>Are you sure you want to change this price? The default price is R{calculatedDefaultTotal}.</span>
+                </div>
+                <Button 
+                  onClick={() => setOverrideConfirmed(true)}
+                  className="bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black h-8 uppercase self-start"
+                >
+                  Confirm Override
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Payment Method */}
@@ -409,11 +447,11 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
             {isDeleting ? (
               <Button onClick={() => onDelete(formData.id)} className="bg-red-600 hover:bg-red-500 text-white uppercase text-xs font-black h-12 px-8 rounded-xl animate-in slide-in-from-right-2">CONFIRM DELETE</Button>
             ) : displayAmountDue > 0 ? (
-              <Button onClick={handleFinalSave} className="bg-amber-500 hover:bg-amber-400 text-black uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+              <Button disabled={isManualOverride && !overrideConfirmed && formData.total_price !== calculatedDefaultTotal} onClick={handleFinalSave} className="bg-amber-500 hover:bg-amber-400 text-black uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:shadow-none">
                 CHARGE R{displayAmountDue}
               </Button>
             ) : (
-              <Button onClick={handleFinalSave} className="bg-emerald-600 hover:bg-emerald-500 text-white uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              <Button disabled={isManualOverride && !overrideConfirmed && formData.total_price !== calculatedDefaultTotal} onClick={handleFinalSave} className="bg-emerald-600 hover:bg-emerald-500 text-white uppercase text-sm font-black h-12 px-8 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none">
                 SAVE CHANGES
               </Button>
             )}
