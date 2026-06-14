@@ -46,42 +46,42 @@ function CustomSlider({ min, max, step = 1, value, onChange, label, format = Str
   const steps = [];
   for (let i = min; i <= max; i += step) steps.push(i);
   return (
-    <div className="flex flex-col gap-1.5 w-full bg-zinc-900/40 p-3 rounded-xl border border-zinc-800">
-      <div className="flex justify-between items-center mb-1">
+    <div className="flex flex-col gap-1 w-full bg-zinc-900/40 p-2 rounded-xl border border-zinc-800">
+      <div className="flex justify-between items-center">
         <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</Label>
         <span className="text-sm font-black text-primary">{format(value)}</span>
       </div>
-      <div className="flex justify-between px-1 mb-1 relative">
+      <div className="flex justify-between px-1 relative">
         {steps.map(s => (
           <div key={s} onClick={() => onChange(s)} className={`cursor-pointer text-[10px] font-black transition-all hover:text-primary z-10 w-6 text-center ${value === s ? 'text-primary scale-125' : 'text-zinc-600'}`}>
             {format(s)}
           </div>
         ))}
       </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-primary h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer mt-1" />
     </div>
   );
 }
 
 function CompactQuantityStepper({ value, onChange, label, unitPrice, onPriceChange }: any) {
   return (
-    <div className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 flex-1 min-w-[120px]">
+    <div className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800 rounded-lg p-1.5 px-2 flex-1 min-w-[100px]">
       <div className="flex flex-col">
         <span className="text-[10px] font-bold text-zinc-300">{label}</span>
-        <div className="flex items-center">
+        <div className="flex items-center -mt-0.5">
           <span className="text-[8px] text-zinc-500">R</span>
           <input 
             type="number" 
             value={unitPrice} 
             onChange={(e) => onPriceChange && onPriceChange(Number(e.target.value))} 
-            className="w-10 bg-transparent border-none text-[8px] text-zinc-500 outline-none p-0 focus:ring-0 appearance-none" 
+            className="w-8 bg-transparent border-none text-[8px] text-zinc-500 outline-none p-0 focus:ring-0 appearance-none h-3" 
           />
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <button onClick={() => onChange(Math.max(0, value - 1))} className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center"><Minus size={12}/></button>
-        <span className="text-xs font-black w-4 text-center tabular-nums">{value}</span>
-        <button onClick={() => onChange(value + 1)} className="w-6 h-6 rounded bg-primary/20 text-primary hover:bg-primary/40 flex items-center justify-center"><Plus size={12}/></button>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onChange(Math.max(0, value - 1))} className="w-5 h-5 rounded bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center"><Minus size={10}/></button>
+        <span className="text-xs font-black w-3 text-center tabular-nums">{value}</span>
+        <button onClick={() => onChange(value + 1)} className="w-5 h-5 rounded bg-primary/20 text-primary hover:bg-primary/40 flex items-center justify-center"><Plus size={10}/></button>
       </div>
     </div>
   )
@@ -126,13 +126,13 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
       setIsDeleting(false);
       setIsUpdating(false);
 
-      let isNewBooking = false;
-      if (!booking.id && (!booking.start_time || booking.start_time === '12:00')) {
-        isNewBooking = true;
+      const isNewBooking = !booking.id;
+      if (isNewBooking) {
         const now = new Date();
         const currentStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const startTime = booking.start_time && booking.start_time !== '12:00' ? booking.start_time : currentStr;
         const defaultDuration = booking.duration_hours || 1;
-        const initialTotal = GET_BASE_HOURLY_RATE(1) * defaultDuration;
+        const endTime = booking.end_time || addHoursToTime(startTime, defaultDuration);
         
         let wPrice = 20, gPrice = 220, bPrice = 50;
         if (data && data.length > 0) {
@@ -144,17 +144,14 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
 
         initialFormData = { 
           ...initialFormData, 
-          start_time: currentStr, 
-          end_time: addHoursToTime(currentStr, defaultDuration), 
+          start_time: startTime, 
+          end_time: endTime, 
           duration_hours: defaultDuration, 
-          total_price: initialTotal,
           addon_water_price: wPrice,
           addon_gloves_price: gPrice,
           addon_balls_price: bPrice
         };
       }
-
-      setFormData(initialFormData);
 
       // Calculate initial hourly discount to preserve custom pricing
       const coaching = initialFormData.addon_coaching ? COACHING_FLAT_FEE : 0;
@@ -167,6 +164,7 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
       const expectedTotal = (initialGenericHourly * (initialFormData.duration_hours || 1)) + initialFlatAddons;
       
       if (isNewBooking) {
+        initialFormData.total_price = expectedTotal;
         setIsManualOverride(false);
         setOverrideConfirmed(false);
       } else {
@@ -174,6 +172,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
         setIsManualOverride(isDiff);
         setOverrideConfirmed(isDiff); // Already confirmed since it's an existing saved booking
       }
+
+      setFormData(initialFormData);
     }
   }, [booking]);
 
@@ -276,18 +276,26 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
         </div>
 
         {/* BODY */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-hide">
           
-          {/* Identity - Always Visible */}
-          <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Name" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500" />
-            <Input placeholder="Phone Number" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500" />
+          {/* Identity & Payment */}
+          <div className="grid grid-cols-3 gap-2">
+            <Input placeholder="Name" value={formData.guest_name || ""} onChange={(e) => update("guest_name", e.target.value)} className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-xs" />
+            <Input placeholder="Phone Number" value={formData.guest_phone || ""} onChange={(e) => update("guest_phone", e.target.value)} className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-xs" />
+            <Select value={formData.payment_type} onValueChange={(v) => update("payment_type", v)}>
+              <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 h-9 rounded-lg text-xs font-bold text-white"><SelectValue placeholder="Payment Method" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="cash">In-Store (Cash/Card)</SelectItem>
+                <SelectItem value="yoco">Online</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Session Setup Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-row gap-1.5 h-[42px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-row gap-1.5 h-9">
                 {BAY_OPTIONS.map((bay) => (
                   <button key={bay.id} type="button" onClick={() => update("simulator_id", Number(bay.id))}
                     className={`flex-1 rounded-lg text-[10px] font-black uppercase transition-all ${String(formData.simulator_id) === bay.id ? `${bay.activeBg} text-white` : `${bay.bg} ${bay.text} hover:opacity-80`}`}>
@@ -299,30 +307,30 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
                 <div className="flex-1">
                   <Label className="text-[9px] font-bold text-zinc-500 uppercase">Start Time</Label>
                   <input type="time" value={formData.start_time || '12:00'} onChange={(e) => handleStartTimeChange(e.target.value)}
-                    style={{ colorScheme: 'light' }} className="w-full bg-zinc-100 text-zinc-900 text-sm font-black px-2 py-2 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                    style={{ colorScheme: 'light' }} className="w-full bg-zinc-100 text-zinc-900 text-sm font-black px-2 py-1.5 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
                 </div>
                 <div className="flex-1">
                   <Label className="text-[9px] font-bold text-zinc-500 uppercase">End Time</Label>
                   <input type="time" value={formData.end_time || ""} onChange={(e) => handleEndTimeChange(e.target.value)}
-                    style={{ colorScheme: 'light' }} className="w-full bg-zinc-100 text-zinc-900 text-sm font-black px-2 py-2 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                    style={{ colorScheme: 'light' }} className="w-full bg-zinc-100 text-zinc-900 text-sm font-black px-2 py-1.5 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
                <CustomSlider min={1} max={6} value={formData.player_count} onChange={(v: number) => update("player_count", v)} label="Players" format={(v: number) => `${v}P`} />
                <CustomSlider min={0.5} max={6} step={0.5} value={formData.duration_hours} onChange={handleDurationChange} label="Duration" format={(v: number) => `${v}H`} />
             </div>
           </div>
 
           {/* Add-ons */}
-          <div className="flex flex-col gap-2">
-            <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Add-ons</Label>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 flex-1 min-w-[120px]">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Add-ons</Label>
+            <div className="flex flex-wrap gap-1.5">
+              <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-lg px-2 py-1.5 flex-1 min-w-[100px]">
                 <span className="text-[10px] font-bold text-zinc-300 w-full">Clubs</span>
                 <Switch checked={formData.addon_club_rental} onCheckedChange={(v) => update("addon_club_rental", v)} />
               </div>
-              <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 flex-1 min-w-[120px]">
+              <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-lg px-2 py-1.5 flex-1 min-w-[100px]">
                 <span className="text-[10px] font-bold text-zinc-300 w-full">Coach</span>
                 <Switch checked={formData.addon_coaching} onCheckedChange={(v) => update("addon_coaching", v)} />
               </div>
@@ -333,8 +341,8 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
           </div>
 
           {/* FINANCIAL LEDGER */}
-          <div className="flex flex-col gap-2 bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3">
-            <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Financial Ledger</Label>
+          <div className="flex flex-col gap-2 bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-2.5">
+            <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Financial Ledger</Label>
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 <div className="flex-1">
@@ -420,18 +428,6 @@ export function ManagerModal({ isOpen, onClose, booking, onSave, onDelete, data 
                 </Button>
               </div>
             )}
-          </div>
-
-          {/* Payment Method */}
-          <div className="flex w-full">
-             <Select value={formData.payment_type} onValueChange={(v) => update("payment_type", v)}>
-               <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 h-10 rounded-lg text-xs font-bold text-white"><SelectValue placeholder="Payment Method" /></SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="pending">Pending</SelectItem>
-                 <SelectItem value="cash">In-Store (Cash/Card)</SelectItem>
-                 <SelectItem value="yoco">Online</SelectItem>
-               </SelectContent>
-             </Select>
           </div>
         </div>
 
